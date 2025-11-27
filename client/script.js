@@ -4,7 +4,8 @@ class ManjulaMobilesApp {
     this.currentPage = "home"
     this.cart = []
     this.cartOpen = false
-    this.isAdminLoggedIn = false
+    // Check if admin was previously logged in
+    this.isAdminLoggedIn = localStorage.getItem('manjula_admin_logged_in') === 'true'
     this.editingProductId = null
     this.productSearch = ""
     this.adminSearch = ""
@@ -13,6 +14,11 @@ class ManjulaMobilesApp {
     this.serviceSubMenuOpen = false;
     this.mobileServiceSubMenuOpen = false;
     this.upiLink = "keerthivasan98406@okhdfcbank"
+    
+    // Log admin login state on app start
+    if (this.isAdminLoggedIn) {
+      console.log('✅ Admin login state restored from localStorage')
+    }
     
     // MongoDB API URL - Auto-detect local vs production
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -137,6 +143,7 @@ class ManjulaMobilesApp {
         originalPrice: 50000,
         image: "📱",
         imageUrl: "./public/assets/images/1.jpg",
+        imageUrl2: "./public/assets/images/2.jpg",
         rating: 4.8,
         reviews: 234,
         inStock: true,
@@ -154,6 +161,7 @@ class ManjulaMobilesApp {
         originalPrice: 109999,
         image: "📱",
         imageUrl: "./public/assets/images/2.jpg",
+        imageUrl2: "./public/assets/images/3.jpg",
         rating: 4.9,
         reviews: 567,
         inStock: true,
@@ -171,6 +179,7 @@ class ManjulaMobilesApp {
         originalPrice: 55000,
         image: "📱",
         imageUrl: "./public/assets/images/3.jpg",
+        imageUrl2: "./public/assets/images/4.jpg",
         rating: 4.7,
         reviews: 189,
         inStock: true,
@@ -188,6 +197,7 @@ class ManjulaMobilesApp {
         originalPrice: 40000,
         image: "📱",
         imageUrl: "./public/assets/images/4.jpg",
+        imageUrl2: "./public/assets/images/1.jpg",
         rating: 4.6,
         reviews: 345,
         inStock: true,
@@ -574,6 +584,17 @@ class ManjulaMobilesApp {
       if (actionElement && actionElement.dataset.action === "close-gallery-modal") {
         this.closeGalleryModal()
       }
+      
+      // Image navigation arrows
+      if (actionElement && actionElement.dataset.action === "switch-image-prev") {
+        e.stopPropagation()
+        this.switchToImage(actionElement, 'prev')
+      }
+      
+      if (actionElement && actionElement.dataset.action === "switch-image-next") {
+        e.stopPropagation()
+        this.switchToImage(actionElement, 'next')
+      }
     })
 
     // Handle Enter key in search inputs
@@ -699,6 +720,9 @@ class ManjulaMobilesApp {
 
     if (phone === "9840694616" && password === "admin123") {
       this.isAdminLoggedIn = true
+      // Save login state to localStorage so it persists
+      localStorage.setItem('manjula_admin_logged_in', 'true')
+      console.log('✅ Admin logged in - state saved to localStorage')
       this.renderPage("admin")
     } else {
       alert("Invalid password.")
@@ -707,6 +731,9 @@ class ManjulaMobilesApp {
 
   handleAdminLogout() {
     this.isAdminLoggedIn = false
+    // Remove login state from localStorage
+    localStorage.removeItem('manjula_admin_logged_in')
+    console.log('✅ Admin logged out - state removed from localStorage')
     this.renderPage("home")
   }
 
@@ -1559,6 +1586,15 @@ class ManjulaMobilesApp {
     });
   }
 
+  // Function to reset products with new imageUrl2 field
+  resetProductsWithImages() {
+    localStorage.removeItem('manjula_products');
+    this.products = this.getDefaultProducts();
+    localStorage.setItem('manjula_products', JSON.stringify(this.products));
+    console.log('✅ Products reset with imageUrl2 field');
+    this.renderPage(this.currentPage);
+  }
+
   renderCarouselSection() {
     const mobileBrands = [
       { 
@@ -1786,6 +1822,45 @@ class ManjulaMobilesApp {
     });
   }
 
+  switchToImage(arrowElement, direction) {
+    // Find the slider and image element
+    const slider = arrowElement.closest('.product-image-slider');
+    const img = slider.querySelector('.product-img-main');
+    const dots = slider.querySelectorAll('.img-dot');
+    
+    // Get current image index
+    let currentIndex = parseInt(img.getAttribute('data-current')) || 1;
+    
+    // Calculate new index based on direction
+    if (direction === 'next') {
+      currentIndex = currentIndex === 1 ? 2 : 1;
+    } else if (direction === 'prev') {
+      currentIndex = currentIndex === 1 ? 2 : 1;
+    }
+    
+    // Get the image URL
+    const newImageUrl = currentIndex === 1 ? img.getAttribute('data-img1') : img.getAttribute('data-img2');
+    
+    // Change image with fade effect
+    img.style.opacity = '0';
+    setTimeout(() => {
+      img.src = newImageUrl;
+      img.setAttribute('data-current', currentIndex);
+      img.style.opacity = '1';
+    }, 150);
+    
+    // Update dots
+    dots.forEach((dot, index) => {
+      if (index + 1 === currentIndex) {
+        dot.classList.add('active');
+        dot.style.background = '#dc2626';
+      } else {
+        dot.classList.remove('active');
+        dot.style.background = 'rgba(255,255,255,0.5)';
+      }
+    });
+  }
+
 
 
   renderProductCard(product) {
@@ -1815,11 +1890,23 @@ class ManjulaMobilesApp {
       // Use image URL if provided - with image switching if second image exists
       if (hasMultipleImages) {
         displayContent = `
-          <div class="product-image-slider" style="position: relative; width: 100%; height: 100%;">
-            <img src="${product.imageUrl}" alt="${product.name}" class="product-img-main" data-img1="${product.imageUrl}" data-img2="${product.imageUrl2}" style="width: 100%; height: 100%; object-fit: cover; transition: opacity 0.3s ease;" onerror="this.style.display='none';">
-            <div class="image-dots" style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; z-index: 2;">
-              <span class="img-dot active" onclick="app.switchProductImage(this, '${product.imageUrl}')" style="width: 8px; height: 8px; border-radius: 50%; background: #dc2626; cursor: pointer; border: 2px solid white;"></span>
-              <span class="img-dot" onclick="app.switchProductImage(this, '${product.imageUrl2}')" style="width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.5); cursor: pointer; border: 2px solid white;"></span>
+          <div class="product-image-slider" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
+            <img src="${product.imageUrl}" alt="${product.name}" class="product-img-main" data-img1="${product.imageUrl}" data-img2="${product.imageUrl2}" data-current="1" style="width: 100%; height: 100%; object-fit: cover; transition: opacity 0.3s ease; display: block;" onerror="this.style.display='none';">
+            
+            <!-- Previous Arrow -->
+            <button class="image-nav-arrow prev-arrow" data-action="switch-image-prev" style="position: absolute; left: 8px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.7); color: white; border: 2px solid rgba(255,255,255,0.9); width: 32px; height: 32px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 100; font-size: 18px; font-weight: bold; line-height: 1; padding: 0;">
+              ‹
+            </button>
+            
+            <!-- Next Arrow -->
+            <button class="image-nav-arrow next-arrow" data-action="switch-image-next" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.7); color: white; border: 2px solid rgba(255,255,255,0.9); width: 32px; height: 32px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 100; font-size: 18px; font-weight: bold; line-height: 1; padding: 0;">
+              ›
+            </button>
+            
+            <!-- Dots Indicator -->
+            <div class="image-dots" style="position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; z-index: 99;">
+              <span class="img-dot active" data-index="1" style="width: 8px; height: 8px; border-radius: 50%; background: #dc2626; cursor: pointer; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></span>
+              <span class="img-dot" data-index="2" style="width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.6); cursor: pointer; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></span>
             </div>
           </div>
         `;
