@@ -10,8 +10,13 @@ const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
     origin: "*",
-    methods: ["GET", "POST", "PUT", "DELETE"]
-  }
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true
+  },
+  transports: ['websocket', 'polling'],
+  allowEIO3: true,
+  pingTimeout: 60000,
+  pingInterval: 25000
 });
 
 // Middleware
@@ -29,7 +34,6 @@ mongoose.connect(MONGODB_URI)
 
 // Product Schema
 const productSchema = new mongoose.Schema({
-  id: { type: Number, required: true, unique: true },
   name: String,
   category: String,
   price: Number,
@@ -65,16 +69,51 @@ const trackingSchema = new mongoose.Schema({
 
 const Tracking = mongoose.model('Tracking', trackingSchema);
 
+// Order Schema
+const orderSchema = new mongoose.Schema({
+  orderId: { type: String, required: true, unique: true },
+  customer: {
+    name: String,
+    phone: String,
+    email: String,
+    address: String
+  },
+  items: [{
+    id: Number,
+    name: String,
+    price: Number,
+    quantity: Number,
+    image: String
+  }],
+  total: Number,
+  paymentMethod: String,
+  status: { type: String, default: 'Pending' },
+  orderDate: { type: Date, default: Date.now }
+}, { timestamps: true });
+
+const Order = mongoose.model('Order', orderSchema);
+
 // Socket.IO connection
+let connectedClients = 0;
 io.on('connection', (socket) => {
+  connectedClients++;
   console.log('👤 Client connected:', socket.id);
+  console.log('📊 Total connected clients:', connectedClients);
   
-  socket.on('disconnect', () => {
-    console.log('👋 Client disconnected:', socket.id);
+  socket.on('disconnect', (reason) => {
+    connectedClients--;
+    console.log('👋 Client disconnected:', socket.id, '- Reason:', reason);
+    console.log('📊 Total connected clients:', connectedClients);
+  });
+
+  socket.on('error', (error) => {
+    console.error('❌ Socket error:', error);
   });
 });
 
 // Product Routes
+
+// Get all products
 app.get('/api/products', async (req, res) => {
   try {
     const products = await Product.find().sort({ id: 1 });
@@ -84,6 +123,7 @@ app.get('/api/products', async (req, res) => {
   }
 });
 
+// Create a new product
 app.post('/api/products', async (req, res) => {
   try {
     const product = new Product(req.body);
@@ -95,14 +135,23 @@ app.post('/api/products', async (req, res) => {
   }
 });
 
-app.put('/api/products/:id', async (req, res) => {
+// Update a product
+app.patch('/api/products/:id', async (req, res) => {
   try {
-    const product = await Product.findOneAndUpdate(
-      { id: parseInt(req.params.id) },
-      req.body,
+    const product = await Product.findByIdAndUpdate(
+      req.params.id,
+      { $set: req.body },   // patch updates only given fields
       { new: true }
     );
+
+    console.log("product id: ", product._id)
+
+    if (!product) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+
     io.emit('product-updated', product);
+
     res.json(product);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -111,8 +160,14 @@ app.put('/api/products/:id', async (req, res) => {
 
 app.delete('/api/products/:id', async (req, res) => {
   try {
-    await Product.findOneAndDelete({ id: parseInt(req.params.id) });
-    io.emit('product-deleted', { id: parseInt(req.params.id) });
+    const deletedProduct = await Product.findByIdAndDelete(req.params.id);
+
+    if (!deletedProduct) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+
+    io.emit('product-deleted', { id: req.params.id });
+
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -158,6 +213,53 @@ app.delete('/api/tracking/:qrId', async (req, res) => {
   try {
     await Tracking.findOneAndDelete({ qrId: req.params.qrId });
     io.emit('tracking-deleted', { qrId: req.params.qrId });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Order Routes
+app.get('/api/orders', async (req, res) => {
+  try {
+    const orders = await Order.find().sort({ orderDate: -1 });
+    res.json(orders);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/orders', async (req, res) => {
+  try {
+    const order = new Order(req.body);
+    await order.save();
+    io.emit('order-added', order);
+    console.log('✅ New order saved to database:', order.orderId);
+    res.json(order);
+  } catch (error) {
+    console.error('❌ Error saving order:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/orders/:orderId', async (req, res) => {
+  try {
+    const order = await Order.findOneAndUpdate(
+      { orderId: req.params.orderId },
+      req.body,
+      { new: true }
+    );
+    io.emit('order-updated', order);
+    res.json(order);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/orders/:orderId', async (req, res) => {
+  try {
+    await Order.findOneAndDelete({ orderId: req.params.orderId });
+    io.emit('order-deleted', { orderId: req.params.orderId });
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });

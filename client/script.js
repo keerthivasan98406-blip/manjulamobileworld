@@ -25,9 +25,15 @@ class ManjulaMobilesApp {
     const baseURL = isLocalhost ? 'http://localhost:3001' : window.location.origin;
     this.API_URL = `${baseURL}/api`
     
-    // Socket.IO connection disabled for local mode
-    // this.socket = io(baseURL)
-    // this.setupSocketListeners()
+    // Socket.IO connection for real-time updates with reconnection
+    this.socket = io(baseURL, {
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      reconnectionAttempts: 10
+    })
+    this.setupSocketListeners()
     
     // Carousel properties
     this.carouselImages = [
@@ -49,6 +55,22 @@ class ManjulaMobilesApp {
   setupSocketListeners() {
     this.socket.on('connect', () => {
       console.log('✅ Connected to server for real-time updates');
+      console.log('Socket ID:', this.socket.id);
+    });
+
+    this.socket.on('disconnect', (reason) => {
+      console.log('❌ Disconnected from server:', reason);
+    });
+
+    this.socket.on('reconnect', (attemptNumber) => {
+      console.log('🔄 Reconnected to server after', attemptNumber, 'attempts');
+      // Reload data after reconnection
+      this.loadProductsFromStorage();
+      this.loadTrackingFromStorage();
+    });
+
+    this.socket.on('connect_error', (error) => {
+      console.error('❌ Connection error:', error.message);
     });
 
     this.socket.on('product-added', (product) => {
@@ -110,6 +132,36 @@ class ManjulaMobilesApp {
         this.renderPage(this.currentPage);
       }
     });
+
+    this.socket.on('order-added', (order) => {
+      console.log('🛒 New order received:', order);
+      const exists = this.orders.find(o => o.orderId === order.orderId);
+      if (!exists) {
+        this.orders.push(order);
+        if (this.currentPage === 'admin' || this.currentPage === 'dashboard') {
+          this.renderPage(this.currentPage);
+        }
+      }
+    });
+
+    this.socket.on('order-updated', (order) => {
+      console.log('🔄 Order updated:', order);
+      const index = this.orders.findIndex(o => o.orderId === order.orderId);
+      if (index !== -1) {
+        this.orders[index] = order;
+        if (this.currentPage === 'admin' || this.currentPage === 'dashboard') {
+          this.renderPage(this.currentPage);
+        }
+      }
+    });
+
+    this.socket.on('order-deleted', (data) => {
+      console.log('🗑️ Order deleted:', data.orderId);
+      this.orders = this.orders.filter(o => o.orderId !== data.orderId);
+      if (this.currentPage === 'admin' || this.currentPage === 'dashboard') {
+        this.renderPage(this.currentPage);
+      }
+    });
   }
 
   // Product Management Methods - MongoDB API
@@ -152,236 +204,8 @@ class ManjulaMobilesApp {
         qrPassword: "",
         trackingStatus: "Received",
         ownerGender: "none"
-      },
-      {
-        id: 2,
-        name: "iPhone 15 Pro",
-        category: "Smartphones",
-        price: 99999,
-        originalPrice: 109999,
-        image: "📱",
-        imageUrl: "./public/assets/images/2.jpg",
-        imageUrl2: "./public/assets/images/3.jpg",
-        rating: 4.9,
-        reviews: 567,
-        inStock: true,
-        badge: "Premium",
-        qrId: "",
-        qrPassword: "",
-        trackingStatus: "Received",
-        ownerGender: "none"
-      },
-      {
-        id: 3,
-        name: "OnePlus 12",
-        category: "Smartphones",
-        price: 49999,
-        originalPrice: 55000,
-        image: "📱",
-        imageUrl: "./public/assets/images/3.jpg",
-        imageUrl2: "./public/assets/images/4.jpg",
-        rating: 4.7,
-        reviews: 189,
-        inStock: true,
-        badge: null,
-        qrId: "",
-        qrPassword: "",
-        trackingStatus: "Received",
-        ownerGender: "none"
-      },
-      {
-        id: 4,
-        name: "Xiaomi 14",
-        category: "Smartphones",
-        price: 35000,
-        originalPrice: 40000,
-        image: "📱",
-        imageUrl: "./public/assets/images/4.jpg",
-        imageUrl2: "./public/assets/images/1.jpg",
-        rating: 4.6,
-        reviews: 345,
-        inStock: true,
-        badge: null,
-        qrId: "",
-        qrPassword: "",
-        trackingStatus: "Received",
-        ownerGender: "none"
-      },
-      // {
-      //   id: 3,
-      //   name: "OnePlus 12",
-      //   category: "Smartphones",
-      //   price: 49999,
-      //   originalPrice: 55000,
-      //   image: "📱",
-      //   imageUrl: "",
-      //   rating: 4.7,
-      //   reviews: 189,
-      //   inStock: true,
-      //   badge: null,
-      //   qrId: "",
-      //   qrPassword: "",
-      //   trackingStatus: "Received",
-      //   ownerGender: "none"
-      // },
-      // {
-      //   id: 4,
-      //   name: "Xiaomi 14",
-      //   category: "Smartphones",
-      //   price: 35000,
-      //   originalPrice: 40000,
-      //   image: "📱",
-      //   imageUrl: "",
-      //   rating: 4.6,
-      //   reviews: 345,
-      //   inStock: true,
-      //   badge: null,
-      //   qrId: "",
-      //   qrPassword: "",
-      //   trackingStatus: "Received",
-      //   ownerGender: "none"
-      // },
-      // {
-      //   id: 5,
-      //   name: "Tempered Glass Screen Protector",
-      //   category: "Accessories",
-      //   price: 299,
-      //   originalPrice: 499,
-      //   image: "🛡️",
-      //   imageUrl: "",
-      //   rating: 4.5,
-      //   reviews: 1234,
-      //   inStock: true,
-      //   badge: null,
-      //   qrId: "",
-      //   qrPassword: "",
-      //   trackingStatus: "Received",
-      //   ownerGender: "none"
-      // },
-      // {
-      //   id: 6,
-      //   name: "Premium Protective Case",
-      //   category: "Accessories",
-      //   price: 599,
-      //   originalPrice: 899,
-      //   image: "📦",
-      //   imageUrl: "",
-      //   rating: 4.7,
-      //   reviews: 892,
-      //   inStock: true,
-      //   badge: null,
-      //   qrId: "",
-      //   qrPassword: "",
-      //   trackingStatus: "Received",
-      //   ownerGender: "none"
-      // },
-      // {
-      //   id: 7,
-      //   name: "65W Adapter",
-      //   category: "Chargers",
-      //   price: 1299,
-      //   originalPrice: 1799,
-      //   image: "🔌",
-      //   imageUrl: "",
-      //   rating: 4.8,
-      //   reviews: 567,
-      //   inStock: true,
-      //   badge: "Hot Deal",
-      //   qrId: "",
-      //   qrPassword: "",
-      //   trackingStatus: "Received",
-      //   ownerGender: "none"
-      // },
-      // {
-      //   id: 8,
-      //   name: "Wireless Earbuds Pro",
-      //   category: "Audio",
-      //   price: 2499,
-      //   originalPrice: 3499,
-      //   image: "🎧",
-      //   imageUrl: "",
-      //   rating: 4.6,
-      //   reviews: 723,
-      //   inStock: true,
-      //   badge: null,
-      //   qrId: "",
-      //   qrPassword: "",
-      //   trackingStatus: "Received",
-      //   ownerGender: "none"
-      // },
-      // {
-      //   id: 9,
-      //   name: "10000mAh Power Bank",
-      //   category: "Power",
-      //   price: 1499,
-      //   originalPrice: 1999,
-      //   image: "🔋",
-      //   imageUrl: "",
-      //   rating: 4.7,
-      //   reviews: 1456,
-      //   inStock: true,
-      //   badge: null,
-      //   qrId: "",
-      //   qrPassword: "",
-      //   trackingStatus: "Received",
-      //   ownerGender: "none"
-      // },
-      // {
-      //   id: 10,
-      //   name: "Screen Replacement Service",
-      //   category: "Services",
-      //   price: 3500,
-      //   originalPrice: 4500,
-      //   image: "🔧",
-      //   imageUrl: "",
-      //   rating: 4.9,
-      //   reviews: 2345,
-      //   inStock: true,
-      //   badge: "Expert Service",
-      //   qrId: "",
-      //   qrPassword: "",
-      //   trackingStatus: "Received",
-      //   ownerGender: "none"
-      // },
-      // {
-      //   id: 11,
-      //   name: "Battery Replacement Service",
-      //   category: "Services",
-      //   price: 1500,
-      //   originalPrice: 1999,
-      //   image: "🔧",
-      //   imageUrl: "",
-      //   rating: 4.8,
-      //   reviews: 1876,
-      //   inStock: true,
-      //   badge: null,
-      //   qrId: "",
-      //   qrPassword: "",
-      //   trackingStatus: "Received",
-      //   ownerGender: "none"
-      // },
-      // {
-      //   id: 12,
-      //   name: "Charging Port Repair",
-      //   category: "Services",
-      //   price: 899,
-      //   originalPrice: 1299,
-      //   image: "🔧",
-      //   imageUrl: "",
-      //   rating: 4.7,
-      //   reviews: 892,
-      //   inStock: true,
-      //   badge: null,
-      //   qrId: "",
-      //   qrPassword: "",
-      //   trackingStatus: "Received",
-      //   ownerGender: "none"
-      // }
-    ];
-  }
-
-  async saveProductsToStorage() {
-    // Products are saved individually via API
+      }
+  ];
   }
 
   // Tracking Management Methods - MongoDB API
@@ -404,17 +228,61 @@ class ManjulaMobilesApp {
     // Tracking is saved individually via API
   }
 
-  // Orders Management Methods - Memory only
-  loadOrdersFromStorage() {
-    this.orders = [];
+  // Orders Management Methods - MongoDB API
+  async loadOrdersFromStorage() {
+    try {
+      // Load from database via API
+      const response = await fetch(`${this.API_URL}/orders`);
+      if (response.ok) {
+        this.orders = await response.json();
+        console.log('✅ Loaded orders from database:', this.orders.length);
+      } else {
+        console.log('⚠️ No orders found in database');
+        this.orders = [];
+      }
+    } catch (error) {
+      console.error('❌ Error loading orders:', error);
+      this.orders = [];
+    }
   }
 
   saveOrdersToStorage() {
-    // No storage - data only in memory
+    // Orders are saved individually via saveSingleOrder
   }
 
-  saveSingleOrder(order) {
-    this.orders.push(order);
+  async saveSingleOrder(order) {
+    try {
+      // Save to database via API
+      const response = await fetch(`${this.API_URL}/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: order.id,
+          customer: order.customer,
+          items: order.items,
+          total: order.total,
+          paymentMethod: order.paymentMethod,
+          status: order.status || 'Pending'
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save order to database');
+      }
+
+      const savedOrder = await response.json();
+      console.log('✅ Order saved to database:', savedOrder);
+      
+      // Add to local array
+      this.orders.push(savedOrder);
+      
+      return savedOrder;
+    } catch (error) {
+      console.error('❌ Error saving order:', error);
+      // Still add to local array as fallback
+      this.orders.push(order);
+      throw error;
+    }
   }
 
   updateOrderStatus(orderId, newStatus) {
@@ -431,7 +299,7 @@ class ManjulaMobilesApp {
   async init() {
     await this.loadProductsFromStorage();
     await this.loadTrackingFromStorage();
-    this.loadOrdersFromStorage();
+    await this.loadOrdersFromStorage();
     this.setupEventListeners();
     this.renderPage("home");
   }
@@ -773,24 +641,41 @@ class ManjulaMobilesApp {
     try {
       if (this.editingProductId) {
         // Update existing product
+        const updatedProduct = {
+          name,
+          category,
+          price,
+          originalPrice: originalPrice || price,
+          imageUrl: imageUrl || "",
+          imageUrl2: imageUrl2 || "",
+          image: emoji || "📦",
+          inStock
+        };
+
+        // Update in database via API
+        const response = await fetch(`${this.API_URL}/products/${this.editingProductId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedProduct)
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to update product in database');
+        }
+
+        const savedProduct = await response.json();
+        
+        // Update local array
         const productIndex = this.products.findIndex((p) => p.id === this.editingProductId);
         if (productIndex !== -1) {
-          this.products[productIndex] = {
-            ...this.products[productIndex],
-            name,
-            category,
-            price,
-            originalPrice: originalPrice || price,
-            imageUrl: imageUrl || "",
-            imageUrl2: imageUrl2 || "",
-            image: emoji || "📦",
-            inStock
-          };
+          this.products[productIndex] = savedProduct;
         }
         
-        // Save to localStorage
+        // Save to localStorage as backup
         localStorage.setItem('manjula_products', JSON.stringify(this.products));
         this.editingProductId = null;
+        
+        alert("✅ Product updated successfully!");
       } else {
         // Create new product
         const newId = Math.max(...this.products.map((p) => p.id), 0) + 1;
@@ -813,25 +698,42 @@ class ManjulaMobilesApp {
           ownerGender: "none"
         };
 
-        // Save locally (no MongoDB required)
-        this.products.push(newProduct);
-        
         // Debug: Log what's being saved
-        console.log('=== Saving New Product ===');
+        console.log('=== Saving New Product to Database ===');
         console.log('Product:', newProduct);
         console.log('ImageURL 1 length:', newProduct.imageUrl.length);
         console.log('ImageURL 2 length:', newProduct.imageUrl2.length);
-        console.log('========================');
+        console.log('API URL:', `${this.API_URL}/products`);
+        console.log('======================================');
+
+        // Save to database via API
+        const response = await fetch(`${this.API_URL}/products`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newProduct)
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Failed to save product to database: ${errorText}`);
+        }
+
+        const savedProduct = await response.json();
+        console.log('✅ Product saved to database:', savedProduct);
         
-        // Save to localStorage for persistence
+        // Add to local array
+        this.products.push(savedProduct);
+        
+        // Save to localStorage as backup
         localStorage.setItem('manjula_products', JSON.stringify(this.products));
+        
+        alert("✅ Product saved successfully to database!");
       }
 
-      alert("✅ Product saved successfully!");
       this.renderPage("products");
     } catch (error) {
-      console.error('Error saving product:', error);
-      alert(`❌ Error: ${error.message}\n\nTip: If using image URL, make sure it's not too long. You can use emoji instead!`);
+      console.error('❌ Error saving product:', error);
+      alert(`❌ Error: ${error.message}\n\nPlease check your internet connection and try again.`);
     }
   }
 
@@ -840,17 +742,28 @@ class ManjulaMobilesApp {
   async deleteProduct(productId) {
     if (confirm("Are you sure you want to delete this product?")) {
       try {
+        // Delete from database via API
+        const response = await fetch(`${this.API_URL}/products/${productId}`, {
+          method: 'DELETE'
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to delete product from database');
+        }
+
+        console.log('✅ Product deleted from database:', productId);
+        
         // Remove from local array
         this.products = this.products.filter((p) => p.id !== productId);
         
-        // Save to localStorage
+        // Save to localStorage as backup
         localStorage.setItem('manjula_products', JSON.stringify(this.products));
 
         this.renderPage("admin");
         alert('✅ Product deleted successfully!');
       } catch (error) {
-        console.error('Error deleting product:', error);
-        alert('Error deleting product. Please try again.');
+        console.error('❌ Error deleting product:', error);
+        alert('❌ Error deleting product. Please check your internet connection and try again.');
       }
     }
   }
