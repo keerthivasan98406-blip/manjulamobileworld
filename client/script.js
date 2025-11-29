@@ -348,12 +348,12 @@ class ManjulaMobilesApp {
         this.renderPage("admin-add-product")
       }
       if (actionElement && actionElement.dataset.action === "edit-product") {
-        const productId = Number.parseInt(actionElement.dataset.productId)
+        const productId = actionElement.dataset.productId // Keep as string
         this.editingProductId = productId
         this.renderPage("admin-edit-product")
       }
       if (actionElement && actionElement.dataset.action === "delete-product") {
-        const productId = Number.parseInt(actionElement.dataset.productId)
+        const productId = actionElement.dataset.productId // Keep as string
         this.deleteProduct(productId)
       }
       if (actionElement && actionElement.dataset.action === "save-product") {
@@ -362,11 +362,11 @@ class ManjulaMobilesApp {
       
       // Cart actions
       if (actionElement && actionElement.dataset.action === "add-to-cart") {
-        const productId = Number.parseInt(actionElement.dataset.productId)
+        const productId = actionElement.dataset.productId // Keep as string
         this.addToCart(productId)
       }
       if (actionElement && actionElement.dataset.action === "buy-now") {
-        const productId = Number.parseInt(actionElement.dataset.productId)
+        const productId = actionElement.dataset.productId // Keep as string
         this.buyNow(productId)
       }
       if (actionElement && actionElement.dataset.action === "toggle-cart") {
@@ -376,15 +376,15 @@ class ManjulaMobilesApp {
         this.checkout()
       }
       if (actionElement && actionElement.dataset.action === "remove-item") {
-        const itemId = Number.parseInt(actionElement.dataset.itemId)
+        const itemId = actionElement.dataset.itemId // Keep as string
         this.removeFromCart(itemId)
       }
       if (actionElement && actionElement.dataset.action === "increase-quantity") {
-        const itemId = Number.parseInt(actionElement.dataset.itemId)
+        const itemId = actionElement.dataset.itemId // Keep as string
         this.increaseQuantity(itemId)
       }
       if (actionElement && actionElement.dataset.action === "decrease-quantity") {
-        const itemId = Number.parseInt(actionElement.dataset.itemId)
+        const itemId = actionElement.dataset.itemId // Keep as string
         this.decreaseQuantity(itemId)
       }
       
@@ -671,9 +671,14 @@ class ManjulaMobilesApp {
           inStock
         };
 
+        // Find the product to get its MongoDB _id
+        const editingIdStr = String(this.editingProductId);
+        const existingProduct = this.products.find((p) => String(p.id) === editingIdStr || String(p._id) === editingIdStr);
+        const mongoId = existingProduct ? (existingProduct._id || existingProduct.id) : this.editingProductId;
+
         // Update in database via API
-        const response = await fetch(`${this.API_URL}/products/${this.editingProductId}`, {
-          method: 'PUT',
+        const response = await fetch(`${this.API_URL}/products/${mongoId}`, {
+          method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(updatedProduct)
         });
@@ -685,7 +690,7 @@ class ManjulaMobilesApp {
         const savedProduct = await response.json();
         
         // Update local array
-        const productIndex = this.products.findIndex((p) => p.id === this.editingProductId);
+        const productIndex = this.products.findIndex((p) => String(p.id) === editingIdStr || String(p._id) === editingIdStr);
         if (productIndex !== -1) {
           this.products[productIndex] = savedProduct;
         }
@@ -696,10 +701,8 @@ class ManjulaMobilesApp {
         
         alert("✅ Product updated successfully!");
       } else {
-        // Create new product
-        const newId = Math.max(...this.products.map((p) => p.id), 0) + 1;
+        // Create new product - Don't send 'id', let MongoDB generate _id
         const newProduct = {
-          id: newId,
           name,
           category,
           price,
@@ -762,14 +765,15 @@ class ManjulaMobilesApp {
     if (confirm("Are you sure you want to delete this product?")) {
       try {
         // Find the product to get its MongoDB _id
-        const product = this.products.find(p => p.id === productId);
+        const productIdStr = String(productId);
+        const product = this.products.find(p => String(p.id) === productIdStr || String(p._id) === productIdStr);
         if (!product) {
           alert('Product not found');
           return;
         }
 
         // Use MongoDB _id for deletion
-        const mongoId = product._id || productId;
+        const mongoId = product._id || product.id;
         
         // Delete from database via API
         const response = await fetch(`${this.API_URL}/products/${mongoId}`, {
@@ -783,7 +787,7 @@ class ManjulaMobilesApp {
         console.log('✅ Product deleted from database:', mongoId);
         
         // Remove from local array
-        this.products = this.products.filter((p) => p.id !== productId);
+        this.products = this.products.filter((p) => String(p.id) !== productIdStr && String(p._id) !== productIdStr);
         
         // Save to localStorage as backup
         localStorage.setItem('manjula_products', JSON.stringify(this.products));
@@ -1955,9 +1959,11 @@ class ManjulaMobilesApp {
   }
 
   addToCart(productId) {
-    const product = this.products.find((p) => p.id === productId)
+    // Convert to string for comparison since MongoDB _id is a string
+    const productIdStr = String(productId);
+    const product = this.products.find((p) => String(p.id) === productIdStr || String(p._id) === productIdStr)
     if (product) {
-      const existingItem = this.cart.find((item) => item.id === productId)
+      const existingItem = this.cart.find((item) => String(item.id) === productIdStr || String(item._id) === productIdStr)
       if (existingItem) {
         existingItem.quantity += 1
       } else {
@@ -1965,14 +1971,19 @@ class ManjulaMobilesApp {
       }
       this.renderPage("products")
       this.showCartNotification("Item added to cart!")
+    } else {
+      console.error('Product not found:', productId, 'Available products:', this.products.map(p => ({id: p.id, _id: p._id, name: p.name})));
+      alert('Product not found. Please refresh the page.');
     }
   }
 
   buyNow(productId) {
-    const product = this.products.find((p) => p.id === productId)
+    // Convert to string for comparison since MongoDB _id is a string
+    const productIdStr = String(productId);
+    const product = this.products.find((p) => String(p.id) === productIdStr || String(p._id) === productIdStr)
     if (product) {
       // Add to cart if not already there
-      const existingItem = this.cart.find((item) => item.id === productId)
+      const existingItem = this.cart.find((item) => String(item.id) === productIdStr || String(item._id) === productIdStr)
       if (existingItem) {
         existingItem.quantity += 1
       } else {
@@ -1980,16 +1991,21 @@ class ManjulaMobilesApp {
       }
       // Go directly to checkout
       this.renderPage("checkout")
+    } else {
+      console.error('Product not found:', productId, 'Available products:', this.products.map(p => ({id: p.id, _id: p._id, name: p.name})));
+      alert('Product not found. Please refresh the page.');
     }
   }
 
   removeFromCart(itemId) {
-    this.cart = this.cart.filter((item) => item.id !== itemId)
+    const itemIdStr = String(itemId);
+    this.cart = this.cart.filter((item) => String(item.id) !== itemIdStr && String(item._id) !== itemIdStr)
     this.renderPage("products")
   }
 
   increaseQuantity(itemId) {
-    const item = this.cart.find((item) => item.id === itemId)
+    const itemIdStr = String(itemId);
+    const item = this.cart.find((item) => String(item.id) === itemIdStr || String(item._id) === itemIdStr)
     if (item) {
       item.quantity += 1
       this.renderPage("products")
@@ -1997,12 +2013,13 @@ class ManjulaMobilesApp {
   }
 
   decreaseQuantity(itemId) {
-    const item = this.cart.find((item) => item.id === itemId)
+    const itemIdStr = String(itemId);
+    const item = this.cart.find((item) => String(item.id) === itemIdStr || String(item._id) === itemIdStr)
     if (item) {
       if (item.quantity > 1) {
         item.quantity -= 1
       } else {
-        this.cart = this.cart.filter((item) => item.id !== itemId)
+        this.cart = this.cart.filter((item) => String(item.id) !== itemIdStr && String(item._id) !== itemIdStr)
       }
       this.renderPage("products")
     }
@@ -2745,7 +2762,8 @@ class ManjulaMobilesApp {
   }
 
   renderEditProductForm() {
-    const product = this.products.find((p) => p.id === this.editingProductId)
+    const editingIdStr = String(this.editingProductId);
+    const product = this.products.find((p) => String(p.id) === editingIdStr || String(p._id) === editingIdStr)
     if (!product) return `<div>Product not found</div>`
 
     return `
