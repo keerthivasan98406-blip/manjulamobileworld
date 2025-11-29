@@ -320,7 +320,21 @@ class ManjulaMobilesApp {
     await this.loadTrackingFromStorage();
     await this.loadOrdersFromStorage();
     this.setupEventListeners();
-    this.renderPage("home");
+    
+    // Show home page (already in HTML)
+    const homePage = document.getElementById("home-page")
+    if (homePage) {
+      homePage.style.display = "block"
+      // Inject navigation and footer
+      const navContainer = document.getElementById("main-nav")
+      const footerContainer = document.getElementById("main-footer")
+      if (navContainer) navContainer.innerHTML = this.renderNavigation()
+      if (footerContainer) footerContainer.innerHTML = this.renderFooter()
+      this.startCarousel()
+    } else {
+      // Fallback to JavaScript rendering
+      this.renderPage("home");
+    }
   }
 
   setupEventListeners() {
@@ -1194,6 +1208,24 @@ class ManjulaMobilesApp {
 
     if (page.startsWith("admin") && !this.isAdminLoggedIn) {
       page = "admin-login"
+    }
+
+    // For home page, just show/hide the static content
+    const homePage = document.getElementById("home-page")
+    if (page === "home") {
+      if (homePage) {
+        homePage.style.display = "block"
+        // Inject navigation and footer
+        const navContainer = document.getElementById("main-nav")
+        const footerContainer = document.getElementById("main-footer")
+        if (navContainer) navContainer.innerHTML = this.renderNavigation()
+        if (footerContainer) footerContainer.innerHTML = this.renderFooter()
+        this.startCarousel()
+        return
+      }
+    } else {
+      if (homePage) homePage.style.display = "none"
+      this.stopCarousel()
     }
 
     let html = this.renderNavigation()
