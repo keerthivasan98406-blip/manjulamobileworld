@@ -465,7 +465,8 @@ class ManjulaMobilesApp {
       // Gallery modal
       if (actionElement && actionElement.dataset.action === "open-gallery-modal") {
         const imageUrl = actionElement.dataset.imageUrl
-        this.openGalleryModal(imageUrl)
+        const imageUrl2 = actionElement.dataset.imageUrl2
+        this.openGalleryModal(imageUrl, imageUrl2)
       }
       
       if (actionElement && actionElement.dataset.action === "close-gallery-modal") {
@@ -1722,15 +1723,113 @@ class ManjulaMobilesApp {
 
 
 
-  openGalleryModal(imageUrl) {
+  openGalleryModal(imageUrl, imageUrl2 = null) {
     const modal = document.getElementById('galleryModal');
-    const modalImage = document.getElementById('galleryModalImage');
+    const modalContent = modal.querySelector('.gallery-modal-content');
     
-    if (modal && modalImage) {
-      modalImage.src = imageUrl;
+    if (modal && modalContent) {
+      // Check if product has multiple images
+      const hasMultipleImages = imageUrl2 && imageUrl2.trim() !== "";
+      
+      if (hasMultipleImages) {
+        // Create image slider for modal
+        modalContent.innerHTML = `
+          <button class="gallery-modal-close" data-action="close-gallery-modal">✕</button>
+          <div class="gallery-image-container" style="position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+            <img src="${imageUrl}" alt="Product Image" class="gallery-modal-image" id="galleryModalImage" data-img1="${imageUrl}" data-img2="${imageUrl2}" data-current="1" style="max-width: 90vw; max-height: 90vh; width: auto; height: auto; object-fit: contain; transition: opacity 0.3s ease;">
+            
+            <!-- Previous Arrow -->
+            <button class="gallery-nav-arrow gallery-prev-arrow" onclick="app.switchGalleryImage('prev')" style="position: absolute; left: 20px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.8); color: white; border: 2px solid white; width: 50px; height: 50px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 1000; font-size: 24px; font-weight: bold;">
+              ‹
+            </button>
+            
+            <!-- Next Arrow -->
+            <button class="gallery-nav-arrow gallery-next-arrow" onclick="app.switchGalleryImage('next')" style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.8); color: white; border: 2px solid white; width: 50px; height: 50px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 1000; font-size: 24px; font-weight: bold;">
+              ›
+            </button>
+            
+            <!-- Dots Indicator -->
+            <div class="gallery-dots" style="position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px; z-index: 999;">
+              <span class="gallery-dot active" onclick="app.goToGalleryImage(1)" style="width: 12px; height: 12px; border-radius: 50%; background: white; cursor: pointer; border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.5);"></span>
+              <span class="gallery-dot" onclick="app.goToGalleryImage(2)" style="width: 12px; height: 12px; border-radius: 50%; background: rgba(255,255,255,0.4); cursor: pointer; border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.5);"></span>
+            </div>
+          </div>
+        `;
+      } else {
+        // Single image
+        modalContent.innerHTML = `
+          <button class="gallery-modal-close" data-action="close-gallery-modal">✕</button>
+          <img src="${imageUrl}" alt="Product Image" class="gallery-modal-image" id="galleryModalImage" style="max-width: 90vw; max-height: 90vh; width: auto; height: auto; object-fit: contain;">
+        `;
+      }
+      
       modal.classList.add('active');
       document.body.style.overflow = 'hidden';
     }
+  }
+
+  switchGalleryImage(direction) {
+    const img = document.getElementById('galleryModalImage');
+    if (!img) return;
+    
+    const dots = document.querySelectorAll('.gallery-dot');
+    let currentIndex = parseInt(img.getAttribute('data-current')) || 1;
+    
+    // Calculate new index
+    if (direction === 'next') {
+      currentIndex = currentIndex === 1 ? 2 : 1;
+    } else if (direction === 'prev') {
+      currentIndex = currentIndex === 1 ? 2 : 1;
+    }
+    
+    // Get the image URL
+    const newImageUrl = currentIndex === 1 ? img.getAttribute('data-img1') : img.getAttribute('data-img2');
+    
+    // Change image with fade effect
+    img.style.opacity = '0';
+    setTimeout(() => {
+      img.src = newImageUrl;
+      img.setAttribute('data-current', currentIndex);
+      img.style.opacity = '1';
+    }, 150);
+    
+    // Update dots
+    dots.forEach((dot, index) => {
+      if (index + 1 === currentIndex) {
+        dot.classList.add('active');
+        dot.style.background = 'white';
+      } else {
+        dot.classList.remove('active');
+        dot.style.background = 'rgba(255,255,255,0.4)';
+      }
+    });
+  }
+
+  goToGalleryImage(index) {
+    const img = document.getElementById('galleryModalImage');
+    if (!img) return;
+    
+    const dots = document.querySelectorAll('.gallery-dot');
+    const newImageUrl = index === 1 ? img.getAttribute('data-img1') : img.getAttribute('data-img2');
+    
+    // Change image with fade effect
+    img.style.opacity = '0';
+    setTimeout(() => {
+      img.src = newImageUrl;
+      img.setAttribute('data-current', index);
+      img.style.opacity = '1';
+    }, 150);
+    
+    // Update dots
+    dots.forEach((dot, i) => {
+      if (i + 1 === index) {
+        dot.classList.add('active');
+        dot.style.background = 'white';
+      } else {
+        dot.classList.remove('active');
+        dot.style.background = 'rgba(255,255,255,0.4)';
+      }
+    });
   }
 
   closeGalleryModal() {
@@ -1872,7 +1971,7 @@ class ManjulaMobilesApp {
     
     return `
       <div class="product-card">
-        <div class="product-image gallery-style-image" data-action="open-gallery-modal" data-image-url="${modalImageUrl}">
+        <div class="product-image gallery-style-image" data-action="open-gallery-modal" data-image-url="${modalImageUrl}" data-image-url2="${product.imageUrl2 || ''}">
           ${product.badge ? `<div class="product-badge">${product.badge}</div>` : ""}
           ${displayContent}
           ${displayContent.includes('onerror') ? `<span style="font-size: 48px; display: none; align-items: center; justify-content: center; height: 100%;">${product.image || "📦"}</span>` : ''}
