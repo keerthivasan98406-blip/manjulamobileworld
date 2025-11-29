@@ -23,8 +23,105 @@
 
     <!-- Main app container -->
     <div id="app" class="app-container">
-        <!-- Navigation will be injected by JavaScript -->
-        <nav id="main-nav"></nav>
+        <!-- Navigation Header -->
+        <nav id="main-nav">
+            <div class="nav-content">
+                <div class="nav-brand" style="cursor: pointer; display: flex; align-items: center; gap: 12px;">
+                    <div class="nav-logo">
+                        <img src="https://i.pinimg.com/736x/e3/6f/79/e36f793e016dd6b35cd27f84030b7487.jpg" alt="Manjula Mobiles Logo" style="width: 50px; height: 50px; object-fit: contain; border-radius: 8px;">
+                    </div>
+                    <div class="nav-title" data-page="home">
+                        <div style="font-size: 16px; font-weight: 700; white-space: nowrap;">MANJULA MOBILS WORLD</div>
+                        <div style="font-size: 10px; font-weight: 500; margin-top: 1px;">the final world of mobile services</div>
+                    </div>
+                </div>
+                
+                <ul class="nav nav-pills">
+                    <li class="nav-item">
+                        <a class="nav-link active" data-page="home">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-page="shop-location">Shop Location</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-page="products">Products</a>
+                    </li>
+                    <li class="nav-item" style="position: relative;">
+                        <a class="nav-link" data-action="toggle-service-submenu">Services</a>
+                        <div class="service-submenu">
+                            <a class="nav-link" data-page="services-hardware">Hardware Repair</a>
+                            <a class="nav-link" data-page="services-software">Software Repair</a>
+                        </div>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-page="tracking-page">Track Repair</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-page="about">About</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-page="join-with-us">Join With Us</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-page="help-desk">Help Desk</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link cart-pill" data-action="toggle-cart">
+                            🛒 Cart <span class="cart-badge" id="cart-count" style="display: none;">0</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link admin-pill" data-page="admin-login" id="admin-link">Owner Portal</a>
+                    </li>
+                </ul>
+                
+                <button class="mobile-menu-toggle" data-action="toggle-mobile-menu">
+                    Menu
+                </button>
+            </div>
+        </nav>
+        
+        <!-- Mobile Navigation Menu -->
+        <div class="mobile-nav-menu">
+            <ul class="mobile-nav-pills">
+                <li class="nav-item">
+                    <a class="nav-link active" data-page="home">Home</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-page="shop-location">Shop Location</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-page="products">Products</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-action="toggle-mobile-service-submenu">Services</a>
+                    <div class="mobile-service-submenu">
+                        <a class="nav-link" data-page="services-hardware">Hardware Repair</a>
+                        <a class="nav-link" data-page="services-software">Software Repair</a>
+                    </div>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-page="tracking-page">Track Repair</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-page="about">About</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-page="join-with-us">Join With Us</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-page="help-desk">Help Desk</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link cart-pill" data-action="toggle-cart">
+                        🛒 Cart <span id="mobile-cart-count"></span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link admin-pill" data-page="admin-login" id="mobile-admin-link">Owner Portal</a>
+                </li>
+            </ul>
+        </div></div>
         
         <!-- Home Page Content -->
         <div id="home-page" class="page-content">

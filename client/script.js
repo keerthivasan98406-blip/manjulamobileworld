@@ -325,10 +325,9 @@ class ManjulaMobilesApp {
     const homePage = document.getElementById("home-page")
     if (homePage) {
       homePage.style.display = "block"
-      // Inject navigation and footer
-      const navContainer = document.getElementById("main-nav")
+      // Update navigation and inject footer
+      this.updateNavigation()
       const footerContainer = document.getElementById("main-footer")
-      if (navContainer) navContainer.innerHTML = this.renderNavigation()
       if (footerContainer) footerContainer.innerHTML = this.renderFooter()
       this.startCarousel()
     } else {
@@ -1210,15 +1209,16 @@ class ManjulaMobilesApp {
       page = "admin-login"
     }
 
+    // Update navigation active states and cart count
+    this.updateNavigation()
+    
     // For home page, just show/hide the static content
     const homePage = document.getElementById("home-page")
     if (page === "home") {
       if (homePage) {
         homePage.style.display = "block"
-        // Inject navigation and footer
-        const navContainer = document.getElementById("main-nav")
+        // Inject footer only
         const footerContainer = document.getElementById("main-footer")
-        if (navContainer) navContainer.innerHTML = this.renderNavigation()
         if (footerContainer) footerContainer.innerHTML = this.renderFooter()
         this.startCarousel()
         return
@@ -1306,6 +1306,69 @@ class ManjulaMobilesApp {
         </div>
       </div>
     `;
+  }
+
+  updateNavigation() {
+    // Update cart count
+    const cartItemCount = this.cart.reduce((total, item) => total + item.quantity, 0)
+    const cartBadge = document.getElementById("cart-count")
+    const mobileCartCount = document.getElementById("mobile-cart-count")
+    
+    if (cartBadge) {
+      if (cartItemCount > 0) {
+        cartBadge.textContent = cartItemCount
+        cartBadge.style.display = "inline"
+      } else {
+        cartBadge.style.display = "none"
+      }
+    }
+    
+    if (mobileCartCount) {
+      mobileCartCount.textContent = cartItemCount > 0 ? `(${cartItemCount})` : ''
+    }
+    
+    // Update active page
+    const allNavLinks = document.querySelectorAll('.nav-link')
+    allNavLinks.forEach(link => {
+      const linkPage = link.dataset.page
+      if (linkPage === this.currentPage) {
+        link.classList.add('active')
+      } else if (this.currentPage.startsWith('services-') && link.dataset.action === 'toggle-service-submenu') {
+        link.classList.add('active')
+      } else if (this.currentPage.startsWith('services-') && link.dataset.action === 'toggle-mobile-service-submenu') {
+        link.classList.add('active')
+      } else {
+        link.classList.remove('active')
+      }
+    })
+    
+    // Update admin link
+    const adminLink = document.getElementById("admin-link")
+    const mobileAdminLink = document.getElementById("mobile-admin-link")
+    
+    if (adminLink) {
+      if (this.isAdminLoggedIn) {
+        adminLink.textContent = "Logout (Owner)"
+        adminLink.dataset.action = "admin-logout"
+        delete adminLink.dataset.page
+      } else {
+        adminLink.textContent = "Owner Portal"
+        adminLink.dataset.page = "admin-login"
+        delete adminLink.dataset.action
+      }
+    }
+    
+    if (mobileAdminLink) {
+      if (this.isAdminLoggedIn) {
+        mobileAdminLink.textContent = "Logout (Owner)"
+        mobileAdminLink.dataset.action = "admin-logout"
+        delete mobileAdminLink.dataset.page
+      } else {
+        mobileAdminLink.textContent = "Owner Portal"
+        mobileAdminLink.dataset.page = "admin-login"
+        delete mobileAdminLink.dataset.action
+      }
+    }
   }
 
   renderNavigation() {
