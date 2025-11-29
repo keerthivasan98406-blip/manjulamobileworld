@@ -75,7 +75,13 @@ class ManjulaMobilesApp {
 
     this.socket.on('product-added', (product) => {
       console.log('📦 New product added:', product);
-      const exists = this.products.find(p => p.id === product.id || p._id === product._id);
+      // Check for duplicates using both id and _id
+      const exists = this.products.find(p => 
+        String(p.id) === String(product.id) || 
+        String(p._id) === String(product._id) ||
+        String(p.id) === String(product._id) ||
+        String(p._id) === String(product.id)
+      );
       if (!exists) {
         this.products.push(product);
         // Save to localStorage as backup
@@ -83,6 +89,8 @@ class ManjulaMobilesApp {
         if (this.currentPage === 'products' || this.currentPage === 'admin') {
           this.renderPage(this.currentPage);
         }
+      } else {
+        console.log('⚠️ Product already exists, skipping duplicate');
       }
     });
 
@@ -464,8 +472,23 @@ class ManjulaMobilesApp {
       
       // Gallery modal
       if (actionElement && actionElement.dataset.action === "open-gallery-modal") {
-        const imageUrl = actionElement.dataset.imageUrl
-        this.openGalleryModal(imageUrl)
+        // Get the current displayed image from the img element
+        const imgElement = actionElement.tagName === 'IMG' ? actionElement : actionElement.querySelector('img');
+        
+        if (imgElement) {
+          const currentImageUrl = imgElement.src;
+          const img1 = imgElement.dataset.img1 || imgElement.dataset.imageUrl;
+          const img2 = imgElement.dataset.img2 || imgElement.dataset.imageUrl2;
+          const currentIndex = parseInt(imgElement.dataset.current) || 1;
+          
+          // Open modal with the currently displayed image
+          this.openGalleryModal(currentImageUrl, img2, currentIndex, img1)
+        } else {
+          // Fallback for non-image elements
+          const imageUrl = actionElement.dataset.imageUrl;
+          const imageUrl2 = actionElement.dataset.imageUrl2;
+          this.openGalleryModal(imageUrl, imageUrl2, 1, imageUrl)
+        }
       }
       
       if (actionElement && actionElement.dataset.action === "close-gallery-modal") {
@@ -743,16 +766,30 @@ class ManjulaMobilesApp {
         const savedProduct = await response.json();
         console.log('✅ Product saved to database:', savedProduct);
         
-        // Add to local array
-        this.products.push(savedProduct);
+        // Check if product already exists before adding (prevent duplicates)
+        const exists = this.products.find(p => 
+          String(p.id) === String(savedProduct.id) || 
+          String(p._id) === String(savedProduct._id) ||
+          String(p.id) === String(savedProduct._id) ||
+          String(p._id) === String(savedProduct.id)
+        );
         
-        // Save to localStorage as backup
-        localStorage.setItem('manjula_products', JSON.stringify(this.products));
+        if (!exists) {
+          // Add to local array
+          this.products.push(savedProduct);
+          
+          // Save to localStorage as backup
+          localStorage.setItem('manjula_products', JSON.stringify(this.products));
+          console.log('✅ Product added to local array');
+        } else {
+          console.log('⚠️ Product already exists in local array, skipping');
+        }
         
         alert("✅ Product saved successfully to database!");
       }
 
-      this.renderPage("products");
+      // Stay in admin panel instead of going to products page
+      this.renderPage("admin");
     } catch (error) {
       console.error('❌ Error saving product:', error);
       alert(`❌ Error: ${error.message}\n\nPlease check your internet connection and try again.`);
@@ -1722,15 +1759,114 @@ class ManjulaMobilesApp {
 
 
 
-  openGalleryModal(imageUrl) {
+  openGalleryModal(currentImageUrl, imageUrl2 = null, currentIndex = 1, imageUrl1 = null) {
     const modal = document.getElementById('galleryModal');
-    const modalImage = document.getElementById('galleryModalImage');
+    const modalContent = modal.querySelector('.gallery-modal-content');
     
-    if (modal && modalImage) {
-      modalImage.src = imageUrl;
+    if (modal && modalContent) {
+      // Check if product has multiple images
+      const hasMultipleImages = imageUrl2 && imageUrl2.trim() !== "";
+      const img1 = imageUrl1 || currentImageUrl;
+      
+      if (hasMultipleImages) {
+        // Create image slider for modal - start with the currently displayed image
+        modalContent.innerHTML = `
+          <button class="gallery-modal-close" data-action="close-gallery-modal">✕</button>
+          <div class="gallery-image-container" style="position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+            <img src="${currentImageUrl}" alt="Product Image" class="gallery-modal-image" id="galleryModalImage" data-img1="${img1}" data-img2="${imageUrl2}" data-current="${currentIndex}" style="max-width: 90vw; max-height: 90vh; width: auto; height: auto; object-fit: contain; transition: opacity 0.3s ease;">
+            
+            <!-- Previous Arrow -->
+            <button class="gallery-nav-arrow gallery-prev-arrow" onclick="app.switchGalleryImage('prev')" style="position: absolute; left: 20px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.8); color: white; border: 2px solid white; width: 50px; height: 50px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 1000; font-size: 24px; font-weight: bold;">
+              ‹
+            </button>
+            
+            <!-- Next Arrow -->
+            <button class="gallery-nav-arrow gallery-next-arrow" onclick="app.switchGalleryImage('next')" style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.8); color: white; border: 2px solid white; width: 50px; height: 50px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 1000; font-size: 24px; font-weight: bold;">
+              ›
+            </button>
+            
+            <!-- Dots Indicator -->
+            <div class="gallery-dots" style="position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px; z-index: 999;">
+              <span class="gallery-dot ${currentIndex === 1 ? 'active' : ''}" onclick="app.goToGalleryImage(1)" style="width: 12px; height: 12px; border-radius: 50%; background: ${currentIndex === 1 ? 'white' : 'rgba(255,255,255,0.4)'}; cursor: pointer; border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.5);"></span>
+              <span class="gallery-dot ${currentIndex === 2 ? 'active' : ''}" onclick="app.goToGalleryImage(2)" style="width: 12px; height: 12px; border-radius: 50%; background: ${currentIndex === 2 ? 'white' : 'rgba(255,255,255,0.4)'}; cursor: pointer; border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.5);"></span>
+            </div>
+          </div>
+        `;
+      } else {
+        // Single image
+        modalContent.innerHTML = `
+          <button class="gallery-modal-close" data-action="close-gallery-modal">✕</button>
+          <img src="${imageUrl}" alt="Product Image" class="gallery-modal-image" id="galleryModalImage" style="max-width: 90vw; max-height: 90vh; width: auto; height: auto; object-fit: contain;">
+        `;
+      }
+      
       modal.classList.add('active');
       document.body.style.overflow = 'hidden';
     }
+  }
+
+  switchGalleryImage(direction) {
+    const img = document.getElementById('galleryModalImage');
+    if (!img) return;
+    
+    const dots = document.querySelectorAll('.gallery-dot');
+    let currentIndex = parseInt(img.getAttribute('data-current')) || 1;
+    
+    // Calculate new index
+    if (direction === 'next') {
+      currentIndex = currentIndex === 1 ? 2 : 1;
+    } else if (direction === 'prev') {
+      currentIndex = currentIndex === 1 ? 2 : 1;
+    }
+    
+    // Get the image URL
+    const newImageUrl = currentIndex === 1 ? img.getAttribute('data-img1') : img.getAttribute('data-img2');
+    
+    // Change image with fade effect
+    img.style.opacity = '0';
+    setTimeout(() => {
+      img.src = newImageUrl;
+      img.setAttribute('data-current', currentIndex);
+      img.style.opacity = '1';
+    }, 150);
+    
+    // Update dots
+    dots.forEach((dot, index) => {
+      if (index + 1 === currentIndex) {
+        dot.classList.add('active');
+        dot.style.background = 'white';
+      } else {
+        dot.classList.remove('active');
+        dot.style.background = 'rgba(255,255,255,0.4)';
+      }
+    });
+  }
+
+  goToGalleryImage(index) {
+    const img = document.getElementById('galleryModalImage');
+    if (!img) return;
+    
+    const dots = document.querySelectorAll('.gallery-dot');
+    const newImageUrl = index === 1 ? img.getAttribute('data-img1') : img.getAttribute('data-img2');
+    
+    // Change image with fade effect
+    img.style.opacity = '0';
+    setTimeout(() => {
+      img.src = newImageUrl;
+      img.setAttribute('data-current', index);
+      img.style.opacity = '1';
+    }, 150);
+    
+    // Update dots
+    dots.forEach((dot, i) => {
+      if (i + 1 === index) {
+        dot.classList.add('active');
+        dot.style.background = 'white';
+      } else {
+        dot.classList.remove('active');
+        dot.style.background = 'rgba(255,255,255,0.4)';
+      }
+    });
   }
 
   closeGalleryModal() {
@@ -1769,6 +1905,8 @@ class ManjulaMobilesApp {
   }
 
   switchToImage(arrowElement, direction) {
+    event.stopPropagation(); // Prevent modal from opening
+    
     // Find the slider and image element
     const slider = arrowElement.closest('.product-image-slider');
     const img = slider.querySelector('.product-img-main');
@@ -1798,6 +1936,35 @@ class ManjulaMobilesApp {
     // Update dots
     dots.forEach((dot, index) => {
       if (index + 1 === currentIndex) {
+        dot.classList.add('active');
+        dot.style.background = '#dc2626';
+      } else {
+        dot.classList.remove('active');
+        dot.style.background = 'rgba(255,255,255,0.5)';
+      }
+    });
+  }
+
+  switchToImageByDot(dotElement, index, img1, img2) {
+    if (event) event.stopPropagation(); // Prevent modal from opening
+    
+    const slider = dotElement.closest('.product-image-slider');
+    const img = slider.querySelector('.product-img-main');
+    const dots = slider.querySelectorAll('.img-dot');
+    
+    const newImageUrl = index === 1 ? img1 : img2;
+    
+    // Change image with fade effect
+    img.style.opacity = '0';
+    setTimeout(() => {
+      img.src = newImageUrl;
+      img.setAttribute('data-current', index);
+      img.style.opacity = '1';
+    }, 150);
+    
+    // Update dots
+    dots.forEach((dot, i) => {
+      if (i + 1 === index) {
         dot.classList.add('active');
         dot.style.background = '#dc2626';
       } else {
@@ -1837,27 +2004,27 @@ class ManjulaMobilesApp {
       if (hasMultipleImages) {
         displayContent = `
           <div class="product-image-slider" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;">
-            <img src="${product.imageUrl}" alt="${product.name}" class="product-img-main" data-img1="${product.imageUrl}" data-img2="${product.imageUrl2}" data-current="1" style="width: 100%; height: 100%; object-fit: cover; transition: opacity 0.3s ease; display: block;" onerror="this.style.display='none';">
+            <img src="${product.imageUrl}" alt="${product.name}" class="product-img-main clickable-product-image" data-action="open-gallery-modal" data-image-url="${product.imageUrl}" data-image-url2="${product.imageUrl2}" data-img1="${product.imageUrl}" data-img2="${product.imageUrl2}" data-current="1" style="width: 100%; height: 100%; object-fit: cover; transition: opacity 0.3s ease; display: block; cursor: pointer;" onerror="this.style.display='none';">
             
             <!-- Previous Arrow -->
-            <button class="image-nav-arrow prev-arrow" data-action="switch-image-prev" style="position: absolute; left: 8px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.7); color: white; border: 2px solid rgba(255,255,255,0.9); width: 32px; height: 32px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 100; font-size: 18px; font-weight: bold; line-height: 1; padding: 0;">
+            <button class="image-nav-arrow prev-arrow" data-action="switch-image-prev" onclick="event.stopPropagation()" style="position: absolute; left: 8px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.7); color: white; border: 2px solid rgba(255,255,255,0.9); width: 32px; height: 32px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 100; font-size: 18px; font-weight: bold; line-height: 1; padding: 0;">
               ‹
             </button>
             
             <!-- Next Arrow -->
-            <button class="image-nav-arrow next-arrow" data-action="switch-image-next" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.7); color: white; border: 2px solid rgba(255,255,255,0.9); width: 32px; height: 32px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 100; font-size: 18px; font-weight: bold; line-height: 1; padding: 0;">
+            <button class="image-nav-arrow next-arrow" data-action="switch-image-next" onclick="event.stopPropagation()" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.7); color: white; border: 2px solid rgba(255,255,255,0.9); width: 32px; height: 32px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 100; font-size: 18px; font-weight: bold; line-height: 1; padding: 0;">
               ›
             </button>
             
             <!-- Dots Indicator -->
-            <div class="image-dots" style="position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; z-index: 99;">
-              <span class="img-dot active" data-index="1" style="width: 8px; height: 8px; border-radius: 50%; background: #dc2626; cursor: pointer; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></span>
-              <span class="img-dot" data-index="2" style="width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.6); cursor: pointer; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></span>
+            <div class="image-dots" onclick="event.stopPropagation()" style="position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; z-index: 99;">
+              <span class="img-dot active" data-index="1" onclick="app.switchToImageByDot(this, 1, '${product.imageUrl}', '${product.imageUrl2}')" style="width: 8px; height: 8px; border-radius: 50%; background: #dc2626; cursor: pointer; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></span>
+              <span class="img-dot" data-index="2" onclick="app.switchToImageByDot(this, 2, '${product.imageUrl}', '${product.imageUrl2}')" style="width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.6); cursor: pointer; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></span>
             </div>
           </div>
         `;
       } else {
-        displayContent = `<img src="${product.imageUrl}" alt="${product.name}" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.4s ease;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">`;
+        displayContent = `<img src="${product.imageUrl}" alt="${product.name}" class="clickable-product-image" data-action="open-gallery-modal" data-image-url="${product.imageUrl}" data-image-url2="" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.4s ease; cursor: pointer;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">`;
       }
       modalImageUrl = product.imageUrl;
     } else if (product.image && product.image.trim() !== "" && product.image !== "📦") {
@@ -1872,7 +2039,7 @@ class ManjulaMobilesApp {
     
     return `
       <div class="product-card">
-        <div class="product-image gallery-style-image" data-action="open-gallery-modal" data-image-url="${modalImageUrl}">
+        <div class="product-image gallery-style-image">
           ${product.badge ? `<div class="product-badge">${product.badge}</div>` : ""}
           ${displayContent}
           ${displayContent.includes('onerror') ? `<span style="font-size: 48px; display: none; align-items: center; justify-content: center; height: 100%;">${product.image || "📦"}</span>` : ''}
