@@ -4,21 +4,12 @@ class ManjulaMobilesApp {
     this.currentPage = "home"
     this.cart = []
     this.cartOpen = false
-    // Check if admin was previously logged in
-    this.isAdminLoggedIn = localStorage.getItem('manjula_admin_logged_in') === 'true'
-    this.editingProductId = null
     this.productSearch = ""
-    this.adminSearch = ""
     this.mobileMenuOpen = false
     this.orders = [];
     this.serviceSubMenuOpen = false;
     this.mobileServiceSubMenuOpen = false;
     this.upiLink = "keerthivasan98406@okhdfcbank"
-    
-    // Log admin login state on app start
-    if (this.isAdminLoggedIn) {
-      console.log('✅ Admin login state restored from localStorage')
-    }
     
     // MongoDB API URL - Auto-detect local vs production
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -49,6 +40,14 @@ class ManjulaMobilesApp {
     this.trackingData = [];
     
     this.init()
+    
+    // Auto-refresh products every 5 seconds to sync with owner portal changes
+    setInterval(() => {
+      if (this.currentPage === 'products') {
+        console.log('⏰ [MAIN WEBSITE] Auto-refreshing products...');
+        this.loadProductsFromDatabase();
+      }
+    }, 5000); // 5 seconds
   }
 
   // Socket.IO Real-time Listeners
@@ -74,7 +73,7 @@ class ManjulaMobilesApp {
     });
 
     this.socket.on('product-added', (product) => {
-      console.log('📦 New product added:', product);
+      console.log('📦 [MAIN WEBSITE] New product added via socket:', product);
       // Check for duplicates using both id and _id
       const exists = this.products.find(p => 
         String(p.id) === String(product.id) || 
@@ -84,13 +83,13 @@ class ManjulaMobilesApp {
       );
       if (!exists) {
         this.products.push(product);
-        // Save to localStorage as backup
-        localStorage.setItem('manjula_products', JSON.stringify(this.products));
-        if (this.currentPage === 'products' || this.currentPage === 'admin') {
+        console.log('✅ [MAIN WEBSITE] Product added to local array, total products:', this.products.length);
+        if (this.currentPage === 'products') {
+          console.log('🔄 [MAIN WEBSITE] Re-rendering products page');
           this.renderPage(this.currentPage);
         }
       } else {
-        console.log('⚠️ Product already exists, skipping duplicate');
+        console.log('⚠️ [MAIN WEBSITE] Product already exists, skipping duplicate');
       }
     });
 
@@ -99,9 +98,7 @@ class ManjulaMobilesApp {
       const index = this.products.findIndex(p => p.id === product.id || p._id === product._id);
       if (index !== -1) {
         this.products[index] = product;
-        // Save to localStorage as backup
-        localStorage.setItem('manjula_products', JSON.stringify(this.products));
-        if (this.currentPage === 'products' || this.currentPage === 'admin') {
+        if (this.currentPage === 'products') {
           this.renderPage(this.currentPage);
         }
       }
@@ -110,19 +107,19 @@ class ManjulaMobilesApp {
     this.socket.on('product-deleted', (data) => {
       console.log('🗑️ Product deleted:', data.id);
       this.products = this.products.filter(p => p.id !== data.id && p._id !== data.id);
-      // Save to localStorage as backup
-      localStorage.setItem('manjula_products', JSON.stringify(this.products));
-      if (this.currentPage === 'products' || this.currentPage === 'admin') {
+      if (this.currentPage === 'products') {
         this.renderPage(this.currentPage);
       }
     });
 
     this.socket.on('tracking-added', (tracking) => {
-      console.log('📍 New tracking added:', tracking);
+      console.log('📍 [MAIN WEBSITE] New tracking added via socket:', tracking);
       const exists = this.trackingData.find(t => t.qrId === tracking.qrId);
       if (!exists) {
         this.trackingData.push(tracking);
-        if (this.currentPage === 'admin' || this.currentPage === 'tracking' || this.currentPage === 'tracking-page') {
+        console.log('✅ [MAIN WEBSITE] Tracking added to local array, total tracking:', this.trackingData.length);
+        if (this.currentPage === 'tracking' || this.currentPage === 'tracking-page') {
+          console.log('🔄 [MAIN WEBSITE] Re-rendering tracking page');
           this.renderPage(this.currentPage);
         }
       }
@@ -133,7 +130,7 @@ class ManjulaMobilesApp {
       const index = this.trackingData.findIndex(t => t.qrId === tracking.qrId);
       if (index !== -1) {
         this.trackingData[index] = tracking;
-        if (this.currentPage === 'admin' || this.currentPage === 'tracking' || this.currentPage === 'tracking-page') {
+        if (this.currentPage === 'tracking' || this.currentPage === 'tracking-page') {
           this.renderPage(this.currentPage);
         }
       }
@@ -142,7 +139,7 @@ class ManjulaMobilesApp {
     this.socket.on('tracking-deleted', (data) => {
       console.log('🗑️ Tracking deleted:', data.qrId);
       this.trackingData = this.trackingData.filter(t => t.qrId !== data.qrId);
-      if (this.currentPage === 'admin' || this.currentPage === 'tracking' || this.currentPage === 'tracking-page') {
+      if (this.currentPage === 'tracking' || this.currentPage === 'tracking-page') {
         this.renderPage(this.currentPage);
       }
     });
@@ -152,7 +149,7 @@ class ManjulaMobilesApp {
       const exists = this.orders.find(o => o.orderId === order.orderId);
       if (!exists) {
         this.orders.push(order);
-        if (this.currentPage === 'admin' || this.currentPage === 'dashboard') {
+        if (this.currentPage === 'dashboard') {
           this.renderPage(this.currentPage);
         }
       }
@@ -163,7 +160,7 @@ class ManjulaMobilesApp {
       const index = this.orders.findIndex(o => o.orderId === order.orderId);
       if (index !== -1) {
         this.orders[index] = order;
-        if (this.currentPage === 'admin' || this.currentPage === 'dashboard') {
+        if (this.currentPage === 'dashboard') {
           this.renderPage(this.currentPage);
         }
       }
@@ -172,30 +169,86 @@ class ManjulaMobilesApp {
     this.socket.on('order-deleted', (data) => {
       console.log('🗑️ Order deleted:', data.orderId);
       this.orders = this.orders.filter(o => o.orderId !== data.orderId);
-      if (this.currentPage === 'admin' || this.currentPage === 'dashboard') {
+      if (this.currentPage === 'dashboard') {
         this.renderPage(this.currentPage);
       }
     });
   }
 
-  // Product Management Methods - MongoDB API
+  // Product Management Methods - Database ONLY
   async loadProductsFromStorage() {
     try {
-      // Load ONLY from database with timeout
-      console.log('📡 Loading products from database...');
+      console.log('📡 [MAIN WEBSITE] Loading products from database...');
       
       const response = await fetch(`${this.API_URL}/products`);
       if (response.ok) {
         this.products = await response.json();
-        console.log('✅ Loaded products from database:', this.products.length);
+        console.log('✅ [MAIN WEBSITE] Loaded products from database:', this.products.length);
+        console.log('📊 [MAIN WEBSITE] Product names:', this.products.map(p => p.name));
       } else {
-        console.log('⚠️ Failed to load from database');
+        console.log('⚠️ [MAIN WEBSITE] Failed to load from database');
         this.products = [];
       }
     } catch (error) {
-      console.error('❌ Error loading products:', error);
+      console.error('❌ [MAIN WEBSITE] Error loading products:', error);
       this.products = [];
     }
+  }
+
+  // Background method to load from database
+  async loadProductsFromDatabase() {
+    try {
+      console.log('📡 [MAIN WEBSITE] Loading products from database...');
+      
+      const response = await fetch(`${this.API_URL}/products`);
+      if (response.ok) {
+        const dbProducts = await response.json();
+        console.log('📦 [MAIN WEBSITE] Received products from database:', dbProducts.length);
+        
+        // Check if there are new products
+        const oldCount = this.products.length;
+        const newCount = dbProducts.length;
+        
+        // Use database products directly (no localStorage)
+        this.products = dbProducts;
+        
+        console.log('✅ [MAIN WEBSITE] Products loaded from database:', this.products.length);
+        console.log('📊 [MAIN WEBSITE] Product names:', this.products.map(p => p.name));
+        
+        // Show notification if new products were added
+        if (newCount > oldCount && oldCount > 0) {
+          console.log('🆕 [MAIN WEBSITE] New products detected!');
+          this.showNotification(`🆕 ${newCount - oldCount} new product(s) added!`);
+        }
+        
+        // Re-render products page if currently viewing it
+        if (this.currentPage === 'products') {
+          console.log('🔄 [MAIN WEBSITE] Re-rendering products page');
+          this.renderPage(this.currentPage);
+        }
+      } else {
+        console.error('❌ [MAIN WEBSITE] Failed to load products from database');
+      }
+    } catch (error) {
+      console.error('❌ [MAIN WEBSITE] Database load error:', error);
+    }
+  }
+
+  // Show notification to user
+  showNotification(message) {
+    const notification = document.createElement('div');
+    notification.className = 'sync-notification';
+    notification.innerHTML = `
+      <div style="position: fixed; top: 20px; right: 20px; background: #10b981; color: white; padding: 12px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 9999; font-size: 14px; font-weight: 600;">
+        ${message}
+      </div>
+    `;
+    document.body.appendChild(notification);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+      notification.remove();
+    }, 3000);
   }
 
   getDefaultProducts() {
@@ -500,29 +553,8 @@ class ManjulaMobilesApp {
         await this.renderPage(pageElement.dataset.page)
       }
       
-      // Admin actions
+      // Action elements (buttons with data-action)
       const actionElement = e.target.closest('[data-action]');
-      if (actionElement && actionElement.dataset.action === "admin-login") {
-        this.handleAdminLogin()
-      }
-      if (actionElement && actionElement.dataset.action === "admin-logout") {
-        this.handleAdminLogout()
-      }
-      if (actionElement && actionElement.dataset.action === "add-product-form") {
-        this.renderPage("admin-add-product")
-      }
-      if (actionElement && actionElement.dataset.action === "edit-product") {
-        const productId = actionElement.dataset.productId // Keep as string
-        this.editingProductId = productId
-        this.renderPage("admin-edit-product")
-      }
-      if (actionElement && actionElement.dataset.action === "delete-product") {
-        const productId = actionElement.dataset.productId // Keep as string
-        this.deleteProduct(productId)
-      }
-      if (actionElement && actionElement.dataset.action === "save-product") {
-        this.saveProduct()
-      }
       
       // Cart actions
       if (actionElement && actionElement.dataset.action === "add-to-cart") {
@@ -688,8 +720,14 @@ class ManjulaMobilesApp {
         if (e.target.id === 'productSearch') {
           this.handleProductSearch()
         }
-        if (e.target.id === 'adminSearch') {
-          this.renderPage('admin')
+      }
+    })
+
+    // Secret keyboard shortcut to access owner portal (Ctrl+Shift+A)
+    document.addEventListener('keydown', (e) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'A') {
+        if (confirm('Access Owner Portal?')) {
+          window.location.href = 'owner.html';
         }
       }
     })
@@ -1392,12 +1430,8 @@ class ManjulaMobilesApp {
     const app = document.getElementById("app")
     this.currentPage = page
 
-    if (page.startsWith("admin") && !this.isAdminLoggedIn) {
-      page = "admin-login"
-    }
-
     // Load orders from database when viewing orders page
-    if (page === "admin-orders" || page === "admin") {
+    if (page === "dashboard") {
       console.log('📦 Loading orders from database...');
       await this.loadOrdersFromStorage();
       console.log('✅ Orders loaded:', this.orders.length);
@@ -1415,20 +1449,6 @@ class ManjulaMobilesApp {
       html += this.renderDashboard()
     } else if (page === "checkout") {
       html += this.renderCheckout()
-    } else if (page === "admin-login") {
-      html += this.renderAdminLogin()
-    } else if (page === "admin") {
-      html += this.renderAdmin()
-    } else if (page === "admin-products") {
-      html += this.renderAdminProducts()
-    } else if (page === "admin-tracking") {
-      html += this.renderAdminTracking()
-    } else if (page === "admin-orders") {
-      html += this.renderAdminOrders()
-    } else if (page === "admin-add-product") {
-      html += this.renderAddProductForm()
-    } else if (page === "admin-edit-product") {
-      html += this.renderEditProductForm()
     } else if (page === "shop-location") {
       html += this.renderShopLocation()
     } else if (page === "tracking-page") {
@@ -1534,12 +1554,7 @@ class ManjulaMobilesApp {
                 🛒 Cart ${cartItemCount > 0 ? `<span class="cart-badge">${cartItemCount}</span>` : ''}
               </a>
             </li>
-            <li class="nav-item">
-              ${this.isAdminLoggedIn ? 
-                `<a class="nav-link admin-pill" data-action="admin-logout">Logout (Owner)</a>` : 
-                `<a class="nav-link admin-pill" data-page="admin-login">Owner Portal</a>`
-              }
-            </li>
+
           </ul>
           
           <button class="mobile-menu-toggle" data-action="toggle-mobile-menu">
@@ -1583,12 +1598,7 @@ class ManjulaMobilesApp {
               🛒 Cart ${cartItemCount > 0 ? `(${cartItemCount})` : ''}
             </a>
           </li>
-          <li class="nav-item">
-            ${this.isAdminLoggedIn ? 
-              `<a class="nav-link admin-pill" data-action="admin-logout">Logout (Owner)</a>` : 
-              `<a class="nav-link admin-pill" data-page="admin-login">Owner Portal</a>`
-            }
-          </li>
+
         </ul>
       </div>
     `
@@ -1895,9 +1905,12 @@ class ManjulaMobilesApp {
             <button id="refreshBtn" class="btn btn-primary" onclick="app.manualRefresh()" style="white-space: nowrap; padding: 10px 16px; font-size: 12px;">
               🔄 Refresh
             </button>
+            <button class="btn btn-secondary" onclick="app.loadProductsFromDatabase()" style="white-space: nowrap; padding: 10px 16px; font-size: 12px; background: #10b981; color: white; border: 1px solid #10b981;">
+              📡 Sync Now
+            </button>
           </div>
           <div style="margin-top: 8px; text-align: right;">
-            <span style="color: #64748b; font-size: 11px;">Auto-updates every 30 seconds</span>
+            <span style="color: #64748b; font-size: 11px;">Auto-updates every 5 seconds | Click "📡 Sync Now" for immediate sync</span>
           </div>
         </div>
         <div style="display: flex; position: relative; overflow-x: hidden;">
@@ -3518,6 +3531,10 @@ class ManjulaMobilesApp {
         </div>
         <div class="footer-bottom">
           <p>&copy; 2025 Manjula Mobiles. All rights reserved. | Powered by Advanced Mobile Solutions</p>
+          <!-- Hidden owner portal link - only visible when you know about it -->
+          <p style="font-size: 10px; color: #374151; margin-top: 8px;">
+            <a href="owner.html" style="color: #6b7280; text-decoration: none;">Admin</a>
+          </p>
         </div>
       </footer>
     `
@@ -4046,13 +4063,23 @@ class ManjulaMobilesApp {
   }
 }
 
-// Initialize EmailJS
-try {
-  emailjs.init('ghzqy_6v1m5f1cxra');
-  console.log('✅ EmailJS initialized');
-} catch (error) {
-  console.error('❌ EmailJS initialization error:', error);
+// Initialize EmailJS when available
+function initEmailJS() {
+  if (typeof emailjs !== 'undefined') {
+    try {
+      emailjs.init('ghzqy_6v1m5f1cxra');
+      console.log('✅ EmailJS initialized');
+    } catch (error) {
+      console.error('❌ EmailJS initialization error:', error);
+    }
+  } else {
+    console.log('⚠️ EmailJS not loaded yet, will retry...');
+    setTimeout(initEmailJS, 1000); // Retry after 1 second
+  }
 }
+
+// Try to initialize EmailJS
+initEmailJS();
 
 // Initialize app with error handling - wait for DOM to be ready
 if (document.readyState === 'loading') {

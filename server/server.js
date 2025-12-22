@@ -36,9 +36,9 @@ const MONGODB_URI = process.env.MONGO_URI;
 mongoose.connect(MONGODB_URI, {
   maxPoolSize: 20, // Increased for faster concurrent requests
   minPoolSize: 5,  // More ready connections
-  serverSelectionTimeoutMS: 2000,
-  socketTimeoutMS: 2000,
-  connectTimeoutMS: 2000,
+  serverSelectionTimeoutMS: 10000, // Increased to 10 seconds
+  socketTimeoutMS: 30000, // Increased to 30 seconds
+  connectTimeoutMS: 10000, // Increased to 10 seconds
   family: 4 // Use IPv4, skip trying IPv6
 })
   .then(() => {
