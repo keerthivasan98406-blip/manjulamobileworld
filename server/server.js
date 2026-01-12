@@ -838,6 +838,8 @@ Payment: ${orderDetails.paymentMethod}`;
 });
 
 const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`📡 MongoDB URI configured: ${process.env.MONGO_URI ? 'Yes' : 'No'}`);
 });
