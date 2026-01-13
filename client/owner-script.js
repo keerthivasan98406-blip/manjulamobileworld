@@ -170,26 +170,105 @@ class OwnerPortalApp {
 
   async init() {
     try {
-      console.log('🚀 Initializing Owner Portal...');
+      console.log('🚀 Initializing Manjula Mobiles App...');
       
       // Show loading screen immediately
       this.showLoadingScreen();
       
+      // Check if server is waking up from sleep
+      this.checkServerStatus();
+      
       // Setup event listeners
       this.setupEventListeners();
       
-      // Load data from database
-      await Promise.all([
-        this.loadProductsFromStorage(),
-        this.loadTrackingFromStorage(),
-        this.loadOrdersFromStorage()
-      ]);
+      // Load data from database with retry logic
+      await this.loadDataWithRetry();
       
       // Render initial page
       await this.renderPage(this.currentPage);
       
     } catch (error) {
       console.error('❌ Error during initialization:', error);
+      this.showErrorMessage('Failed to load application. Please refresh the page.');
+    }
+  }
+
+  async checkServerStatus() {
+    try {
+      const response = await fetch(`${this.API_URL}/health`, { 
+        method: 'GET',
+        timeout: 5000 
+      });
+      
+      if (response.ok) {
+        const health = await response.json();
+        console.log('✅ Server is awake:', health.uptime, 'seconds uptime');
+      }
+    } catch (error) {
+      console.log('⏰ Server might be waking up from sleep...');
+      this.showWakeUpMessage();
+    }
+  }
+
+  showWakeUpMessage() {
+    const app = document.getElementById("app");
+    if (app) {
+      app.innerHTML = `
+        <div class="loading-screen">
+          <div class="loading-container">
+            <div class="mobile-icon-wrapper">
+              <div class="mobile-phone">
+                <div class="phone-screen">
+                  <div class="loading-bars">
+                    <div class="bar"></div>
+                    <div class="bar"></div>
+                    <div class="bar"></div>
+                    <div class="bar"></div>
+                  </div>
+                </div>
+                <div class="phone-button"></div>
+              </div>
+            </div>
+            
+            <div class="loading-text">
+              <h2>Waking Up Server</h2>
+              <p class="loading-subtitle">Please wait while we start the server...</p>
+              <div class="loading-progress">
+                <div class="progress-bar"></div>
+              </div>
+              <p class="loading-status">This may take 30-60 seconds on first visit</p>
+              <p class="loading-time">Thank you for your patience! 🙏</p>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+  }
+
+  async loadDataWithRetry() {
+    const maxRetries = 3;
+    let retryCount = 0;
+    
+    while (retryCount < maxRetries) {
+      try {
+        await Promise.all([
+          this.loadProductsFromStorage(),
+          this.loadTrackingFromStorage(),
+          this.loadOrdersFromStorage()
+        ]);
+        return; // Success, exit retry loop
+      } catch (error) {
+        retryCount++;
+        console.log(`⚠️ Load attempt ${retryCount} failed:`, error.message);
+        
+        if (retryCount < maxRetries) {
+          console.log(`🔄 Retrying in ${retryCount * 2} seconds...`);
+          await new Promise(resolve => setTimeout(resolve, retryCount * 2000));
+        } else {
+          console.error('❌ All retry attempts failed');
+          throw error;
+        }
+      }
     }
   }
 
