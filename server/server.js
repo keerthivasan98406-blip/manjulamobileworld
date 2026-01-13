@@ -211,6 +211,10 @@ app.get('/robots.txt', (req, res) => {
   res.sendFile(path.join(clientPath, 'robots.txt'));
 });
 
+app.get('/google5739f7b57b6f777b.html', (req, res) => {
+  res.sendFile(path.join(clientPath, 'google5739f7b57b6f777b.html'));
+});
+
 app.get('/business-info.json', (req, res) => {
   res.sendFile(path.join(clientPath, 'business-info.json'));
 });
