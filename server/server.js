@@ -6,6 +6,9 @@ const socketIo = require('socket.io');
 const path = require('path');
 require('dotenv').config();
 
+// Import keep-alive service
+require('./keep-alive');
+
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
@@ -210,6 +213,31 @@ app.get('/robots.txt', (req, res) => {
 
 app.get('/business-info.json', (req, res) => {
   res.sendFile(path.join(clientPath, 'business-info.json'));
+});
+
+// Health check endpoint for keep-alive and monitoring
+app.get('/health', (req, res) => {
+  const healthCheck = {
+    uptime: process.uptime(),
+    message: 'Server is running',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    memory: process.memoryUsage(),
+    pid: process.pid
+  };
+  
+  console.log(`🏥 Health check requested at ${healthCheck.timestamp}`);
+  res.status(200).json(healthCheck);
+});
+
+// Keep-alive endpoint (lightweight)
+app.get('/ping', (req, res) => {
+  res.status(200).json({ 
+    status: 'alive', 
+    timestamp: new Date().toISOString(),
+    uptime: Math.floor(process.uptime())
+  });
 });
 
 // DIRECT TEST - Add this button to test screenshot saving directly
