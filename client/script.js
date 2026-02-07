@@ -44,15 +44,38 @@ class ManjulaMobilesApp {
     this.products = [];
     this.trackingData = [];
     
+    // Store interval ID for cleanup
+    this.refreshInterval = null;
+    
+    // Safety check to ensure scrolling is never stuck
+    this.scrollCheckInterval = null;
+    
     this.init()
     
-    // Auto-refresh products every 5 seconds to sync with owner portal changes
-    setInterval(() => {
-      if (this.currentPage === 'products') {
-        console.log('⏰ [MAIN WEBSITE] Auto-refreshing products...');
-        this.loadProductsFromDatabase();
+    // Auto-refresh products every 30 seconds (reduced from 5 seconds to prevent lag)
+    // Only if Socket.IO is not available for real-time updates
+    if (!this.socket) {
+      this.refreshInterval = setInterval(() => {
+        if (this.currentPage === 'products') {
+          console.log('⏰ [MAIN WEBSITE] Auto-refreshing products...');
+          this.loadProductsFromDatabase();
+        }
+      }, 30000); // 30 seconds instead of 5
+    }
+    
+    // Safety check every 10 seconds to ensure scrolling is not stuck
+    this.scrollCheckInterval = setInterval(() => {
+      // Check if any modal is open
+      const galleryModal = document.getElementById('galleryModal');
+      const isModalOpen = galleryModal && galleryModal.classList.contains('active');
+      
+      // If no modal is open but body overflow is hidden, restore it
+      if (!isModalOpen && document.body.style.overflow === 'hidden') {
+        console.log('⚠️ Detected stuck scroll, restoring...');
+        document.body.style.overflow = '';
+        document.body.style.overflowY = '';
       }
-    }, 5000); // 5 seconds
+    }, 10000); // Check every 10 seconds
   }
 
   // Calculate years of experience dynamically based on business start year
@@ -1440,13 +1463,7 @@ class ManjulaMobilesApp {
     const orderId = Date.now()
     this.pendingOrder = {
       id: orderId,
-      date: new Date().toLocaleString('en-IN', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      }),
+      date: new Date().toISOString(), // Store as ISO string for proper date handling
       customer: {
         name: fullName,
         email: email,
@@ -2024,8 +2041,8 @@ class ManjulaMobilesApp {
         // Create image slider for modal - start with the currently displayed image
         modalContent.innerHTML = `
           <button class="gallery-modal-close" data-action="close-gallery-modal">✕</button>
-          <div class="gallery-image-container" style="position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
-            <img src="${currentImageUrl}" alt="Product Image" class="gallery-modal-image" id="galleryModalImage" data-img1="${img1}" data-img2="${imageUrl2}" data-current="${currentIndex}" style="max-width: 90vw; max-height: 90vh; width: auto; height: auto; object-fit: contain; transition: opacity 0.3s ease;">
+          <div class="gallery-image-container" style="position: relative; width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center;">
+            <img src="${currentImageUrl}" alt="Product Image" class="gallery-modal-image" id="galleryModalImage" data-img1="${img1}" data-img2="${imageUrl2}" data-current="${currentIndex}">
             
             <!-- Previous Arrow -->
             <button class="gallery-nav-arrow gallery-prev-arrow" onclick="app.switchGalleryImage('prev')" style="position: absolute; left: 20px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.8); color: white; border: 2px solid white; width: 50px; height: 50px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 1000; font-size: 24px; font-weight: bold;">
@@ -2048,7 +2065,7 @@ class ManjulaMobilesApp {
       // Single image
       modalContent.innerHTML = `
         <button class="gallery-modal-close" data-action="close-gallery-modal">✕</button>
-        <img src="${currentImageUrl}" alt="Product Image" class="gallery-modal-image" id="galleryModalImage" style="max-width: 90vw; max-height: 90vh; width: auto; height: auto; object-fit: contain;">
+        <img src="${currentImageUrl}" alt="Product Image" class="gallery-modal-image" id="galleryModalImage">
       `;
     }
     
@@ -2154,8 +2171,13 @@ class ManjulaMobilesApp {
     
     if (modal) {
       modal.classList.remove('active');
-      document.body.style.overflow = 'auto';
     }
+    
+    // Always restore scrolling, even if modal doesn't exist
+    document.body.style.overflow = '';
+    document.body.style.overflowY = '';
+    
+    console.log('✅ Gallery modal closed, scrolling restored');
   }
 
   switchProductImage(dotElement, imageUrl) {
@@ -2340,89 +2362,89 @@ class ManjulaMobilesApp {
     
     if (product.imageUrl && product.imageUrl.trim() !== "") {
       if (hasMultipleImages) {
-        // Amazon-style layout: Big image on top, thumbnails below
+        // Modern card layout with image indicator
         imageGalleryHTML = `
-          <div class="product-image-gallery">
-            <!-- Main Big Image -->
-            <div class="main-image-container" style="cursor: pointer;">
-              <img src="${product.imageUrl}" 
-                   alt="${product.name}" 
-                   class="main-product-image" 
-                   id="mainImg-${productId}"
-                   data-action="open-gallery-modal"
-                   data-image-url="${product.imageUrl}"
-                   data-image-url2="${product.imageUrl2}"
-                   data-img1="${product.imageUrl}"
-                   data-img2="${product.imageUrl2}"
-                   data-current="1"
-                   style="width: 100%; height: 100%; object-fit: cover; transition: opacity 0.3s ease; cursor: pointer;">
-            </div>
-            
-            <!-- Thumbnail Images Below -->
-            <div class="thumbnail-container" style="display: flex; gap: 8px; margin-top: 8px; justify-content: center;">
-              <div class="thumbnail-item active" onclick="app.switchMainImage('${productId}', '${product.imageUrl}', 1)" style="width: 60px; height: 60px; border: 2px solid #dc2626; border-radius: 6px; overflow: hidden; cursor: pointer; transition: all 0.3s ease;">
-                <img src="${product.imageUrl}" alt="Thumbnail 1" style="width: 100%; height: 100%; object-fit: cover;">
-              </div>
-              <div class="thumbnail-item" onclick="app.switchMainImage('${productId}', '${product.imageUrl2}', 2)" style="width: 60px; height: 60px; border: 2px solid #e5e7eb; border-radius: 6px; overflow: hidden; cursor: pointer; transition: all 0.3s ease;">
-                <img src="${product.imageUrl2}" alt="Thumbnail 2" style="width: 100%; height: 100%; object-fit: cover;">
-              </div>
-            </div>
+          <div class="modern-product-image-wrapper">
+            <img src="${product.imageUrl}" 
+                 alt="${product.name}" 
+                 class="modern-product-image" 
+                 id="mainImg-${productId}"
+                 data-action="open-gallery-modal"
+                 data-image-url="${product.imageUrl}"
+                 data-image-url2="${product.imageUrl2}"
+                 data-img1="${product.imageUrl}"
+                 data-img2="${product.imageUrl2}"
+                 data-current="1"
+                 style="width: 100%; height: 100%; object-fit: contain; cursor: pointer;">
+            <div class="image-indicator">+2 More</div>
           </div>
         `;
       } else {
         // Single image
         imageGalleryHTML = `
-          <div class="product-image-gallery">
-            <div class="main-image-container" style="cursor: pointer;">
-              <img src="${product.imageUrl}" 
-                   alt="${product.name}" 
-                   class="main-product-image"
-                   data-action="open-gallery-modal"
-                   data-image-url="${product.imageUrl}"
-                   data-image-url2=""
-                   style="width: 100%; height: 100%; object-fit: cover; cursor: pointer;">
-            </div>
+          <div class="modern-product-image-wrapper">
+            <img src="${product.imageUrl}" 
+                 alt="${product.name}" 
+                 class="modern-product-image"
+                 data-action="open-gallery-modal"
+                 data-image-url="${product.imageUrl}"
+                 data-image-url2=""
+                 style="width: 100%; height: 100%; object-fit: contain; cursor: pointer;">
           </div>
         `;
       }
     } else if (product.image && product.image.trim() !== "" && product.image !== "📦") {
       // Use emoji if no URL
-      imageGalleryHTML = `<span style="font-size: 48px; display: flex; align-items: center; justify-content: center; height: 100%;">${product.image}</span>`;
+      imageGalleryHTML = `<div class="modern-product-image-wrapper"><span style="font-size: 64px; display: flex; align-items: center; justify-content: center; height: 100%;">${product.image}</span></div>`;
     } else {
       // Use default image
       imageGalleryHTML = `
-        <div class="product-image-gallery">
-          <div class="main-image-container">
-            <img src="./public/assets/images/1.jpg" alt="${product.name}" class="main-product-image" style="width: 100%; height: 100%; object-fit: cover;">
-          </div>
+        <div class="modern-product-image-wrapper">
+          <img src="./public/assets/images/1.jpg" alt="${product.name}" class="modern-product-image" style="width: 100%; height: 100%; object-fit: contain;">
         </div>
       `;
     }
     
+    // Calculate discount badge color
+    const discountBadgeColor = discountPercent >= 50 ? '#ff6b35' : discountPercent >= 20 ? '#f59e0b' : '#10b981';
+    
     return `
-      <div class="product-card">
-        <div class="product-image">
-          ${product.badge ? `<div class="product-badge">${product.badge}</div>` : ""}
+      <div class="modern-product-card">
+        <div class="modern-product-image-container">
           ${imageGalleryHTML}
-        </div>
-        <div class="product-info">
-          <div class="product-category">${product.category}</div>
-          <h3 class="product-name">${product.name}</h3>
-          <div class="product-rating">
-            <div class="product-stars">${"⭐".repeat(Math.floor(product.rating))}</div>
-            <span class="product-reviews">${product.rating} (${product.reviews})</span>
-          </div>
-          <div class="product-pricing">
-            <div class="product-prices">
-              <span class="product-price">₹${product.price.toLocaleString()}</span>
-              <span class="product-original">₹${product.originalPrice.toLocaleString()}</span>
-              <span class="product-discount">${discountPercent}% off</span>
+          ${discountPercent > 0 ? `
+            <div class="modern-discount-badge" style="background: ${discountBadgeColor};">
+              <span class="discount-icon">⚡</span>
+              <span class="discount-text">${discountPercent}% - 25m - 17s</span>
             </div>
+          ` : ''}
+        </div>
+        
+        <div class="modern-product-details">
+          <h3 class="modern-product-title">${product.name}</h3>
+          
+          <div class="modern-price-section">
+            <span class="modern-current-price">₹${product.price.toLocaleString()}</span>
+            ${product.originalPrice > product.price ? `
+              <span class="modern-original-price">₹${product.originalPrice.toLocaleString()}</span>
+              <span class="modern-discount-percent">${discountPercent}% off</span>
+            ` : ''}
           </div>
-          <div class="product-stock">${product.inStock ? "In Stock" : "Out of Stock"}</div>
-          <div class="product-buttons">
-            <button class="btn btn-primary" data-action="add-to-cart" data-product-id="${productId}" ${!product.inStock ? "disabled" : ""} style="flex: 1;">Add to Cart</button>
-            <button class="btn btn-secondary" data-action="buy-now" data-product-id="${productId}" ${!product.inStock ? "disabled" : ""} style="flex: 1;">Buy Now</button>
+          
+          <div class="modern-delivery-badge">Free Delivery</div>
+          
+          <div class="modern-rating-section">
+            <span class="modern-rating-badge">${product.rating}★</span>
+            <span class="modern-reviews-count">${product.reviews.toLocaleString()} Reviews</span>
+          </div>
+          
+          <div class="modern-product-actions">
+            <button class="modern-btn modern-btn-cart" data-action="add-to-cart" data-product-id="${productId}" ${!product.inStock ? "disabled" : ""}>
+              🛒 Add to Cart
+            </button>
+            <button class="modern-btn modern-btn-buy" data-action="buy-now" data-product-id="${productId}" ${!product.inStock ? "disabled" : ""}>
+              Buy Now
+            </button>
           </div>
         </div>
       </div>
@@ -4016,47 +4038,47 @@ Thank you for choosing Manjula Mobile World!`);
           </div>
           <div id="trackResult" style="display: none;">
             <div class="tracking-result">
-              <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
+              <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
                 <div style="width: 12px; height: 12px; background-color: #22d3ee; border-radius: 50%; animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;"></div>
-                <span style="color: #22d3ee; font-weight: 600;">Repair Status Found</span>
+                <span style="color: #22d3ee; font-weight: 600; font-size: 14px;">Repair Status Found</span>
               </div>
               
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+              <!-- Compact Info Grid -->
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; margin-bottom: 16px; background: #f8fafc; padding: 12px; border-radius: 8px;">
                 <div>
-                  <p style="color: #64748b; font-size: 12px; margin-bottom: 4px;">QR ID</p>
-                  <p style="font-size: 16px; font-weight: 600;" id="resultOrderId"></p>
+                  <p style="color: #64748b; font-size: 11px; margin-bottom: 2px;">QR ID</p>
+                  <p style="font-size: 14px; font-weight: 600;" id="resultOrderId"></p>
                 </div>
                 <div>
-                  <p style="color: #64748b; font-size: 12px; margin-bottom: 4px;">Customer</p>
-                  <p style="font-size: 16px; font-weight: 600;" id="resultCustomer"></p>
+                  <p style="color: #64748b; font-size: 11px; margin-bottom: 2px;">Customer</p>
+                  <p style="font-size: 14px; font-weight: 600;" id="resultCustomer"></p>
+                </div>
+                <div>
+                  <p style="color: #64748b; font-size: 11px; margin-bottom: 2px;">Device</p>
+                  <p style="font-size: 14px; font-weight: 600;" id="resultDevice"></p>
+                </div>
+                <div>
+                  <p style="color: #64748b; font-size: 11px; margin-bottom: 2px;">Est. Completion</p>
+                  <p style="font-size: 14px; font-weight: 600;" id="resultEstDays"></p>
                 </div>
               </div>
               
-              <div style="margin-bottom: 16px;">
-                <p style="color: #64748b; font-size: 12px; margin-bottom: 4px;">Device</p>
-                <p style="font-size: 18px; font-weight: 600;" id="resultDevice"></p>
+              <!-- Issue Description -->
+              <div style="margin-bottom: 16px; background: #fef3c7; padding: 10px; border-radius: 8px; border-left: 3px solid #f59e0b;">
+                <p style="color: #92400e; font-size: 11px; margin-bottom: 2px; font-weight: 600;">Issue Description</p>
+                <p style="font-size: 13px; font-weight: 500; line-height: 1.3; color: #78350f;" id="resultIssue"></p>
               </div>
               
               <!-- Timeline Container -->
-              <div style="margin-bottom: 24px;">
-                <p style="color: #64748b; font-size: 12px; margin-bottom: 16px; font-weight: 600;">Repair Progress</p>
+              <div style="margin-bottom: 16px;">
+                <p style="color: #64748b; font-size: 12px; margin-bottom: 12px; font-weight: 600;">Repair Progress</p>
                 <div id="trackingTimeline"></div>
               </div>
               
-              <div style="margin-bottom: 16px;">
-                <p style="color: #64748b; font-size: 12px; margin-bottom: 4px;">Issue Description</p>
-                <p style="font-size: 14px; font-weight: 500; line-height: 1.4;" id="resultIssue"></p>
-              </div>
-              
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                <div>
-                  <p style="color: #64748b; font-size: 12px; margin-bottom: 4px;">Est. Completion</p>
-                  <p style="font-size: 14px; font-weight: 600;" id="resultEstDays"></p>
-                </div>
-                <div>
-                  <p style="color: #64748b; font-size: 12px; margin-bottom: 4px;">Last Updated</p>
-                  <p style="font-size: 14px; font-weight: 600;" id="resultLastUpdated"></p>
-                </div>
+              <!-- Last Updated -->
+              <div style="text-align: center; padding: 8px; background: #f1f5f9; border-radius: 6px;">
+                <p style="color: #64748b; font-size: 10px; margin-bottom: 2px;">Last Updated</p>
+                <p style="font-size: 12px; font-weight: 600; color: #475569;" id="resultLastUpdated"></p>
               </div>
             </div>
           </div>
