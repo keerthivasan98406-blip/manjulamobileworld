@@ -13,7 +13,14 @@ class ManjulaMobilesApp {
     
     // MongoDB API URL - Auto-detect local vs production
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const baseURL = isLocalhost ? 'http://localhost:3001' : window.location.origin;
+    const isGitHubPages = window.location.hostname.includes('github.io');
+    
+    // Use Render backend for GitHub Pages deployment
+    const baseURL = isLocalhost 
+      ? 'http://localhost:3001' 
+      : isGitHubPages 
+        ? 'https://manjulamobilesworld.onrender.com'  // Your Render backend URL
+        : window.location.origin;
     this.API_URL = `${baseURL}/api`
     
     // Socket.IO connection for real-time updates with reconnection
