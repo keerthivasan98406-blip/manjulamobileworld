@@ -2268,7 +2268,7 @@ body.modal-open {
 /* Products Section */
 .products-section {
     min-height: 100vh;
-    background-color: #ffffff;
+    background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 50%, #fecaca 100%);
     padding-top: 96px;
     padding-bottom: 80px;
 }
@@ -5154,6 +5154,7 @@ Product Image Slider Dots */
 .products-section {
     min-height: 100vh;
     padding-bottom: 80px;
+    background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 50%, #fecaca 100%);
 }
 
 .products-header {

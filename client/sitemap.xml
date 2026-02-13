@@ -1,15 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://manjulamobilesworld-whwt.onrender.com/</loc>
-    <lastmod>2025-01-14</lastmod>
-    <changefreq>weekly</changefreq>
+    <loc>https://keerthivasan98406-blip.github.io/manjulamobileworld/</loc>
+    <lastmod>2026-02-09</lastmod>
+    <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://manjulamobilesworld-whwt.onrender.com/owner.html</loc>
-    <lastmod>2025-01-14</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
+    <loc>https://keerthivasan98406-blip.github.io/manjulamobileworld/index.html</loc>
+    <lastmod>2026-02-09</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://manjulamobilesworld.onrender.com/</loc>
+    <lastmod>2026-02-09</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
   </url>
 </urlset>

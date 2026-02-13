@@ -2,15 +2,17 @@ User-agent: *
 Allow: /
 
 # Sitemap
-Sitemap: https://manjulamobilesworld-whwt.onrender.com/sitemap.xml
+Sitemap: https://keerthivasan98406-blip.github.io/manjulamobileworld/sitemap.xml
 
 # Disallow admin areas
 Disallow: /owner.html
 Disallow: /admin/
 Disallow: /api/
+Disallow: /test-*.html
 
 # Allow important pages
 Allow: /
 Allow: /index.html
 Allow: /styles.css
 Allow: /script.js
+Allow: /public/

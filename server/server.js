@@ -104,7 +104,9 @@ const trackingSchema = new mongoose.Schema({
   status: String,
   issue: String,
   estimatedDays: Number,
+  amount: Number,
   createdAt: String,
+  completedAt: String,
   lastUpdated: String
 }, { timestamps: true });
 

@@ -5,6 +5,8 @@ class OwnerPortalApp {
     this.isAdminLoggedIn = localStorage.getItem('manjula_admin_logged_in') === 'true'
     this.editingProductId = null
     this.adminSearch = ""
+    this.trackingFilter = "all"
+    this.trackingSearch = ""
     
     // Log admin login state on app start
     if (this.isAdminLoggedIn) {
@@ -349,6 +351,13 @@ class OwnerPortalApp {
         await this.renderPage(pageElement.dataset.page)
       }
       
+      // Filter buttons
+      const filterElement = e.target.closest('[data-filter]');
+      if (filterElement && filterElement.dataset.filter) {
+        e.preventDefault();
+        this.filterTracking(filterElement.dataset.filter);
+      }
+      
       // Admin actions
       const actionElement = e.target.closest('[data-action]');
       if (actionElement && actionElement.dataset.action === "admin-login") {
@@ -380,6 +389,25 @@ class OwnerPortalApp {
       if (actionElement && actionElement.dataset.action === "toggle-tracking-form") {
         this.toggleTrackingForm()
       }
+      if (actionElement && actionElement.dataset.action === "edit-tracking") {
+        const qrId = actionElement.dataset.qrId
+        this.editTracking(qrId)
+      }
+      if (actionElement && actionElement.dataset.action === "delete-tracking") {
+        const qrId = actionElement.dataset.qrId
+        this.deleteTracking(qrId)
+      }
+    })
+
+    // Handle input events for search
+    app.addEventListener('input', (e) => {
+      if (e.target.id === 'trackingSearchInput') {
+        // Just update the search value, debouncing will handle the rest
+        this.handleTrackingSearch(e.target.value);
+      }
+      if (e.target.id === 'adminSearch') {
+        this.adminSearch = e.target.value;
+      }
     })
 
     // Handle Enter key in search inputs
@@ -387,6 +415,10 @@ class OwnerPortalApp {
       if (e.key === 'Enter') {
         if (e.target.id === 'adminSearch') {
           this.renderPage('admin')
+        }
+        if (e.target.id === 'trackingSearchInput') {
+          // Search is already handled by input event
+          e.preventDefault();
         }
       }
     })
@@ -785,6 +817,12 @@ class OwnerPortalApp {
         </div>
 
         <div class="form-field" style="margin-bottom: 16px;">
+          <label class="form-label">Payment Amount (₹) *</label>
+          <input type="number" class="input" placeholder="Enter repair/service amount" id="newTrackingAmount" min="0" step="1">
+          <small style="color: #94a3b8; font-size: 12px; margin-top: 4px; display: block;">Enter the amount customer needs to pay for this repair/service</small>
+        </div>
+
+        <div class="form-field" style="margin-bottom: 16px;">
           <label class="form-label">Issue Description *</label>
           <textarea class="input" placeholder="Describe the issue..." id="newTrackingIssue" rows="3"></textarea>
         </div>
@@ -811,48 +849,152 @@ class OwnerPortalApp {
   }
 
   renderTrackingList() {
+    // Get filter and search values
+    const filterStatus = this.trackingFilter || 'all';
+    const searchTerm = (this.trackingSearch || '').toLowerCase();
+    
+    // Filter tracking data
+    let filteredTracking = this.trackingData;
+    
+    // Apply status filter
+    if (filterStatus !== 'all') {
+      filteredTracking = filteredTracking.filter(t => t.status === filterStatus);
+    }
+    
+    // Apply search filter
+    if (searchTerm) {
+      filteredTracking = filteredTracking.filter(t => 
+        t.customerName?.toLowerCase().includes(searchTerm) ||
+        t.qrId?.toLowerCase().includes(searchTerm) ||
+        t.productName?.toLowerCase().includes(searchTerm) ||
+        t.contact?.toLowerCase().includes(searchTerm)
+      );
+    }
+    
     return `
       <div class="tracking-list">
-        <h3 style="margin-bottom: 24px;">Active Tracking Records (${this.trackingData.length})</h3>
-        ${
-          this.trackingData.length > 0
-            ? this.trackingData.map(tracking => this.renderTrackingCard(tracking)).join('')
-            : '<div style="text-align: center; padding: 48px; color: #94a3b8;">No tracking records found</div>'
-        }
+        <!-- Search Bar -->
+        <div style="margin-bottom: 20px;">
+          <input 
+            type="text" 
+            id="trackingSearchInput"
+            placeholder="🔍 Search by customer name, QR ID, device, or phone..."
+            style="width: 100%; padding: 12px 16px; background: rgba(30, 41, 59, 0.5); border: 2px solid #334155; border-radius: 8px; color: white; font-size: 14px;"
+            value="${this.trackingSearch || ''}"
+          >
+        </div>
+        
+        <!-- Filter Buttons -->
+        <div style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;">
+          <button 
+            class="filter-btn ${filterStatus === 'all' ? 'active' : ''}"
+            data-filter="all"
+            style="padding: 10px 20px; border-radius: 8px; border: 2px solid ${filterStatus === 'all' ? '#10b981' : '#334155'}; background: ${filterStatus === 'all' ? '#10b981' : 'rgba(30, 41, 59, 0.5)'}; color: white; cursor: pointer; font-weight: 600; transition: all 0.3s;"
+          >
+            📋 All (${this.trackingData.length})
+          </button>
+          <button 
+            class="filter-btn ${filterStatus === 'Received' ? 'active' : ''}"
+            data-filter="Received"
+            style="padding: 10px 20px; border-radius: 8px; border: 2px solid ${filterStatus === 'Received' ? '#3b82f6' : '#334155'}; background: ${filterStatus === 'Received' ? '#3b82f6' : 'rgba(30, 41, 59, 0.5)'}; color: white; cursor: pointer; font-weight: 600; transition: all 0.3s;"
+          >
+            📥 Received (${this.trackingData.filter(t => t.status === 'Received').length})
+          </button>
+          <button 
+            class="filter-btn ${filterStatus === 'Ready for Pickup' ? 'active' : ''}"
+            data-filter="Ready for Pickup"
+            style="padding: 10px 20px; border-radius: 8px; border: 2px solid ${filterStatus === 'Ready for Pickup' ? '#f59e0b' : '#334155'}; background: ${filterStatus === 'Ready for Pickup' ? '#f59e0b' : 'rgba(30, 41, 59, 0.5)'}; color: white; cursor: pointer; font-weight: 600; transition: all 0.3s;"
+          >
+            📢 Ready for Pickup (${this.trackingData.filter(t => t.status === 'Ready for Pickup').length})
+          </button>
+          <button 
+            class="filter-btn ${filterStatus === 'Completed' ? 'active' : ''}"
+            data-filter="Completed"
+            style="padding: 10px 20px; border-radius: 8px; border: 2px solid ${filterStatus === 'Completed' ? '#10b981' : '#334155'}; background: ${filterStatus === 'Completed' ? '#10b981' : 'rgba(30, 41, 59, 0.5)'}; color: white; cursor: pointer; font-weight: 600; transition: all 0.3s;"
+          >
+            🎉 Completed (${this.trackingData.filter(t => t.status === 'Completed').length})
+          </button>
+        </div>
+        
+        <!-- Results Count -->
+        <div style="margin-bottom: 24px; display: flex; gap: 16px; align-items: center;">
+          <h3 style="color: #e2e8f0; margin: 0;">
+            ${filterStatus === 'all' ? 'All' : filterStatus} Tracking Records 
+            <span style="color: #10b981;">(${filteredTracking.length})</span>
+          </h3>
+          ${searchTerm ? `<span style="color: #f59e0b; font-size: 14px;">Searching: "${searchTerm}"</span>` : ''}
+        </div>
+        
+        <!-- Tracking Cards Grid (matching product grid) -->
+        <div class="admin-tracking-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">
+          ${
+            filteredTracking.length > 0
+              ? filteredTracking.map(tracking => this.renderTrackingCard(tracking)).join('')
+              : `<div style="grid-column: 1/-1; text-align: center; padding: 48px; color: #94a3b8; background: rgba(30, 41, 59, 0.3); border-radius: 12px; border: 2px dashed #334155;">
+                  <div style="font-size: 48px; margin-bottom: 16px;">🔍</div>
+                  <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">No tracking records found</div>
+                  <div style="font-size: 14px;">Try adjusting your search or filter</div>
+                </div>`
+          }
+        </div>
       </div>
     `
   }
 
   renderTrackingCard(tracking) {
+    const statusColors = {
+      'Received': '#3b82f6',
+      'Diagnostics': '#8b5cf6',
+      'In Progress': '#f59e0b',
+      'Parts Ordered': '#ec4899',
+      'Quality Check': '#06b6d4',
+      'Ready for Pickup': '#f59e0b',
+      'Completed': '#10b981'
+    };
+    const statusColor = statusColors[tracking.status] || '#10b981';
+    
     return `
-      <div class="tracking-card" style="background-color: rgba(30, 41, 59, 0.5); border: 1px solid #334155; border-radius: 8px; padding: 16px; margin-bottom: 12px; max-width: 100%;">
-        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
-          <div>
-            <h4 style="margin-bottom: 4px; font-size: 14px; font-weight: 600;">QR: ${tracking.qrId}</h4>
-            <div style="color: #94a3b8; font-size: 11px;">Created: ${tracking.createdAt}</div>
-          </div>
-          <span class="status-badge status-${tracking.status.toLowerCase().replace(/\s+/g, "-")}" style="font-size: 10px; padding: 4px 8px; border-radius: 4px; background: rgba(16, 185, 129, 0.2); color: #10b981;">${this.getStatusEmoji(tracking.status)} ${tracking.status}</span>
+      <div class="admin-tracking-card" style="background-color: rgba(30, 41, 59, 0.5); border: 1px solid #334155; border-radius: 8px; padding: 16px; max-width: 300px;">
+        <!-- Status Badge at Top -->
+        <div style="margin-bottom: 12px;">
+          <span style="display: inline-block; font-size: 10px; padding: 4px 8px; border-radius: 4px; background: rgba(16, 185, 129, 0.2); color: ${statusColor}; border: 1px solid ${statusColor};">
+            ${this.getStatusEmoji(tracking.status)} ${tracking.status}
+          </span>
         </div>
         
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
-          <div>
-            <div style="font-weight: 600; margin-bottom: 4px; font-size: 12px;">Customer</div>
-            <div style="color: #cbd5e1; font-size: 12px;">${tracking.customerName}</div>
-          </div>
-          <div>
-            <div style="font-weight: 600; margin-bottom: 4px; font-size: 12px;">Device</div>
-            <div style="color: #cbd5e1; font-size: 12px;">${tracking.productName}</div>
+        <!-- QR ID (like product name) -->
+        <h3 style="margin-bottom: 6px; font-size: 14px; font-weight: 600; color: #f8fafc;">QR: ${tracking.qrId}</h3>
+        
+        <!-- Customer & Device (like category) -->
+        <div style="color: #94a3b8; font-size: 11px; margin-bottom: 8px;">
+          ${tracking.customerName} • ${tracking.productName}
+        </div>
+        
+        <!-- Dates -->
+        <div style="color: #94a3b8; font-size: 10px; margin-bottom: 8px;">
+          📅 ${tracking.createdAt}
+          ${tracking.completedAt ? `<br>✅ ${tracking.completedAt}` : ''}
+        </div>
+        
+        <!-- Amount (like price) -->
+        ${tracking.amount ? `
+        <div style="margin-bottom: 8px;">
+          <span style="font-weight: 700; color: #10b981; font-size: 14px;">₹${tracking.amount.toLocaleString()}</span>
+          <span style="color: #94a3b8; font-size: 10px; margin-left: 6px;">Payment Amount</span>
+        </div>
+        ` : ''}
+        
+        <!-- Issue Description -->
+        <div style="margin-bottom: 10px; padding: 8px; background: rgba(51, 65, 85, 0.3); border-radius: 4px;">
+          <div style="color: #cbd5e1; font-size: 10px; line-height: 1.4; max-height: 40px; overflow: hidden; text-overflow: ellipsis;">
+            ${tracking.issue}
           </div>
         </div>
-
-        <div style="margin-bottom: 12px;">
-          <div style="font-weight: 600; margin-bottom: 4px; font-size: 12px;">Issue</div>
-          <div style="color: #cbd5e1; font-size: 11px; line-height: 1.4;">${tracking.issue}</div>
-        </div>
-
+        
+        <!-- Action Buttons (like product buttons) -->
         <div style="display: flex; gap: 6px;">
-          <button class="btn btn-secondary" style="flex: 1; padding: 6px 10px; font-size: 11px;" onclick="app.editTracking('${tracking.qrId}')">Update Status</button>
-          <button class="btn" style="flex: 1; padding: 6px 10px; font-size: 11px; background: rgba(244, 63, 94, 0.1); color: #f87171; border: 1px solid #f87171; border-radius: 4px;" onclick="app.deleteTracking('${tracking.qrId}')">Delete</button>
+          <button class="btn btn-secondary" style="flex: 1; padding: 4px 8px; font-size: 11px;" data-action="edit-tracking" data-qr-id="${tracking.qrId}">Update</button>
+          <button class="btn" style="flex: 1; padding: 4px 8px; font-size: 11px; background: rgba(244, 63, 94, 0.1); color: #f87171; border: 1px solid #f87171; border-radius: 4px;" data-action="delete-tracking" data-qr-id="${tracking.qrId}">Delete</button>
         </div>
       </div>
     `
@@ -1737,9 +1879,10 @@ class OwnerPortalApp {
     const issue = document.getElementById("newTrackingIssue")?.value?.trim();
     const status = document.getElementById("newTrackingStatus")?.value;
     const days = document.getElementById("newTrackingDays")?.value;
+    const amount = document.getElementById("newTrackingAmount")?.value?.trim();
 
-    if (!qrId || !password || !customer || !device || !issue) {
-      alert("Please fill all required fields: QR ID, Password, Customer Name, Device Model, and Issue Description");
+    if (!qrId || !password || !customer || !device || !issue || !amount) {
+      alert("Please fill all required fields: QR ID, Password, Customer Name, Device Model, Issue Description, and Payment Amount");
       return;
     }
 
@@ -1755,6 +1898,12 @@ class OwnerPortalApp {
       saveButton.textContent = 'Saving...';
       saveButton.disabled = true;
 
+      const currentDate = new Date().toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+
       const newTracking = {
         qrId: qrId,
         qrPassword: password,
@@ -1765,11 +1914,9 @@ class OwnerPortalApp {
         status: status,
         issue: issue,
         estimatedDays: Number.parseInt(days) || 2,
-        createdAt: new Date().toLocaleDateString('en-IN', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric'
-        }),
+        amount: Number.parseInt(amount) || 0,
+        createdAt: currentDate,
+        completedAt: null,
         lastUpdated: new Date().toLocaleDateString('en-IN', {
           day: '2-digit',
           month: '2-digit',
@@ -1783,7 +1930,7 @@ class OwnerPortalApp {
       this.trackingData.push(newTracking);
       
       // 2. Show SUCCESS popup immediately
-      alert("✅ Tracking record created successfully!\n\nQR ID: " + qrId + "\nPassword: " + password + "\n\nShare these details with your customer for tracking.");
+      alert("✅ Tracking record created successfully!\n\nQR ID: " + qrId + "\nPassword: " + password + "\nAmount: ₹" + amount + "\n\nShare these details with your customer for tracking.");
       
       // 3. Clear form and render page immediately
       document.getElementById("newTrackingQRId").value = "";
@@ -1793,6 +1940,7 @@ class OwnerPortalApp {
       document.getElementById("newTrackingContact").value = "";
       document.getElementById("newTrackingIssue").value = "";
       document.getElementById("newTrackingDays").value = "2";
+      document.getElementById("newTrackingAmount").value = "";
       
       this.toggleTrackingForm();
       this.renderPage("admin-tracking");
@@ -1913,13 +2061,22 @@ class OwnerPortalApp {
       minute: '2-digit'
     });
     
+    // Set completed date when status is changed to "Completed"
+    if (newStatus === 'Completed' && !tracking.completedAt) {
+      tracking.completedAt = new Date().toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+    }
+    
     // 2. Show SUCCESS and render page immediately
     this.closeStatusModal();
     this.renderPage("admin-tracking");
-    alert(`✅ Status updated to: ${newStatus}`);
+    alert(`✅ Status updated to: ${newStatus}${newStatus === 'Completed' ? '\n✅ Completed date recorded!' : ''}`);
     
     // 3. Sync to database in background (don't wait for it)
-    this.syncTrackingStatusToDatabase(qrId, newStatus, tracking.lastUpdated).catch(error => {
+    this.syncTrackingStatusToDatabase(qrId, newStatus, tracking.lastUpdated, tracking.completedAt).catch(error => {
       console.error('❌ Background tracking status sync failed:', error);
     });
     
@@ -1927,12 +2084,22 @@ class OwnerPortalApp {
   }
 
   // Background sync method for tracking status updates
-  async syncTrackingStatusToDatabase(qrId, newStatus, lastUpdated) {
+  async syncTrackingStatusToDatabase(qrId, newStatus, lastUpdated, completedAt) {
     try {
+      const updateData = { 
+        status: newStatus, 
+        lastUpdated: lastUpdated 
+      };
+      
+      // Include completedAt if it exists
+      if (completedAt) {
+        updateData.completedAt = completedAt;
+      }
+      
       const response = await fetch(`${this.API_URL}/tracking/${qrId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus, lastUpdated: lastUpdated })
+        body: JSON.stringify(updateData)
       });
       
       if (response.ok) {
@@ -1984,6 +2151,51 @@ class OwnerPortalApp {
     const form = document.getElementById("trackingForm")
     if (form) {
       form.style.display = form.style.display === "none" ? "block" : "none"
+    }
+  }
+
+  handleTrackingSearch(value) {
+    this.trackingSearch = value;
+    // Clear existing timeout
+    if (this.searchTimeout) {
+      clearTimeout(this.searchTimeout);
+    }
+    // Wait for user to stop typing before filtering
+    this.searchTimeout = setTimeout(() => {
+      this.renderTrackingListOnly();
+    }, 500); // Increased to 500ms for smoother typing
+  }
+
+  filterTracking(status) {
+    this.trackingFilter = status;
+    this.renderTrackingListOnly();
+  }
+
+  // Render only the tracking list without re-rendering the entire page
+  renderTrackingListOnly() {
+    const trackingListContainer = document.querySelector('.tracking-list');
+    if (trackingListContainer) {
+      const parent = trackingListContainer.parentElement;
+      const newContent = this.renderTrackingList();
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = newContent;
+      const newTrackingList = tempDiv.firstElementChild;
+      
+      // Preserve the search input value and focus
+      const oldInput = trackingListContainer.querySelector('#trackingSearchInput');
+      const hadFocus = oldInput && document.activeElement === oldInput;
+      const cursorPos = oldInput ? oldInput.selectionStart : 0;
+      
+      parent.replaceChild(newTrackingList, trackingListContainer);
+      
+      // Restore focus and cursor position
+      if (hadFocus) {
+        const newInput = document.getElementById('trackingSearchInput');
+        if (newInput) {
+          newInput.focus();
+          newInput.setSelectionRange(cursorPos, cursorPos);
+        }
+      }
     }
   }
 
