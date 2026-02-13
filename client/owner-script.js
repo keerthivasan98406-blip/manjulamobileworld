@@ -917,68 +917,84 @@ class OwnerPortalApp {
         </div>
         
         <!-- Results Count -->
-        <h3 style="margin-bottom: 24px; color: #e2e8f0;">
-          ${filterStatus === 'all' ? 'All' : filterStatus} Tracking Records 
-          <span style="color: #10b981;">(${filteredTracking.length})</span>
-          ${searchTerm ? `<span style="color: #f59e0b; font-size: 14px;"> - Searching: "${searchTerm}"</span>` : ''}
-        </h3>
+        <div style="margin-bottom: 24px; display: flex; gap: 16px; align-items: center;">
+          <h3 style="color: #e2e8f0; margin: 0;">
+            ${filterStatus === 'all' ? 'All' : filterStatus} Tracking Records 
+            <span style="color: #10b981;">(${filteredTracking.length})</span>
+          </h3>
+          ${searchTerm ? `<span style="color: #f59e0b; font-size: 14px;">Searching: "${searchTerm}"</span>` : ''}
+        </div>
         
-        <!-- Tracking Cards -->
-        ${
-          filteredTracking.length > 0
-            ? filteredTracking.map(tracking => this.renderTrackingCard(tracking)).join('')
-            : `<div style="text-align: center; padding: 48px; color: #94a3b8; background: rgba(30, 41, 59, 0.3); border-radius: 12px; border: 2px dashed #334155;">
-                <div style="font-size: 48px; margin-bottom: 16px;">🔍</div>
-                <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">No tracking records found</div>
-                <div style="font-size: 14px;">Try adjusting your search or filter</div>
-              </div>`
-        }
+        <!-- Tracking Cards Grid (matching product grid) -->
+        <div class="admin-tracking-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">
+          ${
+            filteredTracking.length > 0
+              ? filteredTracking.map(tracking => this.renderTrackingCard(tracking)).join('')
+              : `<div style="grid-column: 1/-1; text-align: center; padding: 48px; color: #94a3b8; background: rgba(30, 41, 59, 0.3); border-radius: 12px; border: 2px dashed #334155;">
+                  <div style="font-size: 48px; margin-bottom: 16px;">🔍</div>
+                  <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">No tracking records found</div>
+                  <div style="font-size: 14px;">Try adjusting your search or filter</div>
+                </div>`
+          }
+        </div>
       </div>
     `
   }
 
   renderTrackingCard(tracking) {
+    const statusColors = {
+      'Received': '#3b82f6',
+      'Diagnostics': '#8b5cf6',
+      'In Progress': '#f59e0b',
+      'Parts Ordered': '#ec4899',
+      'Quality Check': '#06b6d4',
+      'Ready for Pickup': '#f59e0b',
+      'Completed': '#10b981'
+    };
+    const statusColor = statusColors[tracking.status] || '#10b981';
+    
     return `
-      <div class="tracking-card" style="background-color: rgba(30, 41, 59, 0.5); border: 1px solid #334155; border-radius: 8px; padding: 16px; margin-bottom: 12px; max-width: 100%;">
-        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
-          <div>
-            <h4 style="margin-bottom: 4px; font-size: 14px; font-weight: 600;">QR: ${tracking.qrId}</h4>
-            <div style="color: #94a3b8; font-size: 11px;">
-              📅 Created: ${tracking.createdAt}
-              ${tracking.completedAt ? `<br>✅ Completed: ${tracking.completedAt}` : ''}
-            </div>
-          </div>
-          <span class="status-badge status-${tracking.status.toLowerCase().replace(/\s+/g, "-")}" style="font-size: 10px; padding: 4px 8px; border-radius: 4px; background: rgba(16, 185, 129, 0.2); color: #10b981;">${this.getStatusEmoji(tracking.status)} ${tracking.status}</span>
+      <div class="admin-tracking-card" style="background-color: rgba(30, 41, 59, 0.5); border: 1px solid #334155; border-radius: 8px; padding: 16px; max-width: 300px;">
+        <!-- Status Badge at Top -->
+        <div style="margin-bottom: 12px;">
+          <span style="display: inline-block; font-size: 10px; padding: 4px 8px; border-radius: 4px; background: rgba(16, 185, 129, 0.2); color: ${statusColor}; border: 1px solid ${statusColor};">
+            ${this.getStatusEmoji(tracking.status)} ${tracking.status}
+          </span>
         </div>
         
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
-          <div>
-            <div style="font-weight: 600; margin-bottom: 4px; font-size: 12px;">Customer</div>
-            <div style="color: #cbd5e1; font-size: 12px;">${tracking.customerName}</div>
-          </div>
-          <div>
-            <div style="font-weight: 600; margin-bottom: 4px; font-size: 12px;">Device</div>
-            <div style="color: #cbd5e1; font-size: 12px;">${tracking.productName}</div>
-          </div>
+        <!-- QR ID (like product name) -->
+        <h3 style="margin-bottom: 6px; font-size: 14px; font-weight: 600; color: #f8fafc;">QR: ${tracking.qrId}</h3>
+        
+        <!-- Customer & Device (like category) -->
+        <div style="color: #94a3b8; font-size: 11px; margin-bottom: 8px;">
+          ${tracking.customerName} • ${tracking.productName}
         </div>
-
-        <div style="margin-bottom: 12px;">
-          <div style="font-weight: 600; margin-bottom: 4px; font-size: 12px;">Issue</div>
-          <div style="color: #cbd5e1; font-size: 11px; line-height: 1.4;">${tracking.issue}</div>
+        
+        <!-- Dates -->
+        <div style="color: #94a3b8; font-size: 10px; margin-bottom: 8px;">
+          📅 ${tracking.createdAt}
+          ${tracking.completedAt ? `<br>✅ ${tracking.completedAt}` : ''}
         </div>
-
+        
+        <!-- Amount (like price) -->
         ${tracking.amount ? `
-        <div style="margin-bottom: 12px; padding: 10px; background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.1)); border: 2px solid #10b981; border-radius: 6px;">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div style="font-weight: 600; font-size: 12px; color: #10b981;">💰 Payment Amount</div>
-            <div style="font-size: 18px; font-weight: 700; color: #10b981;">₹${tracking.amount.toLocaleString()}</div>
-          </div>
+        <div style="margin-bottom: 8px;">
+          <span style="font-weight: 700; color: #10b981; font-size: 14px;">₹${tracking.amount.toLocaleString()}</span>
+          <span style="color: #94a3b8; font-size: 10px; margin-left: 6px;">Payment Amount</span>
         </div>
         ` : ''}
-
+        
+        <!-- Issue Description -->
+        <div style="margin-bottom: 10px; padding: 8px; background: rgba(51, 65, 85, 0.3); border-radius: 4px;">
+          <div style="color: #cbd5e1; font-size: 10px; line-height: 1.4; max-height: 40px; overflow: hidden; text-overflow: ellipsis;">
+            ${tracking.issue}
+          </div>
+        </div>
+        
+        <!-- Action Buttons (like product buttons) -->
         <div style="display: flex; gap: 6px;">
-          <button class="btn btn-secondary" style="flex: 1; padding: 6px 10px; font-size: 11px;" data-action="edit-tracking" data-qr-id="${tracking.qrId}">Update Status</button>
-          <button class="btn" style="flex: 1; padding: 6px 10px; font-size: 11px; background: rgba(244, 63, 94, 0.1); color: #f87171; border: 1px solid #f87171; border-radius: 4px;" data-action="delete-tracking" data-qr-id="${tracking.qrId}">Delete</button>
+          <button class="btn btn-secondary" style="flex: 1; padding: 4px 8px; font-size: 11px;" data-action="edit-tracking" data-qr-id="${tracking.qrId}">Update</button>
+          <button class="btn" style="flex: 1; padding: 4px 8px; font-size: 11px; background: rgba(244, 63, 94, 0.1); color: #f87171; border: 1px solid #f87171; border-radius: 4px;" data-action="delete-tracking" data-qr-id="${tracking.qrId}">Delete</button>
         </div>
       </div>
     `
