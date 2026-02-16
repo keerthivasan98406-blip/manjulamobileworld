@@ -3568,13 +3568,6 @@ button:focus-visible, input:focus-visible, a:focus-visible {
     .bg-curve::before {
         display: none;
     }
-    
-    .top-header-text {
-        animation: none;
-        white-space: normal;
-        text-align: center;
-        padding-left: 0;
-    }
 }
 
 @media (max-width: 768px) {
@@ -3588,7 +3581,9 @@ button:focus-visible, input:focus-visible, a:focus-visible {
     
     .top-header-text {
         font-size: 9px;
-        animation: scroll-text 25s linear infinite;
+        animation: scroll-left 25s linear infinite;
+        white-space: nowrap !important;
+        padding-left: 100%;
     }
     
     nav {
@@ -3620,7 +3615,9 @@ button:focus-visible, input:focus-visible, a:focus-visible {
     
     .top-header-text {
         font-size: 8px;
-        animation: scroll-text 30s linear infinite;
+        animation: scroll-left 30s linear infinite;
+        white-space: nowrap !important;
+        padding-left: 100%;
     }
     
     nav {
