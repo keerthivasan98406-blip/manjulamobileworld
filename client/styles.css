@@ -1366,6 +1366,8 @@ nav .nav-content {
     display: flex;
     gap: 16px;
     flex-wrap: wrap;
+    margin-top: 400px; /* Move buttons to bottom of hero section */
+    margin-left: 0px; /* Buttons at default left position */
 }
 
 /* Hero Background */
@@ -1402,8 +1404,11 @@ nav .nav-content {
     }
     
     .hero-carousel-slide img {
-        object-fit: cover;
-        object-position: center;
+        object-fit: contain; /* Show full image without cropping */
+        object-position: center center;
+        width: 100%;
+        height: 100%;
+        background: #000; /* Add background for letterboxing */
     }
     
     .hero-text-content h2 {
@@ -1415,13 +1420,19 @@ nav .nav-content {
     }
     
     .hero-buttons {
-        flex-direction: column;
+        flex-direction: row; /* Keep buttons horizontal on mobile */
         align-items: center;
+        justify-content: center;
+        margin-top: 200px; /* Adjust for mobile */
+        margin-left: 0; /* Reset for mobile */
+        gap: 12px; /* Smaller gap for mobile */
     }
     
     .hero-buttons .btn {
-        width: 100%;
-        max-width: 280px;
+        width: auto;
+        max-width: 180px;
+        padding: 12px 20px;
+        font-size: 14px;
     }
     
     .carousel-nav {
@@ -1456,9 +1467,11 @@ nav .nav-content {
     }
     
     .hero-carousel-slide img {
-        object-fit: cover;
-        object-position: center;
+        object-fit: contain; /* Show full image without cropping sides */
+        object-position: center center;
+        width: 100%;
         height: 100%;
+        background: #000; /* Black background for letterboxing */
     }
     
     .hero-text-content h2 {
