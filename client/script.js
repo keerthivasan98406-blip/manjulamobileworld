@@ -39,11 +39,12 @@ class ManjulaMobilesApp {
     }
     
     // Carousel properties
+    const imgV = Date.now();
     this.carouselImages = [
-      "./public/assets/images/1.jpg",
-      "./public/assets/images/2.jpg",
-      "./public/assets/images/3.jpg",
-      "./public/assets/images/4.jpg"
+      `./public/assets/images/1.jpg?v=${imgV}`,
+      `./public/assets/images/2.jpg?v=${imgV}`,
+      `./public/assets/images/3.jpg?v=${imgV}`,
+      `./public/assets/images/4.jpg?v=${imgV}`
     ];
     this.currentCarouselIndex = 0;
     this.carouselInterval = null;
