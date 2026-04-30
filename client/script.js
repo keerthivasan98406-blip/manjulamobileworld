@@ -1701,8 +1701,8 @@ class ManjulaMobilesApp {
         <div class="hero-content">
           <div class="hero-grid">
             <div class="hero-text-content">
-              <h2>Your Trusted Mobile Repair Partner</h2>
-              <p>Expert technicians, genuine parts, and fast service for all your mobile repair needs</p>
+              <h2></h2>
+              <p></p>
               <div class="hero-buttons">
                 <button class="btn btn-primary" data-page="tracking-page">Track Your Device</button>
                 <button class="btn btn-secondary" data-page="products">Browse Products</button>
@@ -3391,7 +3391,7 @@ Thank you for choosing Manjula Mobile World!`);
             </div>
             <div class="about-image">
               <div class="shop-image-container">
-                <img src="https://images.unsplash.com/photo-1632765486500-24795490f399?w=400&h=400&fit=crop" alt="Mobile Repair Shop" style="width: 100%; height: 100%; object-fit: cover; border-radius: 12px; margin-bottom: 16px;">
+                <img src="https://i.pinimg.com/1200x/58/d0/5c/58d05c0184743b7e191e9cac3dfa19a9.jpg" alt="Mobile Repair Shop" style="width: 100%; height: 100%; object-fit: cover; border-radius: 12px; margin-bottom: 16px;">
                 <div style="background: linear-gradient(to bottom right, rgba(251, 146, 60, 0.2), rgba(239, 68, 68, 0.2)); padding: 32px; border-radius: 12px; text-align: center;">
                   <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 12px;">Manjula Mobile World</h3>
                   <p style="color: #94a3b8; font-size: 14px; margin-bottom: 16px;">Professional Mobile Repair & Parts Center - Ramapuram</p>
@@ -3827,7 +3827,7 @@ Thank you for choosing Manjula Mobile World!`);
       hardware: {
         title: "Hardware Repair Services",
         description: "Professional hardware repair services for all mobile devices. We specialize in fixing physical components of your mobile devices with precision and expertise.",
-        image: "https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=600&h=400&fit=crop",
+        image: "https://i.pinimg.com/1200x/4c/23/04/4c23041783b12478f42551b21edf94cb.jpg",
         features: [
           "Screen Replacement",
           "Battery Replacement",
@@ -3841,7 +3841,7 @@ Thank you for choosing Manjula Mobile World!`);
       software: {
         title: "Software Repair Services",
         description: "Comprehensive software solutions for all mobile operating systems. We fix software issues, optimize performance, and ensure your device runs smoothly.",
-        image: "https://images.unsplash.com/photo-1551650975-87deedd944c3?w=600&h=400&fit=crop",
+        image: "",
         features: [
           "OS Installation & Updates",
           "Virus & Malware Removal",

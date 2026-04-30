@@ -6,6 +6,10 @@ const socketIo = require('socket.io');
 const path = require('path');
 require('dotenv').config();
 
+// Override DNS to use Google DNS (fixes SRV lookup issues on some networks)
+const dns = require('dns');
+dns.setServers(['8.8.8.8', '8.8.4.4']);
+
 // Import keep-alive service
 require('../keep-alive');
 
@@ -37,12 +41,12 @@ app.use(express.static(clientPath));
 const MONGODB_URI = process.env.MONGO_URI;
 
 mongoose.connect(MONGODB_URI, {
-  maxPoolSize: 20, // Increased for faster concurrent requests
-  minPoolSize: 5,  // More ready connections
-  serverSelectionTimeoutMS: 5000, // Reduced to 5 seconds for faster failure
-  socketTimeoutMS: 15000, // Reduced to 15 seconds
-  connectTimeoutMS: 5000, // Reduced to 5 seconds for faster failure
-  family: 4 // Use IPv4, skip trying IPv6
+  maxPoolSize: 20,
+  minPoolSize: 5,
+  serverSelectionTimeoutMS: 15000,
+  socketTimeoutMS: 30000,
+  connectTimeoutMS: 15000,
+  family: 4
 })
   .then(() => {
     console.log('✅ Connected to MongoDB');
