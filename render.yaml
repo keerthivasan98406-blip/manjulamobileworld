@@ -3,6 +3,7 @@ services:
     name: manjula-mobiles
     env: node
     plan: free
+    branch: main
     buildCommand: cd server && npm install
     startCommand: cd server && NODE_ENV=production node server.js
     envVars:
