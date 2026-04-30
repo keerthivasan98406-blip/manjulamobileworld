@@ -741,7 +741,7 @@ body {
     transform: translateX(0);
   }
   100% {
-    transform: translateX(calc(-200px * 10 - 20px * 10));
+    transform: translateX(-50%);
   }
 }
 
@@ -3537,9 +3537,9 @@ button:focus-visible, input:focus-visible, a:focus-visible {
     }
 }
 
-/* Reduced Motion Support */
+/* Reduced Motion Support - only apply to non-essential animations, NOT scrolling banners */
 @media (prefers-reduced-motion: reduce) {
-    * {
+    *:not(.top-header-text):not(.brand-carousel-track) {
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
