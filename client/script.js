@@ -3434,41 +3434,52 @@ Thank you for choosing Manjula Mobile World!`);
             <p style="color: #000000ff; font-size: 18px;">Manjula Mobile World Service Center - Ramapuram, Tamil Nadu</p>
           </div>
 
-          <div style="max-width: 900px; margin: 0 auto;">
-            <!-- Map Section - Centered -->
-            <div style="background-color: rgba(30, 41, 59, 0.5); border: 1px solid #e01123ff; border-radius: 12px; overflow: hidden; height: 500px; position: relative; cursor: pointer; margin-bottom: 32px;" onclick="window.open('https://maps.app.goo.gl/UEpa2L38EWea9JD67', '_blank')">
-              <iframe src="https://www.google.com/maps/embed?pb=!1m28!1m12!1m3!1d1332.6836960168596!2d79.7577830285442!3d12.468113512373563!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!4m13!3e6!4m5!1s0x3a5319fc59689b47%3A0x9c923c48fdc1fb6b!2sMelmaruvathur!3m2!1d12.4268234!2d79.82995919999999!4m5!1s0x3a531020aa862667%3A0xe25d880e8f98bf09!2sVandavasi%20Rd%2C%20Ramapuram%2C%20Tamil%20Nadu%20603201!3m2!1d12.4451387!2d79.81148309999999!5e1!3m2!1sen!2sin!4v1762845054152!5m2!1sen!2sin" width="100%" height="100%" style="border:0; pointer-events: none;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+          <!-- Map + Contact side by side -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: stretch; max-width: 1200px; margin: 0 auto;">
+            
+            <!-- Map Section -->
+            <div style="background-color: rgba(30, 41, 59, 0.5); border: 1px solid #e01123ff; border-radius: 12px; overflow: hidden; min-height: 450px; position: relative; cursor: pointer;" onclick="window.open('https://maps.app.goo.gl/UEpa2L38EWea9JD67', '_blank')">
+              <iframe src="https://www.google.com/maps/embed?pb=!1m28!1m12!1m3!1d1332.6836960168596!2d79.7577830285442!3d12.468113512373563!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!4m13!3e6!4m5!1s0x3a5319fc59689b47%3A0x9c923c48fdc1fb6b!2sMelmaruvathur!3m2!1d12.4268234!2d79.82995919999999!4m5!1s0x3a531020aa862667%3A0xe25d880e8f98bf09!2sVandavasi%20Rd%2C%20Ramapuram%2C%20Tamil%20Nadu%20603201!3m2!1d12.4451387!2d79.81148309999999!5e1!3m2!1sen!2sin!4v1762845054152!5m2!1sen!2sin" width="100%" height="100%" style="border:0; pointer-events: none; min-height: 450px;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
             </div>
 
-            <!-- Contact Information - Below Map -->
-            <div style="background: linear-gradient(135deg, rgba(251, 146, 60, 0.2), rgba(239, 68, 68, 0.2)); border: 1px solid rgba(251, 146, 60, 0.3); border-radius: 12px; padding: 32px;">
-              <h2 style="font-size: 24px; font-weight: 700; margin-bottom: 24px; text-align: center;">Contact Information</h2>
+            <!-- Contact Information - Side of Map -->
+            <div style="background: linear-gradient(135deg, rgba(251, 146, 60, 0.2), rgba(239, 68, 68, 0.2)); border: 1px solid rgba(251, 146, 60, 0.3); border-radius: 12px; padding: 32px; display: flex; flex-direction: column; justify-content: center; gap: 24px;">
+              <h2 style="font-size: 24px; font-weight: 700; text-align: center; margin: 0;">Contact Information</h2>
               
-              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 24px;">
-                <div>
-                  <div style="color: #fb923c; font-weight: 600; margin-bottom: 8px;">📍 Address</div>
-                  <p style="color: #000000ff; line-height: 1.6;">Melmaruvathur, Vandavasi Rd, Ramapuram, Tamil Nadu 603201, India</p>
-                </div>
-
-                <div>
-                  <div style="color: #fb923c; font-weight: 600; margin-bottom: 8px;">📞 Phone</div>
-                  <a href="tel:+918248454841" style="color: #87e087ff; text-decoration: none; font-weight: 500; display: block;">+91 82484 54841</a>
-                </div>
-
-                <div>
-                  <div style="color: #fb923c; font-weight: 600; margin-bottom: 8px;">✉️ Email</div>
-                  <a href="mailto:info@manjulamobiles.com" style="color: #87e087ff; text-decoration: none; font-weight: 500; display: block;">info@manjulamobiles.com</a>
-                </div>
-
-                <div>
-                  <div style="color: #fb923c; font-weight: 600; margin-bottom: 8px;">🕐 Working Hours</div>
-                  <p style="color: #000000ff; margin: 4px 0;">Mon - Sun: 9:00 AM - 10:00 PM</p>
-                  <p style="color: #d80719ff; margin: 4px 0;">Holidays: 10:00 AM - 8:00 PM</p>
-                  <p style="color: #5bde4aff; margin: 8px 0; font-weight: 600;">24/7 Emergency Service</p>
-                </div>
+              <div>
+                <div style="color: #dc2626; font-weight: 600; margin-bottom: 8px; font-size: 15px;">📍 Address</div>
+                <p style="color: #000000ff; line-height: 1.6; margin: 0;">Melmaruvathur, Vandavasi Rd,<br>Ramapuram, Tamil Nadu 603201, India</p>
               </div>
+
+              <div>
+                <div style="color: #dc2626; font-weight: 600; margin-bottom: 8px; font-size: 15px;">📞 Phone</div>
+                <a href="tel:+918248454841" style="color: #16a34a; text-decoration: none; font-weight: 600; font-size: 18px;">+91 82484 54841</a>
+              </div>
+
+              <div>
+                <div style="color: #dc2626; font-weight: 600; margin-bottom: 8px; font-size: 15px;">✉️ Email</div>
+                <a href="mailto:manjulamobiles125@gmail.com" style="color: #16a34a; text-decoration: none; font-weight: 500;">manjulamobiles125@gmail.com</a>
+              </div>
+
+              <div>
+                <div style="color: #dc2626; font-weight: 600; margin-bottom: 8px; font-size: 15px;">🕐 Working Hours</div>
+                <p style="color: #000000ff; margin: 4px 0;">Mon - Sun: 9:00 AM - 10:00 PM</p>
+                <p style="color: #dc2626; margin: 4px 0;">Holidays: 10:00 AM - 8:00 PM</p>
+                <p style="color: #16a34a; margin: 8px 0; font-weight: 700;">24/7 Emergency Service</p>
+              </div>
+
+              <a href="https://maps.app.goo.gl/UEpa2L38EWea9JD67" target="_blank" style="display: inline-block; background: linear-gradient(to right, #dc2626, #b91c1c); color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; text-align: center; margin-top: 8px;">
+                📍 Get Directions
+              </a>
             </div>
           </div>
+
+          <!-- Mobile: stack vertically on small screens -->
+          <style>
+            @media (max-width: 768px) {
+              .shop-location-grid { grid-template-columns: 1fr !important; }
+            }
+          </style>
         </div>
       </div>
     `
