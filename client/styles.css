@@ -1838,10 +1838,12 @@ nav .nav-content {
 
 .brand-carousel-track {
     display: flex;
+    flex-wrap: nowrap;
     gap: 20px;
     width: max-content;
     animation: brandScroll 25s linear infinite;
     padding: 20px 0;
+    will-change: transform;
 }
 
 .brand-carousel-track:hover {

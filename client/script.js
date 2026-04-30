@@ -39,12 +39,11 @@ class ManjulaMobilesApp {
     }
     
     // Carousel properties
-    const imgV = Date.now();
     this.carouselImages = [
-      `./public/assets/images/1.jpg?v=${imgV}`,
-      `./public/assets/images/2.jpg?v=${imgV}`,
-      `./public/assets/images/3.jpg?v=${imgV}`,
-      `./public/assets/images/4.jpg?v=${imgV}`
+      "./public/assets/images/1.jpg",
+      "./public/assets/images/2.jpg",
+      "./public/assets/images/3.jpg",
+      "./public/assets/images/4.jpg"
     ];
     this.currentCarouselIndex = 0;
     this.carouselInterval = null;
@@ -1905,13 +1904,29 @@ class ManjulaMobilesApp {
           <h2>Brands We Support</h2>
           <p>We repair and provide accessories for all major mobile brands</p>
         </div>
-        <div class="brand-carousel-container">
+        <div class="brand-carousel-container" style="overflow:hidden; width:100%; position:relative;">
+          <style>
+            @keyframes brandScroll {
+              0% { transform: translateX(0); }
+              100% { transform: translateX(-50%); }
+            }
+            .brand-carousel-track {
+              display: flex !important;
+              flex-wrap: nowrap !important;
+              width: max-content !important;
+              animation: brandScroll 25s linear infinite !important;
+              gap: 20px;
+              padding: 20px 0;
+              will-change: transform;
+            }
+            .brand-carousel-track:hover {
+              animation-play-state: paused !important;
+            }
+          </style>
           <div class="brand-carousel-track">
-            ${carouselItems.map((brand, index) => `
-              <div class="brand-carousel-item">
-                <div class="brand-carousel-image">
-                  <img src="${brand.image}" alt="${brand.name}" loading="lazy">
-                </div>
+            ${carouselItems.map((brand) => `
+              <div class="brand-carousel-item" style="flex:0 0 160px; height:100px; background:#fff; border:2px solid #fecaca; border-radius:12px; display:flex; align-items:center; justify-content:center; padding:12px; box-sizing:border-box;">
+                <img src="${brand.image}" alt="${brand.name}" style="max-width:100%; max-height:100%; object-fit:contain;" loading="lazy">
               </div>
             `).join('')}
           </div>
