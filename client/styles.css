@@ -228,10 +228,11 @@ nav {
 
 /* Update hero section padding to account for fixed headers */
 .hero {
-    padding-top: 125px;
-    height: calc((100vw - 0px) * 711 / 1600 + 125px); /* Match 1600x711 banner ratio + header offset */
+    padding-top: 0;
+    margin-top: 95px;
+    height: calc(100vw * 711 / 1600);
     min-height: 400px;
-    max-height: 100vh;
+    max-height: 85vh;
     position: relative;
     overflow: hidden;
     background: #ffffff;
@@ -1219,10 +1220,10 @@ nav .nav-content {
 /* Full Page Hero Carousel Styles */
 .hero-carousel {
     position: absolute;
-    top: 125px;
+    top: 0;
     left: 0;
     width: 100%;
-    height: calc(100% - 125px);
+    height: 100%;
     z-index: 1;
 }
 
