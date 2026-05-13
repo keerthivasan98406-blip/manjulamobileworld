@@ -149,7 +149,22 @@ const orderSchema = new mongoose.Schema({
 
 const Order = mongoose.model('Order', orderSchema);
 
-// Image upload to cloud storage - DISABLED (no file saving)
+// Sales Record Schema
+const salesSchema = new mongoose.Schema({
+  saleId: { type: String, required: true, unique: true },
+  customerName: { type: String, required: true },
+  phoneNumber: { type: String, required: true },
+  productName: { type: String, required: true },
+  productModel: String,
+  imeiNumber: String,
+  saleAmount: Number,
+  purchaseDate: { type: String, required: true },
+  warrantyPeriod: String,
+  notes: String,
+  createdAt: { type: String }
+}, { timestamps: true });
+
+const SalesRecord = mongoose.model('SalesRecord', salesSchema);
 const uploadImageToCloud = async (base64Data, fileName) => {
   try {
     // File saving disabled - screenshots only stored in database as base64
@@ -829,6 +844,48 @@ app.post('/api/test-image-upload', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Test image processing failed:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ===== SALES RECORDS ROUTES =====
+app.get('/api/sales', async (req, res) => {
+  try {
+    const sales = await SalesRecord.find().sort({ createdAt: -1 });
+    res.json(sales);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/sales', async (req, res) => {
+  try {
+    const saleId = 'SALE-' + Date.now();
+    const sale = new SalesRecord({ ...req.body, saleId, createdAt: new Date().toLocaleDateString('en-IN') });
+    await sale.save();
+    io.emit('sale-added', sale);
+    res.json(sale);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/sales/:saleId', async (req, res) => {
+  try {
+    const sale = await SalesRecord.findOneAndUpdate({ saleId: req.params.saleId }, req.body, { new: true });
+    io.emit('sale-updated', sale);
+    res.json(sale);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/sales/:saleId', async (req, res) => {
+  try {
+    await SalesRecord.findOneAndDelete({ saleId: req.params.saleId });
+    io.emit('sale-deleted', { saleId: req.params.saleId });
+    res.json({ success: true });
+  } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });

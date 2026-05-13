@@ -37,6 +37,8 @@ class OwnerPortalApp {
     this.products = [];
     this.trackingData = [];
     this.orders = [];
+    this.salesRecords = [];
+    this.salesSearch = "";
     
     this.init()
   }
@@ -206,6 +208,10 @@ class OwnerPortalApp {
         this.loadOrdersFromStorage().catch(err => {
           console.log('⚠️ Orders load failed:', err.message);
           this.orders = [];
+        }),
+        this.loadSalesFromStorage().catch(err => {
+          console.log('⚠️ Sales load failed:', err.message);
+          this.salesRecords = [];
         })
       ]);
       
@@ -488,8 +494,6 @@ class OwnerPortalApp {
       if (response.ok) {
         this.orders = await response.json();
         console.log('✅ [OWNER] Loaded orders from database:', this.orders.length);
-        
-        // Debug screenshot data in orders
         this.orders.forEach((order, index) => {
           console.log(`📋 [OWNER] Order ${index + 1}:`, {
             orderId: order.orderId,
@@ -505,6 +509,21 @@ class OwnerPortalApp {
     } catch (error) {
       console.error('❌ [OWNER] Error loading orders:', error);
       this.orders = [];
+    }
+  }
+
+  async loadSalesFromStorage() {
+    try {
+      const response = await fetch(`${this.API_URL}/sales`);
+      if (response.ok) {
+        this.salesRecords = await response.json();
+        console.log('✅ Loaded sales from database:', this.salesRecords.length);
+      } else {
+        this.salesRecords = [];
+      }
+    } catch (error) {
+      console.error('❌ Error loading sales:', error);
+      this.salesRecords = [];
     }
   }
 
@@ -528,6 +547,8 @@ class OwnerPortalApp {
       html += this.renderAdminTracking()
     } else if (page === "admin-orders") {
       html += this.renderAdminOrders()
+    } else if (page === "admin-sales") {
+      html += this.renderAdminSales()
     } else if (page === "admin-add-product") {
       html += this.renderAddProductForm()
     } else if (page === "admin-edit-product") {
@@ -566,6 +587,9 @@ class OwnerPortalApp {
               </li>
               <li class="nav-item">
                 <a class="nav-link ${this.currentPage === 'admin-orders' ? 'active' : ''}" data-page="admin-orders">Orders</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link ${this.currentPage === 'admin-sales' ? 'active' : ''}" data-page="admin-sales">🛍️ Sales Records</a>
               </li>
               <li class="nav-item">
                 <a class="nav-link" href="index.html">← Main Site</a>
@@ -634,6 +658,12 @@ class OwnerPortalApp {
             </button>
             <button class="btn btn-primary" data-page="admin-orders" style="flex: 1; min-width: 200px; padding: 16px; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px;">
               <span style="font-size: 24px;">📋</span>
+              <span>Orders Management</span>
+            </button>
+            <button class="btn btn-primary" data-page="admin-sales" style="flex: 1; min-width: 200px; padding: 16px; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+              <span style="font-size: 24px;">🛍️</span>
+              <span>Sales Records</span>
+            </button>
               <span>Orders Management</span>
             </button>
           </div>
@@ -1543,6 +1573,185 @@ class OwnerPortalApp {
         </div>
       </div>
     `
+  }
+
+  renderAdminSales() {
+    const search = (this.salesSearch || '').toLowerCase();
+    const filtered = this.salesRecords.filter(s =>
+      s.customerName?.toLowerCase().includes(search) ||
+      s.phoneNumber?.includes(search) ||
+      s.productName?.toLowerCase().includes(search) ||
+      s.imeiNumber?.includes(search)
+    );
+
+    return `
+      <div style="min-height: 100vh; background-color: #f13e74fb; padding-top: 96px; padding-bottom: 80px;">
+        <div class="container">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px;">
+            <div>
+              <h1 style="font-size: 32px; font-weight: 700; margin-bottom: 4px;">🛍️ Sales Records</h1>
+              <p style="color: #94a3b8;">Store and lookup customer purchase details</p>
+            </div>
+            <button class="btn btn-primary" onclick="ownerApp.toggleSalesForm()" style="padding: 12px 24px;">+ Add Sale</button>
+          </div>
+
+          <!-- Add Sale Form -->
+          <div id="salesForm" style="display:none; background: rgba(255,255,255,0.95); border: 2px solid #dc2626; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+            <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 16px; color: #000;">New Sale Record</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
+              <div>
+                <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">Customer Name *</label>
+                <input class="input" id="sale_customerName" placeholder="Enter customer name" style="width:100%;">
+              </div>
+              <div>
+                <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">Phone Number *</label>
+                <input class="input" id="sale_phoneNumber" placeholder="Enter phone number" style="width:100%;">
+              </div>
+              <div>
+                <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">Product Name *</label>
+                <input class="input" id="sale_productName" placeholder="e.g. Samsung Galaxy A54" style="width:100%;">
+              </div>
+              <div>
+                <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">Model / Variant</label>
+                <input class="input" id="sale_productModel" placeholder="e.g. 8GB/128GB Black" style="width:100%;">
+              </div>
+              <div>
+                <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">IMEI Number</label>
+                <input class="input" id="sale_imeiNumber" placeholder="15-digit IMEI" style="width:100%;">
+              </div>
+              <div>
+                <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">Sale Amount (₹)</label>
+                <input class="input" type="number" id="sale_saleAmount" placeholder="Enter amount" style="width:100%;">
+              </div>
+              <div>
+                <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">Purchase Date *</label>
+                <input class="input" type="date" id="sale_purchaseDate" value="${new Date().toISOString().split('T')[0]}" style="width:100%;">
+              </div>
+              <div>
+                <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">Warranty Period</label>
+                <select class="input" id="sale_warrantyPeriod" style="width:100%;">
+                  <option value="">No Warranty</option>
+                  <option value="1 Month">1 Month</option>
+                  <option value="3 Months">3 Months</option>
+                  <option value="6 Months">6 Months</option>
+                  <option value="1 Year">1 Year</option>
+                  <option value="2 Years">2 Years</option>
+                </select>
+              </div>
+              <div style="grid-column: 1/-1;">
+                <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">Notes</label>
+                <textarea class="input" id="sale_notes" placeholder="Any additional notes..." rows="2" style="width:100%; resize:vertical;"></textarea>
+              </div>
+            </div>
+            <div style="display: flex; gap: 12px; margin-top: 16px;">
+              <button class="btn btn-primary" onclick="ownerApp.saveSaleRecord()" style="padding: 10px 24px;">💾 Save Record</button>
+              <button class="btn btn-secondary" onclick="ownerApp.toggleSalesForm()" style="padding: 10px 24px;">Cancel</button>
+            </div>
+          </div>
+
+          <!-- Search -->
+          <div style="margin-bottom: 20px; display: flex; gap: 12px; align-items: center;">
+            <input class="input" placeholder="🔍 Search by name, phone, product or IMEI..." 
+              style="flex:1;" 
+              oninput="ownerApp.salesSearch=this.value; ownerApp.renderPage('admin-sales')"
+              value="${this.salesSearch || ''}">
+            <span style="color: #fff; font-size: 14px; font-weight: 600;">${filtered.length} records</span>
+          </div>
+
+          <!-- Records Grid -->
+          ${filtered.length === 0 ? `
+            <div style="text-align:center; padding: 60px; color: #fff; font-size: 16px;">
+              <div style="font-size: 48px; margin-bottom: 16px;">🛍️</div>
+              <p>No sales records found. Add your first sale!</p>
+            </div>
+          ` : `
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
+              ${filtered.map(sale => `
+                <div style="background: rgba(255,255,255,0.95); border-radius: 12px; padding: 16px; border: 2px solid #fecaca; position: relative;">
+                  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                    <div>
+                      <div style="font-size: 16px; font-weight: 700; color: #000;">${sale.customerName}</div>
+                      <div style="font-size: 13px; color: #dc2626; font-weight: 600;">📞 ${sale.phoneNumber}</div>
+                    </div>
+                    <button onclick="ownerApp.deleteSaleRecord('${sale.saleId}')" style="background: #fee2e2; border: none; border-radius: 6px; padding: 4px 8px; cursor: pointer; color: #dc2626; font-size: 12px;">🗑️</button>
+                  </div>
+                  <div style="border-top: 1px solid #fecaca; padding-top: 10px; display: flex; flex-direction: column; gap: 6px;">
+                    <div style="font-size: 13px; color: #000;"><span style="color: #6b7280;">📱 Product:</span> <strong>${sale.productName}</strong>${sale.productModel ? ` (${sale.productModel})` : ''}</div>
+                    ${sale.imeiNumber ? `<div style="font-size: 12px; color: #374151;"><span style="color: #6b7280;">IMEI:</span> ${sale.imeiNumber}</div>` : ''}
+                    <div style="font-size: 13px; color: #000;"><span style="color: #6b7280;">📅 Date:</span> ${sale.purchaseDate}</div>
+                    ${sale.saleAmount ? `<div style="font-size: 14px; font-weight: 700; color: #16a34a;">💰 ₹${Number(sale.saleAmount).toLocaleString()}</div>` : ''}
+                    ${sale.warrantyPeriod ? `<div style="font-size: 12px; background: #dcfce7; color: #16a34a; padding: 3px 8px; border-radius: 20px; display: inline-block; font-weight: 600;">🛡️ Warranty: ${sale.warrantyPeriod}</div>` : ''}
+                    ${sale.notes ? `<div style="font-size: 12px; color: #6b7280; font-style: italic;">${sale.notes}</div>` : ''}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          `}
+        </div>
+      </div>
+    `
+  }
+
+  toggleSalesForm() {
+    const form = document.getElementById('salesForm');
+    if (form) form.style.display = form.style.display === 'none' ? 'block' : 'none';
+  }
+
+  async saveSaleRecord() {
+    const customerName = document.getElementById('sale_customerName')?.value?.trim();
+    const phoneNumber = document.getElementById('sale_phoneNumber')?.value?.trim();
+    const productName = document.getElementById('sale_productName')?.value?.trim();
+    const purchaseDate = document.getElementById('sale_purchaseDate')?.value;
+
+    if (!customerName || !phoneNumber || !productName || !purchaseDate) {
+      alert('Please fill in Customer Name, Phone Number, Product Name and Purchase Date.');
+      return;
+    }
+
+    const saleData = {
+      customerName,
+      phoneNumber,
+      productName,
+      productModel: document.getElementById('sale_productModel')?.value?.trim(),
+      imeiNumber: document.getElementById('sale_imeiNumber')?.value?.trim(),
+      saleAmount: document.getElementById('sale_saleAmount')?.value || null,
+      purchaseDate,
+      warrantyPeriod: document.getElementById('sale_warrantyPeriod')?.value,
+      notes: document.getElementById('sale_notes')?.value?.trim()
+    };
+
+    try {
+      const response = await fetch(`${this.API_URL}/sales`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(saleData)
+      });
+      if (response.ok) {
+        const saved = await response.json();
+        this.salesRecords.unshift(saved);
+        alert('✅ Sale record saved successfully!');
+        this.renderPage('admin-sales');
+      } else {
+        alert('❌ Failed to save sale record.');
+      }
+    } catch (error) {
+      console.error('Error saving sale:', error);
+      alert('❌ Error saving sale record.');
+    }
+  }
+
+  async deleteSaleRecord(saleId) {
+    if (!confirm('Delete this sale record?')) return;
+    try {
+      const response = await fetch(`${this.API_URL}/sales/${saleId}`, { method: 'DELETE' });
+      if (response.ok) {
+        this.salesRecords = this.salesRecords.filter(s => s.saleId !== saleId);
+        this.renderPage('admin-sales');
+        alert('✅ Sale record deleted.');
+      }
+    } catch (error) {
+      console.error('Error deleting sale:', error);
+    }
   }
 
   renderFooter() {
