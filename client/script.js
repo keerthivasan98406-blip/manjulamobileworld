@@ -9,7 +9,7 @@ class ManjulaMobilesApp {
     this.orders = [];
     this.serviceSubMenuOpen = false;
     this.mobileServiceSubMenuOpen = false;
-    this.upiLink = "keerthivasan98406@okhdfcbank"
+    this.upiLink = "9894703254@upi"
     
     // MongoDB API URL - Auto-detect local vs production
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -2767,7 +2767,7 @@ class ManjulaMobilesApp {
               <h3 style="color: #dc2626; margin-bottom: 16px; font-size: 20px;">📱 Scan QR Code to Pay</h3>
               <div id="paymentQrCode" style="display: flex; justify-content: center; margin-bottom: 16px;"></div>
               <p style="color: #666; font-size: 16px; font-weight: 600;">Amount: ₹${cartTotal.toLocaleString()}</p>
-              <p style="color: #666; font-size: 14px; margin-top: 8px;">UPI ID: +91 82484 54841</p>
+              <p style="color: #666; font-size: 14px; margin-top: 8px;">UPI ID: 9894703254@upi</p>
             </div>
             
             <!-- Direct Payment App Links -->
@@ -2793,7 +2793,7 @@ class ManjulaMobilesApp {
             <div style="background: #fef3c7; border: 2px solid #f59e0b; border-radius: 12px; padding: 20px; margin-bottom: 32px;">
               <h4 style="color: #92400e; font-size: 16px; margin-bottom: 12px; font-weight: 700;">📋 Payment Instructions:</h4>
               <ul style="color: #92400e; font-size: 14px; margin: 0; padding-left: 20px; line-height: 1.6;">
-                <li>Pay ₹${cartTotal.toLocaleString()} to: <strong>+91 82484 54841</strong></li>
+                <li>Pay ₹${cartTotal.toLocaleString()} to: <strong>9894703254@upi</strong></li>
                 <li>Use any UPI app or scan the QR code above</li>
                 <li>Take a screenshot of the payment confirmation</li>
                 <li>Upload the screenshot below to complete your order</li>
