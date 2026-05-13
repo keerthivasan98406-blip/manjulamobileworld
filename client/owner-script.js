@@ -664,8 +664,6 @@ class OwnerPortalApp {
               <span style="font-size: 24px;">🛍️</span>
               <span>Sales Records</span>
             </button>
-              <span>Orders Management</span>
-            </button>
           </div>
 
           <!-- Quick Stats -->
@@ -1592,7 +1590,7 @@ class OwnerPortalApp {
               <h1 style="font-size: 32px; font-weight: 700; margin-bottom: 4px;">🛍️ Sales Records</h1>
               <p style="color: #94a3b8;">Store and lookup customer purchase details</p>
             </div>
-            <button class="btn btn-primary" onclick="ownerApp.toggleSalesForm()" style="padding: 12px 24px;">+ Add Sale</button>
+            <button class="btn btn-primary" onclick="app.toggleSalesForm()" style="padding: 12px 24px;">+ Add Sale</button>
           </div>
 
           <!-- Add Sale Form -->
@@ -1644,8 +1642,8 @@ class OwnerPortalApp {
               </div>
             </div>
             <div style="display: flex; gap: 12px; margin-top: 16px;">
-              <button class="btn btn-primary" onclick="ownerApp.saveSaleRecord()" style="padding: 10px 24px;">💾 Save Record</button>
-              <button class="btn btn-secondary" onclick="ownerApp.toggleSalesForm()" style="padding: 10px 24px;">Cancel</button>
+              <button class="btn btn-primary" onclick="app.saveSaleRecord()" style="padding: 10px 24px;">💾 Save Record</button>
+              <button class="btn btn-secondary" onclick="app.toggleSalesForm()" style="padding: 10px 24px;">Cancel</button>
             </div>
           </div>
 
@@ -1653,7 +1651,7 @@ class OwnerPortalApp {
           <div style="margin-bottom: 20px; display: flex; gap: 12px; align-items: center;">
             <input class="input" placeholder="🔍 Search by name, phone, product or IMEI..." 
               style="flex:1;" 
-              oninput="ownerApp.salesSearch=this.value; ownerApp.renderPage('admin-sales')"
+              oninput="app.salesSearch=this.value; app.renderPage('admin-sales')"
               value="${this.salesSearch || ''}">
             <span style="color: #fff; font-size: 14px; font-weight: 600;">${filtered.length} records</span>
           </div>
@@ -1673,7 +1671,7 @@ class OwnerPortalApp {
                       <div style="font-size: 16px; font-weight: 700; color: #000;">${sale.customerName}</div>
                       <div style="font-size: 13px; color: #dc2626; font-weight: 600;">📞 ${sale.phoneNumber}</div>
                     </div>
-                    <button onclick="ownerApp.deleteSaleRecord('${sale.saleId}')" style="background: #fee2e2; border: none; border-radius: 6px; padding: 4px 8px; cursor: pointer; color: #dc2626; font-size: 12px;">🗑️</button>
+                    <button onclick="app.deleteSaleRecord('${sale.saleId}')" style="background: #fee2e2; border: none; border-radius: 6px; padding: 4px 8px; cursor: pointer; color: #dc2626; font-size: 12px;">🗑️</button>
                   </div>
                   <div style="border-top: 1px solid #fecaca; padding-top: 10px; display: flex; flex-direction: column; gap: 6px;">
                     <div style="font-size: 13px; color: #000;"><span style="color: #6b7280;">📱 Product:</span> <strong>${sale.productName}</strong>${sale.productModel ? ` (${sale.productModel})` : ''}</div>
