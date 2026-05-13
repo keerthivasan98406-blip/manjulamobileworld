@@ -229,11 +229,12 @@ nav {
 /* Update hero section padding to account for fixed headers */
 .hero {
     padding-top: 125px;
-    height: 100vh;
-    min-height: 600px;
+    height: calc(100vw * 800 / 1920); /* Match 1920x800 image ratio exactly */
+    min-height: 500px;
+    max-height: 100vh;
     position: relative;
     overflow: hidden;
-    background: #000000;
+    background: #ffffff;
 }
 
 @media (max-width: 1200px) {
@@ -1249,7 +1250,7 @@ nav .nav-content {
     height: 100%;
     object-fit: contain;
     object-position: center center;
-    background: #000;
+    background: #ffffff;
 }
 
 .hero-carousel-slide::after {
