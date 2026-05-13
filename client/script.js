@@ -1964,10 +1964,16 @@ class ManjulaMobilesApp {
 
   renderProducts() {
     const searchTerm = (document.getElementById("productSearch")?.value || "").toLowerCase()
-    const filteredProducts = this.products.filter(
-      (product) =>
-        product.name.toLowerCase().includes(searchTerm) || product.category.toLowerCase().includes(searchTerm),
-    )
+    const activeCategory = this.productCategory || "All"
+
+    const filteredProducts = this.products.filter((product) => {
+      const matchesSearch = product.name.toLowerCase().includes(searchTerm) || product.category.toLowerCase().includes(searchTerm)
+      const matchesCategory = activeCategory === "All" || product.category === activeCategory
+      return matchesSearch && matchesCategory
+    })
+
+    // Get unique categories from products
+    const categories = ["All", ...new Set(this.products.map(p => p.category).filter(Boolean))]
 
     const html = `
       <div class="products-section">
@@ -1985,6 +1991,27 @@ class ManjulaMobilesApp {
               oninput="app.handleProductSearch()"
             >
             <button class="btn btn-secondary" style="white-space: nowrap; padding: 10px 12px; font-size: 12px;" onclick="document.getElementById('productSearch').value = ''; app.handleProductSearch()">Clear</button>
+          </div>
+
+          <!-- Category Filter Buttons -->
+          <div style="margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+            ${categories.map(cat => `
+              <button 
+                onclick="app.productCategory='${cat}'; app.renderPage('products')"
+                style="
+                  padding: 8px 18px;
+                  border-radius: 50px;
+                  border: 2px solid #dc2626;
+                  font-size: 13px;
+                  font-weight: 600;
+                  cursor: pointer;
+                  transition: all 0.2s ease;
+                  background: ${cat === activeCategory ? 'linear-gradient(to right, #dc2626, #b91c1c)' : '#ffffff'};
+                  color: ${cat === activeCategory ? '#ffffff' : '#dc2626'};
+                  white-space: nowrap;
+                "
+              >${cat}</button>
+            `).join('')}
           </div>
         </div>
         <div style="display: flex; position: relative; overflow-x: hidden;">
