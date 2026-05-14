@@ -229,13 +229,15 @@ nav {
 /* Update hero section padding to account for fixed headers */
 .hero {
     padding-top: 0;
-    margin-top: 95px;
-    height: calc(100vw * 711 / 1600);
-    min-height: 400px;
+    margin-top: 70px;
+    height: calc(100vw * 950 / 1600);
+    min-height: 350px;
     max-height: 85vh;
     position: relative;
     overflow: hidden;
-    background: #ffffff;
+    background: #000;
+    width: 100%;
+    margin-bottom: 0;
 }
 
 @media (max-width: 1200px) {
@@ -1250,41 +1252,20 @@ nav .nav-content {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    object-position: center top;
-    background: #ffffff;
+    object-position: center center;
+    background: #000;
 }
 
 .hero-carousel-slide::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(to right, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.4) 50%, transparent 100%);
-    z-index: 1;
+    content: none;
 }
 
 .carousel-tint {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(to right, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0.1) 100%);
-    z-index: 2;
-    pointer-events: none;
+    display: none;
 }
 
 .carousel-indicators {
-    position: absolute;
-    bottom: 40px;
-    left: 0;
-    right: 0;
-    display: flex;
-    justify-content: center;
-    gap: 8px;
-    z-index: 10;
+    display: none;
 }
 
 .carousel-indicator {
@@ -1336,22 +1317,21 @@ nav .nav-content {
 
 /* Hero Grid Layout - Content on Left */
 .hero-content {
-    position: relative;
+    position: absolute;
     z-index: 2;
-    height: 100%;
+    bottom: 12px;
+    left: 0;
+    right: 40px;
     display: flex;
-    align-items: center;
+    align-items: flex-end;
+    justify-content: flex-end;
 }
 
 .hero-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 48px;
+    display: flex;
+    gap: 16px;
     align-items: center;
-    max-width: 1280px;
-    margin: 0 auto;
-    padding: 0 24px;
-    width: 100%;
+    width: auto;
 }
 
 .hero-text-content {
@@ -1379,17 +1359,13 @@ nav .nav-content {
     display: flex;
     gap: 16px;
     flex-wrap: wrap;
-    margin-top: 400px; /* Move buttons to bottom of hero section */
-    margin-left: 0px; /* Buttons at default left position */
+    margin-top: 0;
+    margin-left: 0px;
 }
 
 /* Hero Background */
 .hero-bg {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(to right, rgba(245, 244, 244, 0.8) 0%, rgba(0,0,0,0.4) 50%, transparent 100%);
-    pointer-events: none;
-    z-index: 1;
+    display: none;
 }
 
 /* Responsive Design for Hero Grid */
@@ -1411,17 +1387,25 @@ nav .nav-content {
 
 @media (max-width: 768px) {
     .hero {
-        padding-top: 100px;
-        height: 70vh;
-        min-height: 500px;
+        padding-top: 0;
+        height: calc(100vw * 711 / 1600);
+        min-height: 200px;
+        max-height: 60vh;
     }
     
     .hero-carousel-slide img {
-        object-fit: contain; /* Show full image without cropping */
+        object-fit: cover;
         object-position: center center;
         width: 100%;
         height: 100%;
-        background: #000; /* Add background for letterboxing */
+        background: #000;
+    }
+    
+    .hero-content {
+        bottom: 8px;
+        right: 8px;
+        left: 8px;
+        justify-content: center;
     }
     
     .hero-text-content h2 {
@@ -1433,19 +1417,17 @@ nav .nav-content {
     }
     
     .hero-buttons {
-        flex-direction: row; /* Keep buttons horizontal on mobile */
+        flex-direction: row;
         align-items: center;
         justify-content: center;
-        margin-top: 200px; /* Adjust for mobile */
-        margin-left: 0; /* Reset for mobile */
-        gap: 12px; /* Smaller gap for mobile */
+        margin: 0;
+        gap: 8px;
     }
     
     .hero-buttons .btn {
         width: auto;
-        max-width: 180px;
-        padding: 12px 20px;
-        font-size: 14px;
+        padding: 8px 14px;
+        font-size: 12px;
     }
     
     .carousel-nav {
@@ -1474,17 +1456,18 @@ nav .nav-content {
 
 @media (max-width: 480px) {
     .hero {
-        padding-top: 90px;
-        height: 60vh;
-        min-height: 400px;
+        padding-top: 0;
+        height: calc(100vw * 711 / 1600);
+        min-height: 150px;
+        max-height: 50vh;
     }
     
     .hero-carousel-slide img {
-        object-fit: contain; /* Show full image without cropping sides */
+        object-fit: cover;
         object-position: center center;
         width: 100%;
         height: 100%;
-        background: #000; /* Black background for letterboxing */
+        background: #000;
     }
     
     .hero-text-content h2 {
@@ -1674,7 +1657,7 @@ nav .nav-content {
 
 /* Services Section */
 .services-section {
-    padding: 80px 24px;
+    padding: 20px 24px 30px 24px;
     background: #ffffff;
 }
 
@@ -3331,7 +3314,7 @@ body.modal-open {
 /* Section Header */
 .section-header {
     text-align: center;
-    margin-bottom: 48px;
+    margin-bottom: 20px;
 }
 
 .section-header h2 {

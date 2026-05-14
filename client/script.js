@@ -858,6 +858,12 @@ class ManjulaMobilesApp {
     indicators.forEach((indicator, index) => {
       indicator.classList.toggle('active', index === this.currentCarouselIndex);
     });
+
+    // Show buttons only on first slide (index 0)
+    const heroContent = document.querySelector('.hero-content');
+    if (heroContent) {
+      heroContent.style.display = this.currentCarouselIndex === 0 ? 'flex' : 'none';
+    }
   }
 
   prevCarouselSlide() {
@@ -1756,7 +1762,15 @@ class ManjulaMobilesApp {
             <h2>Our Services</h2>
             <p>Comprehensive solutions for all your mobile needs</p>
           </div>
-          <div class="services-grid">
+          <div class="services-grid" style="display:grid; grid-template-columns:repeat(4,1fr); gap:20px; width:100%; box-sizing:border-box;">
+            <style>
+              @media (max-width: 768px) {
+                .services-grid { grid-template-columns: 1fr !important; }
+              }
+              @media (min-width: 769px) and (max-width: 1024px) {
+                .services-grid { grid-template-columns: repeat(2, 1fr) !important; }
+              }
+            </style>
             ${services
               .map(
                 (service, idx) => `
