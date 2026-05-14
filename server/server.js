@@ -35,7 +35,17 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 // Serve static files from client directory
 const clientPath = path.join(__dirname, '../client');
 console.log('📁 Serving static files from:', clientPath);
-app.use(express.static(clientPath));
+app.use(express.static(clientPath, {
+  etag: false,
+  lastModified: false,
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.js') || filePath.endsWith('.html') || filePath.endsWith('.css')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
+  }
+}));
 
 // MongoDB Connection with optimized settings and faster timeout
 const MONGODB_URI = process.env.MONGO_URI;
@@ -165,6 +175,33 @@ const salesSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const SalesRecord = mongoose.model('SalesRecord', salesSchema);
+
+// Services Schema
+const serviceSchema = new mongoose.Schema({
+  serviceId: { type: String, required: true, unique: true },
+  customerName: { type: String, required: true },
+  phoneNumber: { type: String, required: true },
+  customerAddress: String,
+  price: Number,
+  advance: Number,
+  serviceDate: { type: String, required: true },
+  status: { type: String, default: 'Received' },
+  serviceDetails: { type: String, required: true }
+}, { timestamps: true });
+
+const ServiceRecord = mongoose.model('ServiceRecord', serviceSchema);
+
+// Display Stock Schema
+const displayStockSchema = new mongoose.Schema({
+  stockItemId: { type: String, required: true, unique: true },
+  displayName:  { type: String, required: true },
+  displayId:    { type: String, required: true },
+  stock:        { type: Number, default: 0 },
+  price:        { type: Number, default: null },
+  history:      { type: Array, default: [] }
+}, { timestamps: true });
+
+const DisplayStock = mongoose.model('DisplayStock', displayStockSchema);
 const uploadImageToCloud = async (base64Data, fileName) => {
   try {
     // File saving disabled - screenshots only stored in database as base64
@@ -884,6 +921,122 @@ app.delete('/api/sales/:saleId', async (req, res) => {
   try {
     await SalesRecord.findOneAndDelete({ saleId: req.params.saleId });
     io.emit('sale-deleted', { saleId: req.params.saleId });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ===== SERVICES ROUTES =====
+app.get('/api/services', async (req, res) => {
+  try {
+    const services = await ServiceRecord.find().sort({ createdAt: -1 });
+    res.json(services);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/services', async (req, res) => {
+  try {
+    const serviceId = 'SVC-' + Date.now();
+    const service = new ServiceRecord({ ...req.body, serviceId });
+    await service.save();
+    res.json(service);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/services/:serviceId', async (req, res) => {
+  try {
+    const service = await ServiceRecord.findOneAndUpdate(
+      { serviceId: req.params.serviceId }, req.body, { new: true }
+    );
+    res.json(service);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/services/:serviceId', async (req, res) => {
+  try {
+    await ServiceRecord.findOneAndDelete({ serviceId: req.params.serviceId });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ===== DISPLAY STOCK ROUTES =====
+app.get('/api/display-stock', async (req, res) => {
+  try {
+    const items = await DisplayStock.find().sort({ createdAt: -1 });
+    res.json(items);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/display-stock', async (req, res) => {
+  try {
+    const stockItemId = 'STK-' + Date.now();
+    const item = new DisplayStock({ ...req.body, stockItemId });
+    await item.save();
+    res.json(item);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/display-stock/:stockItemId', async (req, res) => {
+  try {
+    const { displayName, displayId, price } = req.body;
+    const item = await DisplayStock.findOneAndUpdate(
+      { stockItemId: req.params.stockItemId },
+      { $set: { displayName, displayId, price: price ?? null } },
+      { new: true }
+    );
+    if (!item) return res.status(404).json({ error: 'Not found' });
+    res.json(item);
+  } catch (error) {
+    console.error('❌ Error editing display stock:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.patch('/api/display-stock/:stockItemId', async (req, res) => {
+  try {
+    const { stock, historyEntry } = req.body;
+    const item = await DisplayStock.findOne({ stockItemId: req.params.stockItemId });
+    if (!item) return res.status(404).json({ error: 'Not found' });
+
+    item.stock = stock;
+
+    if (historyEntry) {
+      // Use $push via findOneAndUpdate to avoid Mongoose mixed-type array mutation issues
+      const updated = await DisplayStock.findOneAndUpdate(
+        { stockItemId: req.params.stockItemId },
+        {
+          $set: { stock },
+          $push: { history: historyEntry }
+        },
+        { new: true }
+      );
+      return res.json(updated);
+    }
+
+    await item.save();
+    res.json(item);
+  } catch (error) {
+    console.error('❌ Error updating display stock:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/display-stock/:stockItemId', async (req, res) => {
+  try {
+    await DisplayStock.findOneAndDelete({ stockItemId: req.params.stockItemId });
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });

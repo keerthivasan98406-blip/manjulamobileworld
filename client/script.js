@@ -1362,7 +1362,7 @@ class ManjulaMobilesApp {
     }
   }
 
-  trackOrder() {
+  async trackOrder() {
     const qrId = document.getElementById("orderId").value.trim()
     const password = document.getElementById("orderPassword").value.trim()
     const result = document.getElementById("trackResult")
@@ -1370,6 +1370,16 @@ class ManjulaMobilesApp {
     if (!qrId || !password) {
       alert("Please enter both QR ID and Password")
       return
+    }
+
+    try {
+      // Always fetch fresh data from server so status is up-to-date
+      const response = await fetch(`${this.API_URL}/tracking`)
+      if (response.ok) {
+        this.trackingData = await response.json()
+      }
+    } catch (e) {
+      console.warn('⚠️ Could not refresh tracking data, using cached copy')
     }
 
     const trackingEntry = this.trackingData.find((t) => t.qrId === qrId && t.qrPassword === password)
@@ -1382,7 +1392,7 @@ class ManjulaMobilesApp {
       document.getElementById("resultEstDays").textContent = `${trackingEntry.estimatedDays} days`
       document.getElementById("resultLastUpdated").textContent = trackingEntry.lastUpdated || trackingEntry.createdAt
       
-      // Generate timeline
+      // Generate timeline with fresh status
       this.renderTrackingTimeline(trackingEntry.status)
       
       result.style.display = "block"
@@ -1395,33 +1405,76 @@ class ManjulaMobilesApp {
   }
 
   renderTrackingTimeline(currentStatus) {
+    // When status is Return — show only the return path
+    if (currentStatus === 'Return') {
+      const returnHTML = `
+        <div class="tracking-timeline">
+          <div class="timeline-item">
+            <div class="timeline-dot completed"></div>
+            <div class="timeline-line completed"></div>
+            <div class="timeline-content">
+              <div class="timeline-status completed">📥 Received</div>
+              <div class="timeline-date">Device received at service center</div>
+            </div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-dot completed"></div>
+            <div class="timeline-line completed"></div>
+            <div class="timeline-content">
+              <div class="timeline-status completed">🔍 Diagnostics</div>
+              <div class="timeline-date">Device checked and diagnosed</div>
+            </div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-dot current" style="background:#ef4444; border-color:#ef4444;"></div>
+            <div class="timeline-line"></div>
+            <div class="timeline-content">
+              <div class="timeline-status current" style="color:#ef4444; font-weight:700;">↩️ Return</div>
+              <div class="timeline-date" style="color:#ef4444;">Device has been returned to the customer</div>
+            </div>
+          </div>
+        </div>`;
+      const timelineContainer = document.getElementById("trackingTimeline");
+      if (timelineContainer) timelineContainer.innerHTML = returnHTML;
+      return;
+    }
+
+    // Normal repair flow including Delivered at the end
     const statuses = [
-      { name: 'Received', emoji: '📥', desc: 'Device received at service center' },
-      { name: 'Diagnostics', emoji: '🔍', desc: 'Checking device issues' },
-      { name: 'In Progress', emoji: '🔧', desc: 'Repair work in progress' },
-      { name: 'Parts Ordered', emoji: '📦', desc: 'Waiting for replacement parts' },
-      { name: 'Quality Check', emoji: '✅', desc: 'Final testing and verification' },
+      { name: 'Received',         emoji: '📥', desc: 'Device received at service center' },
+      { name: 'Diagnostics',      emoji: '🔍', desc: 'Checking device issues' },
+      { name: 'In Progress',      emoji: '🔧', desc: 'Repair work in progress' },
+      { name: 'Parts Ordered',    emoji: '📦', desc: 'Waiting for replacement parts' },
+      { name: 'Quality Check',    emoji: '✅', desc: 'Final testing and verification' },
       { name: 'Ready for Pickup', emoji: '📢', desc: 'Device ready for collection' },
-      { name: 'Completed', emoji: '🎉', desc: 'Service completed' }
+      { name: 'Completed',        emoji: '🎉', desc: 'Service completed' },
+      { name: 'Delivered',        emoji: '🚚', desc: 'Device delivered to customer' }
     ];
 
     const currentIndex = statuses.findIndex(s => s.name === currentStatus);
     
     const timelineHTML = statuses.map((status, index) => {
       const isCompleted = index < currentIndex;
-      const isCurrent = index === currentIndex;
-      const isPending = index > currentIndex;
+      const isCurrent   = index === currentIndex;
       
-      const dotClass = isCompleted ? 'completed' : (isCurrent ? 'current' : 'pending');
-      const lineClass = isCompleted ? 'completed' : '';
+      const dotClass    = isCompleted ? 'completed' : (isCurrent ? 'current' : 'pending');
+      const lineClass   = isCompleted ? 'completed' : '';
       const statusClass = isCompleted ? 'completed' : (isCurrent ? 'current' : 'pending');
+
+      // Delivered step gets blue colour
+      const deliveredStyle = status.name === 'Delivered' && isCurrent
+        ? 'color:#2563eb; font-weight:700;'
+        : '';
+      const deliveredDotStyle = status.name === 'Delivered' && isCurrent
+        ? 'background:#2563eb; border-color:#2563eb;'
+        : '';
       
       return `
         <div class="timeline-item">
-          <div class="timeline-dot ${dotClass}"></div>
+          <div class="timeline-dot ${dotClass}" style="${deliveredDotStyle}"></div>
           <div class="timeline-line ${lineClass}"></div>
           <div class="timeline-content">
-            <div class="timeline-status ${statusClass}">
+            <div class="timeline-status ${statusClass}" style="${deliveredStyle}">
               ${status.emoji} ${status.name}
             </div>
             <div class="timeline-date">${status.desc}</div>
@@ -1438,13 +1491,15 @@ class ManjulaMobilesApp {
 
   getStatusEmoji(status) {
     const emojiMap = {
-      'Received': '📥',
-      'Diagnostics': '🔍',
-      'In Progress': '🔧',
-      'Parts Ordered': '📦',
-      'Quality Check': '✅',
+      'Received':         '📥',
+      'Diagnostics':      '🔍',
+      'Return':           '↩️',
+      'In Progress':      '🔧',
+      'Parts Ordered':    '📦',
+      'Quality Check':    '✅',
       'Ready for Pickup': '📢',
-      'Completed': '🎉'
+      'Completed':        '🎉',
+      'Delivered':        '🚚'
     }
     return emojiMap[status] || '📱'
   }

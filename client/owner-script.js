@@ -39,6 +39,10 @@ class OwnerPortalApp {
     this.orders = [];
     this.salesRecords = [];
     this.salesSearch = "";
+    this.serviceRecords = [];
+    this.serviceSearch = "";
+    this.displayStock = [];
+    this.stockSearch = "";
     
     this.init()
   }
@@ -212,6 +216,14 @@ class OwnerPortalApp {
         this.loadSalesFromStorage().catch(err => {
           console.log('⚠️ Sales load failed:', err.message);
           this.salesRecords = [];
+        }),
+        this.loadServicesFromStorage().catch(err => {
+          console.log('⚠️ Services load failed:', err.message);
+          this.serviceRecords = [];
+        }),
+        this.loadDisplayStockFromStorage().catch(err => {
+          console.log('⚠️ Display stock load failed:', err.message);
+          this.displayStock = [];
         })
       ]);
       
@@ -527,6 +539,36 @@ class OwnerPortalApp {
     }
   }
 
+  async loadServicesFromStorage() {
+    try {
+      const response = await fetch(`${this.API_URL}/services`);
+      if (response.ok) {
+        this.serviceRecords = await response.json();
+        console.log('✅ Loaded services from database:', this.serviceRecords.length);
+      } else {
+        this.serviceRecords = [];
+      }
+    } catch (error) {
+      console.error('❌ Error loading services:', error);
+      this.serviceRecords = [];
+    }
+  }
+
+  async loadDisplayStockFromStorage() {
+    try {
+      const response = await fetch(`${this.API_URL}/display-stock`);
+      if (response.ok) {
+        this.displayStock = await response.json();
+        console.log('✅ Loaded display stock from database:', this.displayStock.length);
+      } else {
+        this.displayStock = [];
+      }
+    } catch (error) {
+      console.error('❌ Error loading display stock:', error);
+      this.displayStock = [];
+    }
+  }
+
   async renderPage(page) {
     const app = document.getElementById("app")
     this.currentPage = page
@@ -549,6 +591,16 @@ class OwnerPortalApp {
       html += this.renderAdminOrders()
     } else if (page === "admin-sales") {
       html += this.renderAdminSales()
+    } else if (page === "admin-sales-monthly") {
+      html += this.renderMonthlySales()
+    } else if (page === "admin-services") {
+      html += this.renderAdminServices()
+    } else if (page === "admin-services-daily") {
+      html += this.renderDailyServices()
+    } else if (page === "admin-services-monthly") {
+      html += this.renderMonthlyServices()
+    } else if (page === "admin-display-stock") {
+      html += this.renderDisplayStock()
     } else if (page === "admin-add-product") {
       html += this.renderAddProductForm()
     } else if (page === "admin-edit-product") {
@@ -589,7 +641,13 @@ class OwnerPortalApp {
                 <a class="nav-link ${this.currentPage === 'admin-orders' ? 'active' : ''}" data-page="admin-orders">Orders</a>
               </li>
               <li class="nav-item">
-                <a class="nav-link ${this.currentPage === 'admin-sales' ? 'active' : ''}" data-page="admin-sales">🛍️ Sales Records</a>
+                <a class="nav-link ${this.currentPage === 'admin-sales' || this.currentPage === 'admin-sales-monthly' ? 'active' : ''}" data-page="admin-sales">🛍️ Sales Records</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link ${this.currentPage === 'admin-services' || this.currentPage === 'admin-services-daily' || this.currentPage === 'admin-services-monthly' ? 'active' : ''}" data-page="admin-services">🔧 Services</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link ${this.currentPage === 'admin-display-stock' ? 'active' : ''}" data-page="admin-display-stock">📦 Display Stock</a>
               </li>
               <li class="nav-item">
                 <a class="nav-link" href="index.html">← Main Site</a>
@@ -663,6 +721,14 @@ class OwnerPortalApp {
             <button class="btn btn-primary" data-page="admin-sales" style="flex: 1; min-width: 200px; padding: 16px; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px;">
               <span style="font-size: 24px;">🛍️</span>
               <span>Sales Records</span>
+            </button>
+            <button class="btn btn-primary" data-page="admin-services" style="flex: 1; min-width: 200px; padding: 16px; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+              <span style="font-size: 24px;">🔧</span>
+              <span>Services</span>
+            </button>
+            <button class="btn btn-primary" data-page="admin-display-stock" style="flex: 1; min-width: 200px; padding: 16px; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+              <span style="font-size: 24px;">📦</span>
+              <span>Display Stock</span>
             </button>
           </div>
 
@@ -860,11 +926,13 @@ class OwnerPortalApp {
           <select class="input" id="newTrackingStatus" style="background-color: rgba(51, 65, 85, 0.5); color: #f8fafc;">
             <option value="Received">📥 Received</option>
             <option value="Diagnostics">🔍 Diagnostics</option>
+            <option value="Return">↩️ Return</option>
             <option value="In Progress">🔧 In Progress</option>
             <option value="Parts Ordered">📦 Parts Ordered</option>
             <option value="Quality Check">✅ Quality Check</option>
             <option value="Ready for Pickup">📢 Ready for Pickup</option>
             <option value="Completed">🎉 Completed</option>
+            <option value="Delivered">🚀 Delivered</option>
           </select>
         </div>
 
@@ -929,6 +997,13 @@ class OwnerPortalApp {
             📥 Received (${this.trackingData.filter(t => t.status === 'Received').length})
           </button>
           <button 
+            class="filter-btn ${filterStatus === 'Return' ? 'active' : ''}"
+            data-filter="Return"
+            style="padding: 10px 20px; border-radius: 8px; border: 2px solid ${filterStatus === 'Return' ? '#ef4444' : '#334155'}; background: ${filterStatus === 'Return' ? '#ef4444' : 'rgba(30, 41, 59, 0.5)'}; color: white; cursor: pointer; font-weight: 600; transition: all 0.3s;"
+          >
+            ↩️ Return (${this.trackingData.filter(t => t.status === 'Return').length})
+          </button>
+          <button 
             class="filter-btn ${filterStatus === 'Ready for Pickup' ? 'active' : ''}"
             data-filter="Ready for Pickup"
             style="padding: 10px 20px; border-radius: 8px; border: 2px solid ${filterStatus === 'Ready for Pickup' ? '#f59e0b' : '#334155'}; background: ${filterStatus === 'Ready for Pickup' ? '#f59e0b' : 'rgba(30, 41, 59, 0.5)'}; color: white; cursor: pointer; font-weight: 600; transition: all 0.3s;"
@@ -941,6 +1016,13 @@ class OwnerPortalApp {
             style="padding: 10px 20px; border-radius: 8px; border: 2px solid ${filterStatus === 'Completed' ? '#10b981' : '#334155'}; background: ${filterStatus === 'Completed' ? '#10b981' : 'rgba(30, 41, 59, 0.5)'}; color: white; cursor: pointer; font-weight: 600; transition: all 0.3s;"
           >
             🎉 Completed (${this.trackingData.filter(t => t.status === 'Completed').length})
+          </button>
+          <button 
+            class="filter-btn ${filterStatus === 'Delivered' ? 'active' : ''}"
+            data-filter="Delivered"
+            style="padding: 10px 20px; border-radius: 8px; border: 2px solid ${filterStatus === 'Delivered' ? '#2563eb' : '#334155'}; background: ${filterStatus === 'Delivered' ? '#2563eb' : 'rgba(30, 41, 59, 0.5)'}; color: white; cursor: pointer; font-weight: 600; transition: all 0.3s;"
+          >
+            � Delivered (${this.trackingData.filter(t => t.status === 'Delivered').length})
           </button>
         </div>
         
@@ -971,13 +1053,15 @@ class OwnerPortalApp {
 
   renderTrackingCard(tracking) {
     const statusColors = {
-      'Received': '#3b82f6',
-      'Diagnostics': '#8b5cf6',
-      'In Progress': '#f59e0b',
-      'Parts Ordered': '#ec4899',
-      'Quality Check': '#06b6d4',
+      'Received':         '#3b82f6',
+      'Diagnostics':      '#8b5cf6',
+      'Return':           '#ef4444',
+      'In Progress':      '#f59e0b',
+      'Parts Ordered':    '#ec4899',
+      'Quality Check':    '#06b6d4',
       'Ready for Pickup': '#f59e0b',
-      'Completed': '#10b981'
+      'Completed':        '#10b981',
+      'Delivered':        '#2563eb'
     };
     const statusColor = statusColors[tracking.status] || '#10b981';
     
@@ -1001,8 +1085,15 @@ class OwnerPortalApp {
         <!-- Dates -->
         <div style="color: #94a3b8; font-size: 10px; margin-bottom: 8px;">
           📅 ${tracking.createdAt}
-          ${tracking.completedAt ? `<br>✅ ${tracking.completedAt}` : ''}
+          ${tracking.completedAt ? `<br>✅ Completed: ${tracking.completedAt}` : ''}
+          ${tracking.deliveredAt ? `<br>🚀 Delivered: ${tracking.deliveredAt}` : ''}
+          ${tracking.returnedAt  ? `<br>↩️ Returned: ${tracking.returnedAt}`  : ''}
         </div>
+        
+        ${tracking.status === 'Return' ? `
+        <div style="background:#fef2f2; border:1px solid #fca5a5; border-radius:6px; padding:6px 10px; margin-bottom:8px; font-size:11px; font-weight:700; color:#dc2626; text-align:center;">
+          ↩️ DEVICE RETURNED TO CUSTOMER
+        </div>` : ''}
         
         <!-- Amount (like price) -->
         ${tracking.amount ? `
@@ -1579,7 +1670,7 @@ class OwnerPortalApp {
       s.customerName?.toLowerCase().includes(search) ||
       s.phoneNumber?.includes(search) ||
       s.productName?.toLowerCase().includes(search) ||
-      s.imeiNumber?.includes(search)
+      s.customerAddress?.toLowerCase().includes(search)
     );
 
     return `
@@ -1590,7 +1681,10 @@ class OwnerPortalApp {
               <h1 style="font-size: 32px; font-weight: 700; margin-bottom: 4px;">🛍️ Sales Records</h1>
               <p style="color: #94a3b8;">Store and lookup customer purchase details</p>
             </div>
-            <button class="btn btn-primary" onclick="app.toggleSalesForm()" style="padding: 12px 24px;">+ Add Sale</button>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <button class="btn btn-primary" onclick="app.toggleSalesForm()" style="padding: 12px 24px;">+ Add Sale</button>
+              <button onclick="app.renderPage('admin-sales-monthly')" style="padding: 12px 24px; background:#1d4ed8; color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer;">📅 Monthly Sales</button>
+            </div>
           </div>
 
           <!-- Add Sale Form -->
@@ -1605,21 +1699,21 @@ class OwnerPortalApp {
                 <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">Phone Number *</label>
                 <input class="input" id="sale_phoneNumber" placeholder="Enter phone number" style="width:100%;">
               </div>
+              <div style="grid-column: 1/-1;">
+                <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">Address</label>
+                <input class="input" id="sale_customerAddress" placeholder="Enter customer address" style="width:100%;">
+              </div>
               <div>
                 <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">Product Name *</label>
                 <input class="input" id="sale_productName" placeholder="e.g. Samsung Galaxy A54" style="width:100%;">
               </div>
               <div>
-                <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">Model / Variant</label>
-                <input class="input" id="sale_productModel" placeholder="e.g. 8GB/128GB Black" style="width:100%;">
-              </div>
-              <div>
-                <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">IMEI Number</label>
-                <input class="input" id="sale_imeiNumber" placeholder="15-digit IMEI" style="width:100%;">
-              </div>
-              <div>
                 <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">Sale Amount (₹)</label>
-                <input class="input" type="number" id="sale_saleAmount" placeholder="Enter amount" style="width:100%;">
+                <input class="input" type="number" id="sale_saleAmount" placeholder="Enter amount" style="width:100%;" oninput="app.updateBillPreview()">
+              </div>
+              <div>
+                <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">Discount (₹)</label>
+                <input class="input" type="number" id="sale_discount" placeholder="Enter discount (0 if none)" style="width:100%;" oninput="app.updateBillPreview()">
               </div>
               <div>
                 <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">Purchase Date *</label>
@@ -1640,6 +1734,11 @@ class OwnerPortalApp {
                 <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">Notes</label>
                 <textarea class="input" id="sale_notes" placeholder="Any additional notes..." rows="2" style="width:100%; resize:vertical;"></textarea>
               </div>
+              <!-- Live total preview -->
+              <div style="grid-column: 1/-1; background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 10px 16px; display: flex; gap: 24px; align-items: center;">
+                <span style="font-size: 13px; color: #374151;">Net Payable:</span>
+                <span id="bill_preview_total" style="font-size: 18px; font-weight: 700; color: #16a34a;">₹0</span>
+              </div>
             </div>
             <div style="display: flex; gap: 12px; margin-top: 16px;">
               <button class="btn btn-primary" onclick="app.saveSaleRecord()" style="padding: 10px 24px;">💾 Save Record</button>
@@ -1649,7 +1748,7 @@ class OwnerPortalApp {
 
           <!-- Search -->
           <div style="margin-bottom: 20px; display: flex; gap: 12px; align-items: center;">
-            <input class="input" placeholder="🔍 Search by name, phone, product or IMEI..." 
+            <input class="input" placeholder="🔍 Search by name, phone, product or address..." 
               style="flex:1;" 
               oninput="app.salesSearch=this.value; app.renderPage('admin-sales')"
               value="${this.salesSearch || ''}">
@@ -1664,30 +1763,1034 @@ class OwnerPortalApp {
             </div>
           ` : `
             <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
-              ${filtered.map(sale => `
+              ${filtered.map(sale => {
+                const amount = Number(sale.saleAmount) || 0;
+                const discount = Number(sale.discount) || 0;
+                const netAmount = amount - discount;
+                return `
                 <div style="background: rgba(255,255,255,0.95); border-radius: 12px; padding: 16px; border: 2px solid #fecaca; position: relative;">
                   <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
                     <div>
                       <div style="font-size: 16px; font-weight: 700; color: #000;">${sale.customerName}</div>
                       <div style="font-size: 13px; color: #dc2626; font-weight: 600;">📞 ${sale.phoneNumber}</div>
+                      ${sale.customerAddress ? `<div style="font-size: 12px; color: #6b7280;">📍 ${sale.customerAddress}</div>` : ''}
                     </div>
-                    <button onclick="app.deleteSaleRecord('${sale.saleId}')" style="background: #fee2e2; border: none; border-radius: 6px; padding: 4px 8px; cursor: pointer; color: #dc2626; font-size: 12px;">🗑️</button>
+                    <div style="display:flex; gap:6px;">
+                      <button onclick="app.showBillModal('${sale.saleId}')" style="background: #dbeafe; border: none; border-radius: 6px; padding: 4px 8px; cursor: pointer; color: #1d4ed8; font-size: 12px;" title="View Bill">🧾</button>
+                      <button onclick="app.deleteSaleRecord('${sale.saleId}')" style="background: #fee2e2; border: none; border-radius: 6px; padding: 4px 8px; cursor: pointer; color: #dc2626; font-size: 12px;" title="Delete">🗑️</button>
+                    </div>
                   </div>
                   <div style="border-top: 1px solid #fecaca; padding-top: 10px; display: flex; flex-direction: column; gap: 6px;">
-                    <div style="font-size: 13px; color: #000;"><span style="color: #6b7280;">📱 Product:</span> <strong>${sale.productName}</strong>${sale.productModel ? ` (${sale.productModel})` : ''}</div>
-                    ${sale.imeiNumber ? `<div style="font-size: 12px; color: #374151;"><span style="color: #6b7280;">IMEI:</span> ${sale.imeiNumber}</div>` : ''}
+                    <div style="font-size: 13px; color: #000;"><span style="color: #6b7280;">📱 Product:</span> <strong>${sale.productName}</strong></div>
                     <div style="font-size: 13px; color: #000;"><span style="color: #6b7280;">📅 Date:</span> ${sale.purchaseDate}</div>
-                    ${sale.saleAmount ? `<div style="font-size: 14px; font-weight: 700; color: #16a34a;">💰 ₹${Number(sale.saleAmount).toLocaleString()}</div>` : ''}
+                    ${amount ? `<div style="font-size: 13px; color: #374151;">Price: ₹${amount.toLocaleString()}${discount ? ` &nbsp;|&nbsp; Discount: ₹${discount.toLocaleString()}` : ''}</div>` : ''}
+                    ${amount ? `<div style="font-size: 14px; font-weight: 700; color: #16a34a;">💰 Net: ₹${netAmount.toLocaleString()}</div>` : ''}
                     ${sale.warrantyPeriod ? `<div style="font-size: 12px; background: #dcfce7; color: #16a34a; padding: 3px 8px; border-radius: 20px; display: inline-block; font-weight: 600;">🛡️ Warranty: ${sale.warrantyPeriod}</div>` : ''}
                     ${sale.notes ? `<div style="font-size: 12px; color: #6b7280; font-style: italic;">${sale.notes}</div>` : ''}
                   </div>
                 </div>
-              `).join('')}
+              `}).join('')}
             </div>
           `}
         </div>
       </div>
     `
+  }
+
+  renderDisplayStock() {
+    const search = (this.stockSearch || '').toLowerCase();
+    const filtered = (this.displayStock || []).filter(d =>
+      d.displayName?.toLowerCase().includes(search) ||
+      d.displayId?.toLowerCase().includes(search)
+    );
+
+    const lowStock = filtered.filter(d => (Number(d.stock) || 0) <= 3);
+
+    return `
+      <div style="min-height:100vh; background-color:#f13e74fb; padding-top:96px; padding-bottom:80px;">
+        <div class="container">
+
+          <!-- Header -->
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:12px;">
+            <div>
+              <h1 style="font-size:32px; font-weight:700; margin-bottom:4px;">📦 Display Stock</h1>
+              <p style="color:#94a3b8;">Manage display inventory — increase, decrease & track stock</p>
+            </div>
+            <button class="btn btn-primary" onclick="app.toggleStockForm()" style="padding:12px 24px;">+ Add Display</button>
+          </div>
+
+          <!-- Add Form -->
+          <div id="stockForm" style="display:none; background:rgba(255,255,255,0.97); border:2px solid #dc2626; border-radius:12px; padding:24px; margin-bottom:24px;">
+            <h3 style="font-size:18px; font-weight:700; margin-bottom:16px; color:#000;">Add New Display</h3>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px;">
+              <div>
+                <label style="font-size:13px; font-weight:600; color:#374151; display:block; margin-bottom:4px;">Display Name *</label>
+                <input class="input" id="stk_displayName" placeholder="e.g. Samsung A54 OLED" style="width:100%;">
+              </div>
+              <div>
+                <label style="font-size:13px; font-weight:600; color:#374151; display:block; margin-bottom:4px;">Display ID *</label>
+                <input class="input" id="stk_displayId" placeholder="e.g. DISP-SA54-001" style="width:100%;">
+              </div>
+              <div>
+                <label style="font-size:13px; font-weight:600; color:#374151; display:block; margin-bottom:4px;">Initial Stock *</label>
+                <input class="input" type="number" id="stk_stock" placeholder="Enter quantity" min="0" style="width:100%;">
+              </div>
+              <div>
+                <label style="font-size:13px; font-weight:600; color:#374151; display:block; margin-bottom:4px;">Price (₹)</label>
+                <input class="input" type="number" id="stk_price" placeholder="Unit price" min="0" style="width:100%;">
+              </div>
+            </div>
+            <div style="display:flex; gap:12px; margin-top:16px;">
+              <button class="btn btn-primary" onclick="app.saveDisplayStock()" style="padding:10px 24px;">💾 Save Display</button>
+              <button class="btn btn-secondary" onclick="app.toggleStockForm()" style="padding:10px 24px;">Cancel</button>
+            </div>
+          </div>
+
+          <!-- Search -->
+          <div style="margin-bottom:16px; display:flex; gap:12px; align-items:center;">
+            <input class="input" placeholder="🔍 Search by display name or ID..."
+              style="flex:1; background:#fff; color:#111; border:1px solid #d1d5db;"
+              oninput="app.stockSearch=this.value; app.renderPage('admin-display-stock')"
+              value="${this.stockSearch || ''}">
+            <span style="color:#fff; font-size:14px; font-weight:600; white-space:nowrap;">${filtered.length} items</span>
+          </div>
+
+          <!-- Low stock warning -->
+          ${lowStock.length > 0 ? `
+            <div style="background:#fef2f2; border:2px solid #fca5a5; border-radius:10px; padding:12px 18px; margin-bottom:16px; display:flex; align-items:center; gap:10px;">
+              <span style="font-size:20px;">⚠️</span>
+              <span style="font-size:13px; color:#dc2626; font-weight:600;">Low stock alert: ${lowStock.map(d=>d.displayName).join(', ')}</span>
+            </div>
+          ` : ''}
+
+          <!-- Excel-style Table -->
+          ${filtered.length === 0 ? `
+            <div style="text-align:center; padding:60px; color:#fff; font-size:16px;">
+              <div style="font-size:48px; margin-bottom:16px;">📦</div>
+              <p>No display stock found. Add your first display!</p>
+            </div>
+          ` : `
+            <div style="background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,0.15); border:2px solid #e2e8f0;">
+              <div style="overflow-x:auto;">
+                <table style="width:100%; border-collapse:collapse; font-size:13px; min-width:680px;">
+                  <!-- Table Header -->
+                  <thead>
+                    <tr style="background:#1e293b; color:#fff; text-align:left;">
+                      <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; width:36px;">#</th>
+                      <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:180px;">Display Name</th>
+                      <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:130px;">Display ID</th>
+                      <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:90px; text-align:center;">Price (₹)</th>
+                      <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:100px; text-align:center;">Stock</th>
+                      <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:80px; text-align:center;">Status</th>
+                      <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:200px; text-align:center;">Adjust Stock</th>
+                      <th style="padding:12px 14px; font-weight:700; text-align:center; min-width:70px;">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${filtered.map((item, idx) => {
+                      const stock = Number(item.stock) || 0;
+                      const stockColor  = stock === 0 ? '#dc2626' : stock <= 3 ? '#d97706' : '#16a34a';
+                      const stockBg     = stock === 0 ? '#fef2f2' : stock <= 3 ? '#fffbeb' : '#f0fdf4';
+                      const stockLabel  = stock === 0 ? '❌ Out' : stock <= 3 ? '⚠️ Low' : '✅ OK';
+                      const rowBg       = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
+                      return `
+                        <tr style="background:${rowBg}; border-bottom:1px solid #e2e8f0;"
+                            onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='${rowBg}'">
+                          <td style="padding:10px 14px; color:#9ca3af; font-weight:600; border-right:1px solid #e2e8f0; text-align:center;">${idx + 1}</td>
+                          <td style="padding:10px 14px; font-weight:700; color:#111827; border-right:1px solid #e2e8f0;">${item.displayName}</td>
+                          <td style="padding:10px 14px; border-right:1px solid #e2e8f0;">
+                            <code style="background:#f1f5f9; color:#475569; padding:2px 8px; border-radius:4px; font-size:12px;">${item.displayId}</code>
+                          </td>
+                          <td style="padding:10px 14px; text-align:center; color:#374151; font-weight:600; border-right:1px solid #e2e8f0;">
+                            ${item.price ? `₹${Number(item.price).toLocaleString()}` : '<span style="color:#9ca3af;">—</span>'}
+                          </td>
+                          <td style="padding:10px 14px; text-align:center; border-right:1px solid #e2e8f0;">
+                            <span style="display:inline-block; background:${stockBg}; color:${stockColor}; font-weight:900; font-size:18px; min-width:48px; padding:4px 10px; border-radius:6px; border:1px solid ${stockColor}40;">
+                              ${stock}
+                            </span>
+                          </td>
+                          <td style="padding:10px 14px; text-align:center; border-right:1px solid #e2e8f0;">
+                            <span style="background:${stockBg}; color:${stockColor}; font-size:11px; font-weight:700; padding:3px 8px; border-radius:20px; border:1px solid ${stockColor}40; white-space:nowrap;">
+                              ${stockLabel}
+                            </span>
+                          </td>
+                          <td style="padding:8px 14px; border-right:1px solid #e2e8f0;">
+                            <div style="display:flex; gap:6px; align-items:center; justify-content:center;">
+                              <input type="number" id="qty_${item.stockItemId}" min="1" value="1"
+                                style="width:52px; padding:5px 6px; border:1px solid #d1d5db; border-radius:6px; font-size:13px; text-align:center; color:#111;">
+                              <button onclick="app.adjustStock('${item.stockItemId}', 1)"
+                                style="background:#16a34a; color:#fff; border:none; border-radius:6px; padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;">
+                                ▲ In
+                              </button>
+                              <button onclick="app.adjustStock('${item.stockItemId}', -1)"
+                                style="background:#dc2626; color:#fff; border:none; border-radius:6px; padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; ${stock===0?'opacity:0.45;cursor:not-allowed;':''}">
+                                ▼ Out
+                              </button>
+                            </div>
+                          </td>
+                          <td style="padding:10px 14px; text-align:center;">
+                            <div style="display:flex; gap:6px; justify-content:center;">
+                              <button onclick="app.showEditStockModal('${item.stockItemId}')"
+                                style="background:#dbeafe; color:#1d4ed8; border:1px solid #93c5fd; border-radius:6px; padding:5px 10px; font-size:12px; cursor:pointer;" title="Edit">
+                                ✏️
+                              </button>
+                              <button onclick="app.deleteDisplayStock('${item.stockItemId}')"
+                                style="background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; border-radius:6px; padding:5px 10px; font-size:12px; cursor:pointer;" title="Delete">
+                                🗑️
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      `;
+                    }).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          `}
+        </div>
+      </div>`;
+  }
+
+  toggleStockForm() {
+    const f = document.getElementById('stockForm');
+    if (f) f.style.display = f.style.display === 'none' ? 'block' : 'none';
+  }
+
+  toggleStockHistory(stockItemId) {
+    const el = document.getElementById(`hist_${stockItemId}`);
+    if (el) el.style.display = el.style.display === 'none' ? 'table-row' : 'none';
+  }
+
+  async saveDisplayStock() {
+    const displayName = document.getElementById('stk_displayName')?.value?.trim();
+    const displayId   = document.getElementById('stk_displayId')?.value?.trim();
+    const stock       = document.getElementById('stk_stock')?.value;
+    const price       = document.getElementById('stk_price')?.value;
+
+    if (!displayName || !displayId || stock === '' || stock === null) {
+      alert('Please fill in Display Name, Display ID and Initial Stock.');
+      return;
+    }
+
+    const data = {
+      displayName,
+      displayId,
+      stock: Number(stock),
+      price: price ? Number(price) : null,
+      history: [{ change: Number(stock), stockAfter: Number(stock), date: new Date().toLocaleDateString('en-IN') }]
+    };
+
+    try {
+      const response = await fetch(`${this.API_URL}/display-stock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (response.ok) {
+        const saved = await response.json();
+        this.displayStock.unshift(saved);
+        alert('✅ Display stock saved!');
+        this.renderPage('admin-display-stock');
+      } else {
+        alert('❌ Failed to save display stock.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('❌ Error saving display stock.');
+    }
+  }
+
+  async adjustStock(stockItemId, direction) {
+    const qtyInput = document.getElementById(`qty_${stockItemId}`);
+    const qty = Math.max(1, Number(qtyInput?.value) || 1);
+    const item = (this.displayStock || []).find(d => d.stockItemId === stockItemId);
+    if (!item) return;
+
+    const change = direction * qty;
+    const newStock = Math.max(0, (Number(item.stock) || 0) + change);
+
+    const historyEntry = {
+      change,
+      stockAfter: newStock,
+      date: new Date().toLocaleDateString('en-IN')
+    };
+
+    try {
+      const response = await fetch(`${this.API_URL}/display-stock/${stockItemId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stock: newStock, historyEntry })
+      });
+      if (response.ok) {
+        const updated = await response.json();
+        const idx = this.displayStock.findIndex(d => d.stockItemId === stockItemId);
+        if (idx !== -1) this.displayStock[idx] = updated;
+        this.renderPage('admin-display-stock');
+      } else {
+        alert('❌ Failed to update stock.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('❌ Error updating stock.');
+    }
+  }
+
+  showEditStockModal(stockItemId) {
+    const item = (this.displayStock || []).find(d => d.stockItemId === stockItemId);
+    if (!item) return;
+
+    const existing = document.getElementById('editStockModal');
+    if (existing) existing.remove();
+
+    const modalHTML = `
+      <div id="editStockModal" style="position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:9999; display:flex; align-items:center; justify-content:center; padding:16px;">
+        <div style="background:#fff; border-radius:14px; padding:28px; width:100%; max-width:460px; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+          <h3 style="font-size:18px; font-weight:800; color:#111; margin-bottom:20px;">✏️ Edit Display Stock</h3>
+
+          <div style="display:flex; flex-direction:column; gap:14px;">
+            <div>
+              <label style="font-size:13px; font-weight:600; color:#374151; display:block; margin-bottom:4px;">Display Name *</label>
+              <input id="edit_displayName" class="input" value="${item.displayName}"
+                style="width:100%; background:#f8fafc; color:#111; border:1px solid #d1d5db;">
+            </div>
+            <div>
+              <label style="font-size:13px; font-weight:600; color:#374151; display:block; margin-bottom:4px;">Display ID *</label>
+              <input id="edit_displayId" class="input" value="${item.displayId}"
+                style="width:100%; background:#f8fafc; color:#111; border:1px solid #d1d5db;">
+            </div>
+            <div>
+              <label style="font-size:13px; font-weight:600; color:#374151; display:block; margin-bottom:4px;">Price (₹)</label>
+              <input id="edit_price" class="input" type="number" min="0" value="${item.price || ''}"
+                placeholder="Leave blank if no price"
+                style="width:100%; background:#f8fafc; color:#111; border:1px solid #d1d5db;">
+            </div>
+          </div>
+
+          <div style="display:flex; gap:10px; margin-top:22px;">
+            <button onclick="app.saveEditDisplayStock('${stockItemId}')"
+              style="flex:1; background:#1d4ed8; color:#fff; border:none; border-radius:8px; padding:11px; font-size:14px; font-weight:700; cursor:pointer;">
+              💾 Save Changes
+            </button>
+            <button onclick="document.getElementById('editStockModal').remove()"
+              style="flex:1; background:#f1f5f9; color:#374151; border:1px solid #d1d5db; border-radius:8px; padding:11px; font-size:14px; font-weight:600; cursor:pointer;">
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+  }
+
+  async saveEditDisplayStock(stockItemId) {
+    const displayName = document.getElementById('edit_displayName')?.value?.trim();
+    const displayId   = document.getElementById('edit_displayId')?.value?.trim();
+    const priceVal    = document.getElementById('edit_price')?.value;
+
+    if (!displayName || !displayId) {
+      alert('Display Name and Display ID are required.');
+      return;
+    }
+
+    const updates = {
+      displayName,
+      displayId,
+      price: priceVal !== '' && priceVal !== null ? Number(priceVal) : null
+    };
+
+    try {
+      const response = await fetch(`${this.API_URL}/display-stock/${stockItemId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+
+      if (response.ok) {
+        const updated = await response.json();
+        const idx = this.displayStock.findIndex(d => d.stockItemId === stockItemId);
+        if (idx !== -1) this.displayStock[idx] = updated;
+        document.getElementById('editStockModal')?.remove();
+        this.renderPage('admin-display-stock');
+      } else {
+        alert('❌ Failed to update item.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('❌ Error updating item.');
+    }
+  }
+
+  async deleteDisplayStock(stockItemId) {
+    if (!confirm('Delete this display stock item?')) return;
+    try {
+      const response = await fetch(`${this.API_URL}/display-stock/${stockItemId}`, { method: 'DELETE' });
+      if (response.ok) {
+        this.displayStock = this.displayStock.filter(d => d.stockItemId !== stockItemId);
+        this.renderPage('admin-display-stock');
+        alert('✅ Display stock deleted.');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  renderAdminServices() {
+    const search = (this.serviceSearch || '').toLowerCase();
+    const filtered = (this.serviceRecords || []).filter(s =>
+      s.customerName?.toLowerCase().includes(search) ||
+      s.phoneNumber?.includes(search) ||
+      s.serviceDetails?.toLowerCase().includes(search) ||
+      s.customerAddress?.toLowerCase().includes(search)
+    );
+
+    return `
+      <div style="min-height:100vh; background-color:#f13e74fb; padding-top:96px; padding-bottom:80px;">
+        <div class="container">
+          <!-- Header -->
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:12px;">
+            <div>
+              <h1 style="font-size:32px; font-weight:700; margin-bottom:4px;">🔧 Services</h1>
+              <p style="color:#94a3b8;">Manage customer service & repair records</p>
+            </div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <button class="btn btn-primary" onclick="app.toggleServiceForm()" style="padding:12px 24px;">+ Add Service</button>
+              <button onclick="app.renderPage('admin-services-daily')" style="padding:12px 24px; background:#0891b2; color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer;">📅 Daily</button>
+              <button onclick="app.renderPage('admin-services-monthly')" style="padding:12px 24px; background:#1d4ed8; color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer;">📆 Monthly</button>
+            </div>
+          </div>
+
+          <!-- Add Service Form -->
+          <div id="serviceForm" style="display:none; background:rgba(255,255,255,0.97); border:2px solid #dc2626; border-radius:12px; padding:24px; margin-bottom:24px;">
+            <h3 style="font-size:18px; font-weight:700; margin-bottom:16px; color:#000;">New Service Record</h3>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px;">
+              <div>
+                <label style="font-size:13px; font-weight:600; color:#374151; display:block; margin-bottom:4px;">Customer Name *</label>
+                <input class="input" id="svc_customerName" placeholder="Enter customer name" style="width:100%;">
+              </div>
+              <div>
+                <label style="font-size:13px; font-weight:600; color:#374151; display:block; margin-bottom:4px;">Phone Number *</label>
+                <input class="input" id="svc_phoneNumber" placeholder="Enter phone number" style="width:100%;">
+              </div>
+              <div style="grid-column:1/-1;">
+                <label style="font-size:13px; font-weight:600; color:#374151; display:block; margin-bottom:4px;">Address</label>
+                <input class="input" id="svc_customerAddress" placeholder="Enter customer address" style="width:100%;">
+              </div>
+              <div>
+                <label style="font-size:13px; font-weight:600; color:#374151; display:block; margin-bottom:4px;">Service Price (₹) *</label>
+                <input class="input" type="number" id="svc_price" placeholder="Total service price" style="width:100%;" oninput="app.updateServicePreview()">
+              </div>
+              <div>
+                <label style="font-size:13px; font-weight:600; color:#374151; display:block; margin-bottom:4px;">Advance Paid (₹)</label>
+                <input class="input" type="number" id="svc_advance" placeholder="Advance amount received" style="width:100%;" oninput="app.updateServicePreview()">
+              </div>
+              <div>
+                <label style="font-size:13px; font-weight:600; color:#374151; display:block; margin-bottom:4px;">Service Date *</label>
+                <input class="input" type="date" id="svc_serviceDate" value="${new Date().toISOString().split('T')[0]}" style="width:100%;">
+              </div>
+              <div>
+                <label style="font-size:13px; font-weight:600; color:#374151; display:block; margin-bottom:4px;">Status</label>
+                <select class="input" id="svc_status" style="width:100%;">
+                  <option value="Received">📥 Received</option>
+                  <option value="In Progress">🔧 In Progress</option>
+                  <option value="Ready for Pickup">📢 Ready for Pickup</option>
+                  <option value="Completed">✅ Completed</option>
+                  <option value="Delivered">🎉 Delivered</option>
+                </select>
+              </div>
+              <div style="grid-column:1/-1;">
+                <label style="font-size:13px; font-weight:600; color:#374151; display:block; margin-bottom:4px;">Product / Service Details *</label>
+                <textarea class="input" id="svc_serviceDetails" placeholder="e.g. iPhone 13 - Screen replacement, battery issue fixed..." rows="3" style="width:100%; resize:vertical;"></textarea>
+              </div>
+              <!-- Balance preview -->
+              <div style="grid-column:1/-1; background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:10px 16px; display:flex; gap:32px; align-items:center; flex-wrap:wrap;">
+                <div><span style="font-size:12px; color:#6b7280;">Total Price:</span> <span id="svc_preview_total" style="font-size:16px; font-weight:700; color:#374151;">₹0</span></div>
+                <div><span style="font-size:12px; color:#6b7280;">Advance:</span> <span id="svc_preview_advance" style="font-size:16px; font-weight:700; color:#16a34a;">₹0</span></div>
+                <div><span style="font-size:12px; color:#6b7280;">Balance Due:</span> <span id="svc_preview_balance" style="font-size:18px; font-weight:800; color:#dc2626;">₹0</span></div>
+              </div>
+            </div>
+            <div style="display:flex; gap:12px; margin-top:16px;">
+              <button class="btn btn-primary" onclick="app.saveServiceRecord()" style="padding:10px 24px;">💾 Save Service</button>
+              <button class="btn btn-secondary" onclick="app.toggleServiceForm()" style="padding:10px 24px;">Cancel</button>
+            </div>
+          </div>
+
+          <!-- Search -->
+          <div style="margin-bottom:20px; display:flex; gap:12px; align-items:center;">
+            <input class="input" placeholder="🔍 Search by name, phone, address or service details..."
+              style="flex:1;"
+              oninput="app.serviceSearch=this.value; app.renderPage('admin-services')"
+              value="${this.serviceSearch || ''}">
+            <span style="color:#fff; font-size:14px; font-weight:600;">${filtered.length} records</span>
+          </div>
+
+          <!-- Records -->
+          ${filtered.length === 0 ? `
+            <div style="text-align:center; padding:60px; color:#fff; font-size:16px;">
+              <div style="font-size:48px; margin-bottom:16px;">🔧</div>
+              <p>No service records yet. Add your first service!</p>
+            </div>
+          ` : `
+            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:16px;">
+              ${filtered.map(svc => {
+                const price = Number(svc.price) || 0;
+                const advance = Number(svc.advance) || 0;
+                const balance = price - advance;
+                const statusColors = {
+                  'Received': '#6b7280',
+                  'In Progress': '#d97706',
+                  'Ready for Pickup': '#2563eb',
+                  'Completed': '#16a34a',
+                  'Delivered': '#7c3aed'
+                };
+                const color = statusColors[svc.status] || '#6b7280';
+                return `
+                  <div style="background:rgba(255,255,255,0.97); border-radius:12px; padding:16px; border:2px solid #fecaca; position:relative;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+                      <div>
+                        <div style="font-size:16px; font-weight:700; color:#000;">${svc.customerName}</div>
+                        <div style="font-size:13px; color:#dc2626; font-weight:600;">📞 ${svc.phoneNumber}</div>
+                        ${svc.customerAddress ? `<div style="font-size:12px; color:#6b7280;">📍 ${svc.customerAddress}</div>` : ''}
+                      </div>
+                      <div style="display:flex; gap:6px; align-items:center;">
+                        <span style="font-size:11px; font-weight:700; color:${color}; background:${color}18; padding:3px 8px; border-radius:20px; border:1px solid ${color}40;">${svc.status || 'Received'}</span>
+                        <button onclick="app.showServiceBill('${svc.serviceId}')" style="background:#dbeafe; border:none; border-radius:6px; padding:4px 8px; cursor:pointer; color:#1d4ed8; font-size:12px;" title="View Bill">🧾</button>
+                        <button onclick="app.deleteServiceRecord('${svc.serviceId}')" style="background:#fee2e2; border:none; border-radius:6px; padding:4px 8px; cursor:pointer; color:#dc2626; font-size:12px;" title="Delete">🗑️</button>
+                      </div>
+                    </div>
+                    <div style="border-top:1px solid #fecaca; padding-top:10px; display:flex; flex-direction:column; gap:5px;">
+                      <div style="font-size:13px; color:#374151;"><span style="color:#6b7280;">🔧 Service:</span> ${svc.serviceDetails}</div>
+                      <div style="font-size:12px; color:#6b7280;">📅 Date: ${svc.serviceDate}</div>
+                      <div style="display:flex; gap:16px; margin-top:4px; flex-wrap:wrap;">
+                        <div style="font-size:13px;"><span style="color:#6b7280;">Price:</span> <strong>₹${price.toLocaleString()}</strong></div>
+                        <div style="font-size:13px; color:#16a34a;"><span style="color:#6b7280;">Advance:</span> <strong>₹${advance.toLocaleString()}</strong></div>
+                        <div style="font-size:14px; font-weight:800; color:${balance > 0 ? '#dc2626' : '#16a34a'};">Balance: ₹${balance.toLocaleString()}</div>
+                      </div>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          `}
+        </div>
+      </div>
+    `;
+  }
+
+  toggleServiceForm() {
+    const form = document.getElementById('serviceForm');
+    if (form) form.style.display = form.style.display === 'none' ? 'block' : 'none';
+  }
+
+  updateServicePreview() {
+    const price = Number(document.getElementById('svc_price')?.value) || 0;
+    const advance = Number(document.getElementById('svc_advance')?.value) || 0;
+    const balance = price - advance;
+    const t = document.getElementById('svc_preview_total');
+    const a = document.getElementById('svc_preview_advance');
+    const b = document.getElementById('svc_preview_balance');
+    if (t) t.textContent = `₹${price.toLocaleString()}`;
+    if (a) a.textContent = `₹${advance.toLocaleString()}`;
+    if (b) b.textContent = `₹${balance.toLocaleString()}`;
+  }
+
+  async saveServiceRecord() {
+    const customerName = document.getElementById('svc_customerName')?.value?.trim();
+    const phoneNumber = document.getElementById('svc_phoneNumber')?.value?.trim();
+    const serviceDetails = document.getElementById('svc_serviceDetails')?.value?.trim();
+    const serviceDate = document.getElementById('svc_serviceDate')?.value;
+    const price = document.getElementById('svc_price')?.value;
+
+    if (!customerName || !phoneNumber || !serviceDetails || !serviceDate || !price) {
+      alert('Please fill in Customer Name, Phone Number, Service Details, Date and Price.');
+      return;
+    }
+
+    const serviceData = {
+      customerName,
+      phoneNumber,
+      customerAddress: document.getElementById('svc_customerAddress')?.value?.trim(),
+      price,
+      advance: document.getElementById('svc_advance')?.value || '0',
+      serviceDate,
+      status: document.getElementById('svc_status')?.value || 'Received',
+      serviceDetails
+    };
+
+    try {
+      const response = await fetch(`${this.API_URL}/services`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(serviceData)
+      });
+      if (response.ok) {
+        const saved = await response.json();
+        this.serviceRecords.unshift(saved);
+        alert('✅ Service record saved successfully!');
+        this.renderPage('admin-services');
+      } else {
+        alert('❌ Failed to save service record.');
+      }
+    } catch (error) {
+      console.error('Error saving service:', error);
+      alert('❌ Error saving service record.');
+    }
+  }
+
+  async deleteServiceRecord(serviceId) {
+    if (!confirm('Delete this service record?')) return;
+    try {
+      const response = await fetch(`${this.API_URL}/services/${serviceId}`, { method: 'DELETE' });
+      if (response.ok) {
+        this.serviceRecords = this.serviceRecords.filter(s => s.serviceId !== serviceId);
+        this.renderPage('admin-services');
+        alert('✅ Service record deleted.');
+      }
+    } catch (error) {
+      console.error('Error deleting service:', error);
+    }
+  }
+
+  showServiceBill(serviceId) {
+    const svc = this.serviceRecords.find(s => s.serviceId === serviceId);
+    if (!svc) return;
+
+    const price = Number(svc.price) || 0;
+    const advance = Number(svc.advance) || 0;
+    const balance = price - advance;
+
+    const billHTML = `
+      <div id="serviceBillModal" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;">
+        <div style="background:#fff;border-radius:12px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+          <div id="serviceBillContent" style="padding:32px;">
+            <!-- Header -->
+            <div style="text-align:center;border-bottom:2px solid #dc2626;padding-bottom:16px;margin-bottom:20px;">
+              <div style="font-size:22px;font-weight:800;color:#dc2626;letter-spacing:1px;">MANJULA MOBILE WORLD</div>
+              <div style="font-size:12px;color:#6b7280;margin-top:4px;">📞 +91 82484 54841 &nbsp;|&nbsp; ✉️ manjulamobiles125@gmail.com</div>
+              <div style="font-size:13px;font-weight:700;color:#374151;margin-top:6px;">SERVICE RECEIPT</div>
+            </div>
+
+            <div style="display:flex;justify-content:space-between;margin-bottom:20px;">
+              <div style="font-size:13px;color:#6b7280;">Date: <strong style="color:#111;">${svc.serviceDate}</strong></div>
+              <div style="font-size:12px;background:${svc.status==='Delivered'||svc.status==='Completed'?'#dcfce7':'#fef3c7'};color:${svc.status==='Delivered'||svc.status==='Completed'?'#16a34a':'#d97706'};padding:3px 10px;border-radius:20px;font-weight:700;">${svc.status}</div>
+            </div>
+
+            <!-- Customer -->
+            <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:14px;margin-bottom:20px;">
+              <div style="font-size:12px;font-weight:700;color:#dc2626;margin-bottom:8px;text-transform:uppercase;">Customer Details</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                <div style="font-size:13px;"><span style="color:#6b7280;">Name:</span> <strong>${svc.customerName}</strong></div>
+                <div style="font-size:13px;"><span style="color:#6b7280;">Phone:</span> <strong>${svc.phoneNumber}</strong></div>
+                <div style="font-size:13px;grid-column:1/-1;"><span style="color:#6b7280;">Address:</span> <strong>${svc.customerAddress || '—'}</strong></div>
+              </div>
+            </div>
+
+            <!-- Service details -->
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px;margin-bottom:20px;">
+              <div style="font-size:12px;font-weight:700;color:#374151;margin-bottom:8px;text-transform:uppercase;">Service Details</div>
+              <div style="font-size:13px;color:#374151;line-height:1.6;">${svc.serviceDetails}</div>
+            </div>
+
+            <!-- Payment summary -->
+            <div style="border-top:2px solid #dc2626;padding-top:12px;margin-bottom:20px;">
+              <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;">
+                <span style="color:#6b7280;">Service Price</span>
+                <span>₹${price.toLocaleString()}</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;color:#16a34a;">
+                <span>Advance Paid</span>
+                <span>- ₹${advance.toLocaleString()}</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:800;color:${balance>0?'#dc2626':'#16a34a'};border-top:1px dashed #fecaca;padding-top:8px;margin-top:4px;">
+                <span>${balance > 0 ? 'Balance Due' : 'Fully Paid ✅'}</span>
+                <span>₹${balance.toLocaleString()}</span>
+              </div>
+            </div>
+
+            <div style="text-align:center;border-top:1px solid #e5e7eb;padding-top:14px;font-size:11px;color:#9ca3af;">
+              Thank you for choosing Manjula Mobile World! 🙏<br>
+              Please keep this receipt for reference.
+            </div>
+          </div>
+
+          <div style="display:flex;gap:12px;padding:16px 32px 24px;border-top:1px solid #e5e7eb;">
+            <button onclick="app.printServiceBill()" style="flex:1;background:#dc2626;color:#fff;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;">🖨️ Print / Save PDF</button>
+            <button onclick="document.getElementById('serviceBillModal').remove()" style="flex:1;background:#f1f5f9;color:#374151;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;">✕ Close</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const existing = document.getElementById('serviceBillModal');
+    if (existing) existing.remove();
+    document.body.insertAdjacentHTML('beforeend', billHTML);
+  }
+
+  printServiceBill() {
+    const content = document.getElementById('serviceBillContent');
+    if (!content) return;
+    const printWindow = window.open('', '_blank', 'width=600,height=800');
+    printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Service Receipt - Manjula Mobile World</title><style>body{font-family:Arial,sans-serif;margin:0;padding:20px;color:#111;}@media print{button{display:none!important;}}</style></head><body>${content.innerHTML}<script>window.onload=function(){window.print();}<\/script></body></html>`);
+    printWindow.document.close();
+  }
+
+  // ── Helper: parse service/sale date to a Date object ──────────────────
+  _parseDate(str) {
+    if (!str) return null;
+    if (str.includes('-')) return new Date(str);
+    const p = str.split('/');
+    if (p.length === 3) return new Date(`${p[2]}-${p[1]}-${p[0]}`);
+    return null;
+  }
+
+  renderDailyServices() {
+    const records = this.serviceRecords || [];
+
+    // Group by date string (YYYY-MM-DD)
+    const groups = {};
+    records.forEach(svc => {
+      const d = this._parseDate(svc.serviceDate);
+      const key = d && !isNaN(d) ? d.toISOString().split('T')[0] : 'Unknown';
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(svc);
+    });
+
+    const sortedKeys = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+
+    const fmtDate = key => {
+      if (key === 'Unknown') return 'Unknown Date';
+      const d = new Date(key);
+      return d.toLocaleDateString('en-IN', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+    };
+
+    return `
+      <div style="min-height:100vh; background-color:#f13e74fb; padding-top:96px; padding-bottom:80px;">
+        <div class="container">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:28px; flex-wrap:wrap; gap:12px;">
+            <div>
+              <h1 style="font-size:32px; font-weight:700; margin-bottom:4px;">📅 Daily Service Records</h1>
+              <p style="color:#94a3b8;">Services grouped by day — ${records.length} total records</p>
+            </div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <button onclick="app.renderPage('admin-services-monthly')" style="padding:12px 20px; background:#1d4ed8; color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer;">📆 Monthly View</button>
+              <button onclick="app.renderPage('admin-services')" style="padding:12px 20px; background:#374151; color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer;">← All Records</button>
+            </div>
+          </div>
+
+          ${sortedKeys.length === 0 ? `
+            <div style="text-align:center; padding:60px; color:#fff; font-size:16px;">
+              <div style="font-size:48px; margin-bottom:16px;">📅</div><p>No service records yet.</p>
+            </div>
+          ` : sortedKeys.map(key => {
+            const dayRecords = groups[key];
+            const totalPrice   = dayRecords.reduce((s, r) => s + (Number(r.price)   || 0), 0);
+            const totalAdvance = dayRecords.reduce((s, r) => s + (Number(r.advance) || 0), 0);
+            const totalBalance = totalPrice - totalAdvance;
+            return `
+              <div style="background:rgba(255,255,255,0.97); border-radius:14px; margin-bottom:24px; overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,0.12);">
+                <!-- Day header -->
+                <div style="background:linear-gradient(135deg,#0891b2,#0e7490); padding:14px 24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                  <div style="font-size:16px; font-weight:800; color:#fff;">📅 ${fmtDate(key)}</div>
+                  <div style="display:flex; gap:20px; flex-wrap:wrap;">
+                    <div style="text-align:center;"><div style="font-size:18px; font-weight:800; color:#fff;">${dayRecords.length}</div><div style="font-size:11px; color:#cffafe;">Jobs</div></div>
+                    <div style="text-align:center;"><div style="font-size:18px; font-weight:800; color:#fff;">₹${totalPrice.toLocaleString()}</div><div style="font-size:11px; color:#cffafe;">Total</div></div>
+                    <div style="text-align:center;"><div style="font-size:18px; font-weight:800; color:#a7f3d0;">₹${totalAdvance.toLocaleString()}</div><div style="font-size:11px; color:#cffafe;">Advance</div></div>
+                    <div style="text-align:center;"><div style="font-size:18px; font-weight:800; color:${totalBalance>0?'#fde68a':'#a7f3d0'};">₹${totalBalance.toLocaleString()}</div><div style="font-size:11px; color:#cffafe;">Balance</div></div>
+                  </div>
+                </div>
+                <!-- Table -->
+                <div style="overflow-x:auto;">
+                  <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                    <thead>
+                      <tr style="background:#ecfeff; border-bottom:2px solid #a5f3fc;">
+                        <th style="padding:9px 14px; text-align:left; color:#374151;">#</th>
+                        <th style="padding:9px 14px; text-align:left; color:#374151;">Customer</th>
+                        <th style="padding:9px 14px; text-align:left; color:#374151;">Phone</th>
+                        <th style="padding:9px 14px; text-align:left; color:#374151;">Service Details</th>
+                        <th style="padding:9px 14px; text-align:left; color:#374151;">Status</th>
+                        <th style="padding:9px 14px; text-align:right; color:#374151;">Price</th>
+                        <th style="padding:9px 14px; text-align:right; color:#374151;">Advance</th>
+                        <th style="padding:9px 14px; text-align:right; color:#374151;">Balance</th>
+                        <th style="padding:9px 14px; text-align:center; color:#374151;">Bill</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${dayRecords.map((svc, i) => {
+                        const p = Number(svc.price)||0, a = Number(svc.advance)||0, b = p-a;
+                        return `
+                          <tr style="border-bottom:1px solid #ecfeff; ${i%2===1?'background:#f0fdff;':''}">
+                            <td style="padding:9px 14px; color:#9ca3af;">${i+1}</td>
+                            <td style="padding:9px 14px; font-weight:600; color:#111;">${svc.customerName}</td>
+                            <td style="padding:9px 14px; color:#0891b2;">${svc.phoneNumber}</td>
+                            <td style="padding:9px 14px; color:#374151; max-width:200px;">${svc.serviceDetails}</td>
+                            <td style="padding:9px 14px;"><span style="font-size:11px; font-weight:700; padding:2px 8px; border-radius:20px; background:#f0fdf4; color:#16a34a;">${svc.status||'Received'}</span></td>
+                            <td style="padding:9px 14px; text-align:right;">${p?'₹'+p.toLocaleString():'—'}</td>
+                            <td style="padding:9px 14px; text-align:right; color:#16a34a;">${a?'₹'+a.toLocaleString():'—'}</td>
+                            <td style="padding:9px 14px; text-align:right; font-weight:700; color:${b>0?'#dc2626':'#16a34a'};">${p?'₹'+b.toLocaleString():'—'}</td>
+                            <td style="padding:9px 14px; text-align:center;"><button onclick="app.showServiceBill('${svc.serviceId}')" style="background:#dbeafe; border:none; border-radius:6px; padding:4px 10px; cursor:pointer; color:#1d4ed8; font-size:13px;">🧾</button></td>
+                          </tr>`;
+                      }).join('')}
+                    </tbody>
+                    <tfoot>
+                      <tr style="background:#ecfeff; border-top:2px solid #a5f3fc;">
+                        <td colspan="5" style="padding:9px 14px; font-weight:700; color:#374151;">Day Total</td>
+                        <td style="padding:9px 14px; text-align:right; font-weight:700;">₹${totalPrice.toLocaleString()}</td>
+                        <td style="padding:9px 14px; text-align:right; font-weight:700; color:#16a34a;">₹${totalAdvance.toLocaleString()}</td>
+                        <td style="padding:9px 14px; text-align:right; font-weight:800; color:${totalBalance>0?'#dc2626':'#16a34a'};">₹${totalBalance.toLocaleString()}</td>
+                        <td></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+  }
+
+  renderMonthlyServices() {
+    const records = this.serviceRecords || [];
+
+    // Group by YYYY-MM
+    const groups = {};
+    records.forEach(svc => {
+      const d = this._parseDate(svc.serviceDate);
+      const key = d && !isNaN(d)
+        ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`
+        : 'Unknown';
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(svc);
+    });
+
+    const sortedKeys = Object.keys(groups).sort((a,b) => b.localeCompare(a));
+    const monthLabel = key => {
+      if (key === 'Unknown') return 'Unknown Date';
+      const [y, m] = key.split('-');
+      return new Date(y, m-1, 1).toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+    };
+
+    return `
+      <div style="min-height:100vh; background-color:#f13e74fb; padding-top:96px; padding-bottom:80px;">
+        <div class="container">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:28px; flex-wrap:wrap; gap:12px;">
+            <div>
+              <h1 style="font-size:32px; font-weight:700; margin-bottom:4px;">📆 Monthly Service Records</h1>
+              <p style="color:#94a3b8;">Services grouped by month — ${records.length} total records</p>
+            </div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <button onclick="app.renderPage('admin-services-daily')" style="padding:12px 20px; background:#0891b2; color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer;">📅 Daily View</button>
+              <button onclick="app.renderPage('admin-services')" style="padding:12px 20px; background:#374151; color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer;">← All Records</button>
+            </div>
+          </div>
+
+          ${sortedKeys.length === 0 ? `
+            <div style="text-align:center; padding:60px; color:#fff; font-size:16px;">
+              <div style="font-size:48px; margin-bottom:16px;">📆</div><p>No service records yet.</p>
+            </div>
+          ` : sortedKeys.map(key => {
+            const monthRecords = groups[key];
+            const totalPrice   = monthRecords.reduce((s,r) => s+(Number(r.price)||0), 0);
+            const totalAdvance = monthRecords.reduce((s,r) => s+(Number(r.advance)||0), 0);
+            const totalBalance = totalPrice - totalAdvance;
+            return `
+              <div style="background:rgba(255,255,255,0.97); border-radius:14px; margin-bottom:28px; overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,0.12);">
+                <!-- Month header -->
+                <div style="background:linear-gradient(135deg,#1d4ed8,#1e40af); padding:16px 24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                  <div style="font-size:18px; font-weight:800; color:#fff;">📆 ${monthLabel(key)}</div>
+                  <div style="display:flex; gap:20px; flex-wrap:wrap;">
+                    <div style="text-align:center;"><div style="font-size:20px; font-weight:800; color:#fff;">${monthRecords.length}</div><div style="font-size:11px; color:#bfdbfe;">Jobs</div></div>
+                    <div style="text-align:center;"><div style="font-size:20px; font-weight:800; color:#fff;">₹${totalPrice.toLocaleString()}</div><div style="font-size:11px; color:#bfdbfe;">Total Revenue</div></div>
+                    <div style="text-align:center;"><div style="font-size:20px; font-weight:800; color:#a7f3d0;">₹${totalAdvance.toLocaleString()}</div><div style="font-size:11px; color:#bfdbfe;">Advance Collected</div></div>
+                    <div style="text-align:center;"><div style="font-size:20px; font-weight:800; color:${totalBalance>0?'#fde68a':'#a7f3d0'};">₹${totalBalance.toLocaleString()}</div><div style="font-size:11px; color:#bfdbfe;">Balance Pending</div></div>
+                  </div>
+                </div>
+                <!-- Table -->
+                <div style="overflow-x:auto;">
+                  <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                    <thead>
+                      <tr style="background:#eff6ff; border-bottom:2px solid #bfdbfe;">
+                        <th style="padding:9px 14px; text-align:left; color:#374151;">#</th>
+                        <th style="padding:9px 14px; text-align:left; color:#374151;">Customer</th>
+                        <th style="padding:9px 14px; text-align:left; color:#374151;">Phone</th>
+                        <th style="padding:9px 14px; text-align:left; color:#374151;">Service Details</th>
+                        <th style="padding:9px 14px; text-align:left; color:#374151;">Date</th>
+                        <th style="padding:9px 14px; text-align:left; color:#374151;">Status</th>
+                        <th style="padding:9px 14px; text-align:right; color:#374151;">Price</th>
+                        <th style="padding:9px 14px; text-align:right; color:#374151;">Advance</th>
+                        <th style="padding:9px 14px; text-align:right; color:#374151;">Balance</th>
+                        <th style="padding:9px 14px; text-align:center; color:#374151;">Bill</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${monthRecords.map((svc, i) => {
+                        const p = Number(svc.price)||0, a = Number(svc.advance)||0, b = p-a;
+                        return `
+                          <tr style="border-bottom:1px solid #eff6ff; ${i%2===1?'background:#f8faff;':''}">
+                            <td style="padding:9px 14px; color:#9ca3af;">${i+1}</td>
+                            <td style="padding:9px 14px; font-weight:600; color:#111;">${svc.customerName}</td>
+                            <td style="padding:9px 14px; color:#1d4ed8;">${svc.phoneNumber}</td>
+                            <td style="padding:9px 14px; color:#374151; max-width:200px;">${svc.serviceDetails}</td>
+                            <td style="padding:9px 14px; color:#6b7280;">${svc.serviceDate}</td>
+                            <td style="padding:9px 14px;"><span style="font-size:11px; font-weight:700; padding:2px 8px; border-radius:20px; background:#f0fdf4; color:#16a34a;">${svc.status||'Received'}</span></td>
+                            <td style="padding:9px 14px; text-align:right;">${p?'₹'+p.toLocaleString():'—'}</td>
+                            <td style="padding:9px 14px; text-align:right; color:#16a34a;">${a?'₹'+a.toLocaleString():'—'}</td>
+                            <td style="padding:9px 14px; text-align:right; font-weight:700; color:${b>0?'#dc2626':'#16a34a'};">${p?'₹'+b.toLocaleString():'—'}</td>
+                            <td style="padding:9px 14px; text-align:center;"><button onclick="app.showServiceBill('${svc.serviceId}')" style="background:#dbeafe; border:none; border-radius:6px; padding:4px 10px; cursor:pointer; color:#1d4ed8; font-size:13px;">🧾</button></td>
+                          </tr>`;
+                      }).join('')}
+                    </tbody>
+                    <tfoot>
+                      <tr style="background:#eff6ff; border-top:2px solid #bfdbfe;">
+                        <td colspan="6" style="padding:9px 14px; font-weight:700; color:#374151;">Month Total</td>
+                        <td style="padding:9px 14px; text-align:right; font-weight:700;">₹${totalPrice.toLocaleString()}</td>
+                        <td style="padding:9px 14px; text-align:right; font-weight:700; color:#16a34a;">₹${totalAdvance.toLocaleString()}</td>
+                        <td style="padding:9px 14px; text-align:right; font-weight:800; color:${totalBalance>0?'#dc2626':'#16a34a'};">₹${totalBalance.toLocaleString()}</td>
+                        <td></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+  }
+
+  renderMonthlySales() {
+    // Group sales by year-month
+    const groups = {};
+    this.salesRecords.forEach(sale => {
+      // purchaseDate can be "YYYY-MM-DD" or "DD/MM/YYYY"
+      let dateObj = null;
+      if (sale.purchaseDate) {
+        if (sale.purchaseDate.includes('-')) {
+          dateObj = new Date(sale.purchaseDate);
+        } else {
+          // DD/MM/YYYY
+          const parts = sale.purchaseDate.split('/');
+          if (parts.length === 3) dateObj = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+        }
+      }
+      const key = dateObj && !isNaN(dateObj)
+        ? `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}`
+        : 'Unknown';
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(sale);
+    });
+
+    // Sort months descending
+    const sortedKeys = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+
+    const monthLabel = (key) => {
+      if (key === 'Unknown') return 'Unknown Date';
+      const [y, m] = key.split('-');
+      return new Date(y, m - 1, 1).toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+    };
+
+    return `
+      <div style="min-height:100vh; background-color:#f13e74fb; padding-top:96px; padding-bottom:80px;">
+        <div class="container">
+          <!-- Header -->
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:28px; flex-wrap:wrap; gap:12px;">
+            <div>
+              <h1 style="font-size:32px; font-weight:700; margin-bottom:4px;">📅 Monthly Sales</h1>
+              <p style="color:#94a3b8;">Sales grouped by month — ${this.salesRecords.length} total records</p>
+            </div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <button class="btn btn-primary" onclick="app.toggleSalesForm(); app.renderPage('admin-sales')" style="padding:12px 24px;">+ Add Sale</button>
+              <button onclick="app.renderPage('admin-sales')" style="padding:12px 24px; background:#374151; color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer;">← All Records</button>
+            </div>
+          </div>
+
+          ${sortedKeys.length === 0 ? `
+            <div style="text-align:center; padding:60px; color:#fff; font-size:16px;">
+              <div style="font-size:48px; margin-bottom:16px;">📅</div>
+              <p>No sales records yet.</p>
+            </div>
+          ` : sortedKeys.map(key => {
+            const sales = groups[key];
+            const totalRevenue = sales.reduce((sum, s) => sum + (Number(s.saleAmount) || 0), 0);
+            const totalDiscount = sales.reduce((sum, s) => sum + (Number(s.discount) || 0), 0);
+            const netRevenue = totalRevenue - totalDiscount;
+
+            return `
+              <div style="background:rgba(255,255,255,0.97); border-radius:14px; margin-bottom:28px; overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,0.12);">
+                <!-- Month header -->
+                <div style="background:linear-gradient(135deg,#dc2626,#b91c1c); padding:16px 24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                  <div style="font-size:18px; font-weight:800; color:#fff;">📅 ${monthLabel(key)}</div>
+                  <div style="display:flex; gap:20px; flex-wrap:wrap;">
+                    <div style="text-align:center;">
+                      <div style="font-size:20px; font-weight:800; color:#fff;">${sales.length}</div>
+                      <div style="font-size:11px; color:#fecaca;">Sales</div>
+                    </div>
+                    <div style="text-align:center;">
+                      <div style="font-size:20px; font-weight:800; color:#fff;">₹${netRevenue.toLocaleString()}</div>
+                      <div style="font-size:11px; color:#fecaca;">Net Revenue</div>
+                    </div>
+                    ${totalDiscount > 0 ? `
+                    <div style="text-align:center;">
+                      <div style="font-size:20px; font-weight:800; color:#fde68a;">₹${totalDiscount.toLocaleString()}</div>
+                      <div style="font-size:11px; color:#fecaca;">Discounts</div>
+                    </div>` : ''}
+                  </div>
+                </div>
+
+                <!-- Sales table -->
+                <div style="overflow-x:auto;">
+                  <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                    <thead>
+                      <tr style="background:#fef2f2; border-bottom:2px solid #fecaca;">
+                        <th style="padding:10px 16px; text-align:left; color:#374151; font-weight:700;">#</th>
+                        <th style="padding:10px 16px; text-align:left; color:#374151; font-weight:700;">Customer</th>
+                        <th style="padding:10px 16px; text-align:left; color:#374151; font-weight:700;">Phone</th>
+                        <th style="padding:10px 16px; text-align:left; color:#374151; font-weight:700;">Product</th>
+                        <th style="padding:10px 16px; text-align:left; color:#374151; font-weight:700;">Date</th>
+                        <th style="padding:10px 16px; text-align:right; color:#374151; font-weight:700;">Amount</th>
+                        <th style="padding:10px 16px; text-align:right; color:#374151; font-weight:700;">Discount</th>
+                        <th style="padding:10px 16px; text-align:right; color:#374151; font-weight:700;">Net</th>
+                        <th style="padding:10px 16px; text-align:center; color:#374151; font-weight:700;">Bill</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${sales.map((sale, idx) => {
+                        const amt = Number(sale.saleAmount) || 0;
+                        const disc = Number(sale.discount) || 0;
+                        const net = amt - disc;
+                        return `
+                          <tr style="border-bottom:1px solid #fef2f2; ${idx % 2 === 1 ? 'background:#fffbfb;' : ''}">
+                            <td style="padding:10px 16px; color:#9ca3af;">${idx + 1}</td>
+                            <td style="padding:10px 16px; font-weight:600; color:#111;">${sale.customerName}</td>
+                            <td style="padding:10px 16px; color:#dc2626;">${sale.phoneNumber}</td>
+                            <td style="padding:10px 16px; color:#374151;">${sale.productName}</td>
+                            <td style="padding:10px 16px; color:#6b7280;">${sale.purchaseDate}</td>
+                            <td style="padding:10px 16px; text-align:right; color:#374151;">${amt ? '₹' + amt.toLocaleString() : '—'}</td>
+                            <td style="padding:10px 16px; text-align:right; color:#16a34a;">${disc ? '₹' + disc.toLocaleString() : '—'}</td>
+                            <td style="padding:10px 16px; text-align:right; font-weight:700; color:#dc2626;">${amt ? '₹' + net.toLocaleString() : '—'}</td>
+                            <td style="padding:10px 16px; text-align:center;">
+                              <button onclick="app.showBillModal('${sale.saleId}')" style="background:#dbeafe; border:none; border-radius:6px; padding:4px 10px; cursor:pointer; color:#1d4ed8; font-size:13px;" title="View Bill">🧾</button>
+                            </td>
+                          </tr>
+                        `;
+                      }).join('')}
+                    </tbody>
+                    <!-- Month total row -->
+                    <tfoot>
+                      <tr style="background:#fef2f2; border-top:2px solid #fecaca;">
+                        <td colspan="5" style="padding:10px 16px; font-weight:700; color:#374151;">Month Total</td>
+                        <td style="padding:10px 16px; text-align:right; font-weight:700; color:#374151;">₹${totalRevenue.toLocaleString()}</td>
+                        <td style="padding:10px 16px; text-align:right; font-weight:700; color:#16a34a;">₹${totalDiscount.toLocaleString()}</td>
+                        <td style="padding:10px 16px; text-align:right; font-weight:800; color:#dc2626; font-size:14px;">₹${netRevenue.toLocaleString()}</td>
+                        <td></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
   }
 
   toggleSalesForm() {
@@ -1706,13 +2809,16 @@ class OwnerPortalApp {
       return;
     }
 
+    const saleAmount = document.getElementById('sale_saleAmount')?.value || null;
+    const discount = document.getElementById('sale_discount')?.value || null;
+
     const saleData = {
       customerName,
       phoneNumber,
+      customerAddress: document.getElementById('sale_customerAddress')?.value?.trim(),
       productName,
-      productModel: document.getElementById('sale_productModel')?.value?.trim(),
-      imeiNumber: document.getElementById('sale_imeiNumber')?.value?.trim(),
-      saleAmount: document.getElementById('sale_saleAmount')?.value || null,
+      saleAmount,
+      discount,
       purchaseDate,
       warrantyPeriod: document.getElementById('sale_warrantyPeriod')?.value,
       notes: document.getElementById('sale_notes')?.value?.trim()
@@ -1736,6 +2842,142 @@ class OwnerPortalApp {
       console.error('Error saving sale:', error);
       alert('❌ Error saving sale record.');
     }
+  }
+
+  updateBillPreview() {
+    const amount = Number(document.getElementById('sale_saleAmount')?.value) || 0;
+    const discount = Number(document.getElementById('sale_discount')?.value) || 0;
+    const net = amount - discount;
+    const el = document.getElementById('bill_preview_total');
+    if (el) el.textContent = `₹${net.toLocaleString()}`;
+  }
+
+  showBillModal(saleId) {
+    const sale = this.salesRecords.find(s => s.saleId === saleId);
+    if (!sale) return;
+
+    const amount = Number(sale.saleAmount) || 0;
+    const discount = Number(sale.discount) || 0;
+    const net = amount - discount;
+
+    const billHTML = `
+      <div id="billModal" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;">
+        <div style="background:#fff;border-radius:12px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+          <!-- Bill content (printable) -->
+          <div id="billContent" style="padding:32px;">
+            <!-- Header -->
+            <div style="text-align:center;border-bottom:2px solid #dc2626;padding-bottom:16px;margin-bottom:20px;">
+              <div style="font-size:22px;font-weight:800;color:#dc2626;letter-spacing:1px;">MANJULA MOBILE WORLD</div>
+              <div style="font-size:12px;color:#6b7280;margin-top:4px;">📞 +91 82484 54841 &nbsp;|&nbsp; ✉️ manjulamobiles125@gmail.com</div>
+              <div style="font-size:11px;color:#6b7280;">Your Trusted Mobile Store</div>
+            </div>
+
+            <!-- Bill title -->
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+              <div style="font-size:16px;font-weight:700;color:#111;">SALES INVOICE</div>
+              <div style="font-size:12px;color:#6b7280;">Date: <strong>${sale.purchaseDate}</strong></div>
+            </div>
+
+            <!-- Customer details -->
+            <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:14px;margin-bottom:20px;">
+              <div style="font-size:12px;font-weight:700;color:#dc2626;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">Customer Details</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                <div style="font-size:13px;"><span style="color:#6b7280;">Name:</span> <strong>${sale.customerName}</strong></div>
+                <div style="font-size:13px;"><span style="color:#6b7280;">Phone:</span> <strong>${sale.phoneNumber}</strong></div>
+                <div style="font-size:13px;grid-column:1/-1;"><span style="color:#6b7280;">Address:</span> <strong>${sale.customerAddress || '—'}</strong></div>
+              </div>
+            </div>
+
+            <!-- Product table -->
+            <table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:13px;">
+              <thead>
+                <tr style="background:#dc2626;color:#fff;">
+                  <th style="padding:8px 12px;text-align:left;border-radius:6px 0 0 0;">Product</th>
+                  <th style="padding:8px 12px;text-align:right;">Price (₹)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="border-bottom:1px solid #fecaca;">
+                  <td style="padding:10px 12px;">${sale.productName}</td>
+                  <td style="padding:10px 12px;text-align:right;">₹${amount.toLocaleString()}</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <!-- Totals -->
+            <div style="border-top:2px solid #dc2626;padding-top:12px;margin-bottom:20px;">
+              <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;">
+                <span style="color:#6b7280;">Sub Total</span>
+                <span>₹${amount.toLocaleString()}</span>
+              </div>
+              ${discount > 0 ? `
+              <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;color:#16a34a;">
+                <span>Discount</span>
+                <span>- ₹${discount.toLocaleString()}</span>
+              </div>` : ''}
+              <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:800;color:#dc2626;border-top:1px dashed #fecaca;padding-top:8px;margin-top:4px;">
+                <span>Net Payable</span>
+                <span>₹${net.toLocaleString()}</span>
+              </div>
+            </div>
+
+            <!-- Warranty & Notes -->
+            ${sale.warrantyPeriod ? `
+            <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:13px;">
+              🛡️ <strong>Warranty:</strong> ${sale.warrantyPeriod}
+            </div>` : ''}
+            ${sale.notes ? `
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#6b7280;">
+              📝 ${sale.notes}
+            </div>` : ''}
+
+            <!-- Footer -->
+            <div style="text-align:center;border-top:1px solid #e5e7eb;padding-top:14px;font-size:11px;color:#9ca3af;">
+              Thank you for shopping at Manjula Mobile World! 🙏<br>
+              Please keep this bill for warranty claims.
+            </div>
+          </div>
+
+          <!-- Action buttons (not printed) -->
+          <div class="no-print" style="display:flex;gap:12px;padding:16px 32px 24px;border-top:1px solid #e5e7eb;">
+            <button onclick="app.printBill()" style="flex:1;background:#dc2626;color:#fff;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;">🖨️ Print / Save PDF</button>
+            <button onclick="document.getElementById('billModal').remove()" style="flex:1;background:#f1f5f9;color:#374151;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;">✕ Close</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const existing = document.getElementById('billModal');
+    if (existing) existing.remove();
+    document.body.insertAdjacentHTML('beforeend', billHTML);
+  }
+
+  printBill() {
+    const billContent = document.getElementById('billContent');
+    if (!billContent) return;
+
+    const printWindow = window.open('', '_blank', 'width=600,height=800');
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Sales Invoice - Manjula Mobile World</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 0; padding: 20px; color: #111; }
+          @media print {
+            body { padding: 0; }
+            button { display: none !important; }
+          }
+        </style>
+      </head>
+      <body>
+        ${billContent.innerHTML}
+        <script>window.onload = function(){ window.print(); }<\/script>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
   }
 
   async deleteSaleRecord(saleId) {
@@ -2199,14 +3441,20 @@ class OwnerPortalApp {
 
   showStatusModal(tracking) {
     const statuses = [
-      { value: 'Received', label: '📥 Received', desc: 'Device received at service center' },
-      { value: 'Diagnostics', label: '🔍 Diagnostics', desc: 'Checking device issues' },
-      { value: 'In Progress', label: '🔧 In Progress', desc: 'Repair work in progress' },
-      { value: 'Parts Ordered', label: '📦 Parts Ordered', desc: 'Waiting for replacement parts' },
-      { value: 'Quality Check', label: '✅ Quality Check', desc: 'Final testing' },
-      { value: 'Ready for Pickup', label: '📢 Ready for Pickup', desc: 'Ready for collection' },
-      { value: 'Completed', label: '🎉 Completed', desc: 'Service completed' }
+      { value: 'Received',        label: '📥 Received',         desc: 'Device received at service center' },
+      { value: 'Diagnostics',     label: '🔍 Diagnostics',      desc: 'Checking device issues' },
+      { value: 'Return',          label: '↩️ Return',            desc: 'Device returned to customer' },
+      { value: 'In Progress',     label: '🔧 In Progress',      desc: 'Repair work in progress' },
+      { value: 'Parts Ordered',   label: '📦 Parts Ordered',    desc: 'Waiting for replacement parts' },
+      { value: 'Quality Check',   label: '✅ Quality Check',    desc: 'Final testing' },
+      { value: 'Ready for Pickup',label: '📢 Ready for Pickup', desc: 'Ready for collection' },
+      { value: 'Completed',       label: '🎉 Completed',        desc: 'Service completed' },
+      { value: 'Delivered',       label: '� Delivered',        desc: 'Device delivered to customer' }
     ];
+
+    // Which options to hide when Return is selected
+    const returnOnlyStatuses = ['Return'];
+    const hiddenWhenReturn = ['In Progress','Parts Ordered','Quality Check','Ready for Pickup','Completed','Delivered'];
 
     const modalHTML = `
       <div class="status-modal" id="statusModal">
@@ -2220,13 +3468,20 @@ class OwnerPortalApp {
           
           <div class="status-select-group">
             <label class="status-select-label">Select New Status</label>
-            <select class="status-select" id="newStatusSelect">
+            <select class="status-select" id="newStatusSelect" onchange="app.onStatusSelectChange(this)">
               ${statuses.map(s => `
-                <option value="${s.value}" ${s.value === tracking.status ? 'selected' : ''}>
+                <option value="${s.value}" ${s.value === tracking.status ? 'selected' : ''}
+                  ${hiddenWhenReturn.includes(s.value) && tracking.status === 'Return' ? 'style="display:none"' : ''}>
                   ${s.label} - ${s.desc}
                 </option>
               `).join('')}
             </select>
+          </div>
+
+          <!-- Return warning banner (shown only when Return is selected) -->
+          <div id="returnWarning" style="display:${tracking.status === 'Return' ? 'flex' : 'none'}; align-items:center; gap:10px; background:#fef2f2; border:1px solid #fca5a5; border-radius:8px; padding:10px 14px; margin-top:12px;">
+            <span style="font-size:18px;">↩️</span>
+            <span style="font-size:13px; color:#dc2626; font-weight:600;">Return selected — device will be returned to customer. Further repair steps are hidden.</span>
           </div>
           
           <div class="status-modal-actions">
@@ -2238,11 +3493,28 @@ class OwnerPortalApp {
     `;
 
     const existingModal = document.getElementById('statusModal');
-    if (existingModal) {
-      existingModal.remove();
-    }
-    
+    if (existingModal) existingModal.remove();
     document.body.insertAdjacentHTML('beforeend', modalHTML);
+  }
+
+  // Called when the status dropdown changes — hides/shows options based on Return
+  onStatusSelectChange(selectEl) {
+    const hiddenWhenReturn = ['In Progress','Parts Ordered','Quality Check','Ready for Pickup','Completed','Delivered'];
+    const isReturn = selectEl.value === 'Return';
+    const warning = document.getElementById('returnWarning');
+
+    Array.from(selectEl.options).forEach(opt => {
+      if (hiddenWhenReturn.includes(opt.value)) {
+        opt.style.display = isReturn ? 'none' : '';
+      }
+    });
+
+    // Only reset if Return is active AND the currently selected value is one of the hidden ones
+    if (isReturn && hiddenWhenReturn.includes(selectEl.value)) {
+      selectEl.value = 'Return';
+    }
+
+    if (warning) warning.style.display = isReturn ? 'flex' : 'none';
   }
 
   closeStatusModal() {
@@ -2274,6 +3546,18 @@ class OwnerPortalApp {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric'
+      });
+    }
+    // Set delivered date
+    if (newStatus === 'Delivered' && !tracking.deliveredAt) {
+      tracking.deliveredAt = new Date().toLocaleDateString('en-IN', {
+        day: '2-digit', month: '2-digit', year: 'numeric'
+      });
+    }
+    // Set return date
+    if (newStatus === 'Return' && !tracking.returnedAt) {
+      tracking.returnedAt = new Date().toLocaleDateString('en-IN', {
+        day: '2-digit', month: '2-digit', year: 'numeric'
       });
     }
     
@@ -2408,13 +3692,15 @@ class OwnerPortalApp {
 
   getStatusEmoji(status) {
     const emojiMap = {
-      'Received': '📥',
-      'Diagnostics': '🔍',
-      'In Progress': '🔧',
-      'Parts Ordered': '📦',
-      'Quality Check': '✅',
+      'Received':         '📥',
+      'Diagnostics':      '🔍',
+      'Return':           '↩️',
+      'In Progress':      '🔧',
+      'Parts Ordered':    '📦',
+      'Quality Check':    '✅',
       'Ready for Pickup': '📢',
-      'Completed': '🎉'
+      'Completed':        '🎉',
+      'Delivered':        '�'
     }
     return emojiMap[status] || '📱'
   }
