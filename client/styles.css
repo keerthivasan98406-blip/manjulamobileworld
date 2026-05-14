@@ -256,6 +256,19 @@ nav {
     }
 }
 
+/* On mobile, hero becomes a flex column so image shows fully and buttons sit below */
+@media (max-width: 768px) {
+    .hero {
+        height: auto;
+        min-height: unset;
+        max-height: unset;
+        overflow: visible;
+        display: flex;
+        flex-direction: column;
+        background: #000;
+    }
+}
+
 /* Update other sections that might be affected */
 .products-section,
 .about-section,
@@ -1260,6 +1273,29 @@ nav .nav-content {
     background: #000;
 }
 
+/* Mobile: override carousel to be relative/flow layout */
+@media (max-width: 768px) {
+    .hero-carousel {
+        position: relative;
+        top: auto;
+        left: auto;
+        width: 100%;
+        height: auto;
+    }
+
+    .hero-carousel-container {
+        height: auto;
+    }
+
+    .hero-carousel-track {
+        height: auto;
+    }
+
+    .hero-carousel-slide {
+        height: auto;
+    }
+}
+
 .hero-carousel-slide::after {
     content: none;
 }
@@ -1394,66 +1430,106 @@ nav .nav-content {
     .hero {
         padding-top: 0;
         margin-top: 60px;
-        height: 45vw;
-        min-height: 180px;
-        max-height: 45vw;
+        /* Let the image define the height naturally */
+        height: auto;
+        min-height: unset;
+        max-height: unset;
     }
-    
-    .hero-carousel-slide img {
-        object-fit: cover;
-        object-position: center center;
+
+    .hero-carousel {
+        position: relative;
         width: 100%;
-        height: 100%;
+    }
+
+    .hero-carousel-container {
+        position: relative;
+        width: 100%;
+    }
+
+    .hero-carousel-track {
+        display: flex;
+        width: 100%;
+    }
+
+    .hero-carousel-slide {
+        flex: 0 0 100%;
+        width: 100%;
+    }
+
+    .hero-carousel-slide img {
+        width: 100%;
+        height: auto;
+        display: block;
+        object-fit: contain;
+        object-position: center center;
         background: #000;
     }
-    
+
+    /* Move buttons BELOW the carousel image on mobile */
     .hero-content {
-        bottom: 8px;
-        right: 8px;
-        left: 8px;
+        position: relative;
+        bottom: auto;
+        left: auto;
+        right: auto;
+        display: flex;
         justify-content: center;
+        align-items: center;
+        padding: 12px 16px;
+        background: #000;
     }
-    
+
+    .hero-grid {
+        width: 100%;
+    }
+
+    .hero-text-content {
+        text-align: center;
+    }
+
     .hero-text-content h2 {
-        font-size: 2rem;
+        font-size: 0;  /* hide empty h2 */
+        margin: 0;
     }
-    
+
     .hero-text-content p {
-        font-size: 1rem;
+        font-size: 0;  /* hide empty p */
+        margin: 0;
     }
-    
+
     .hero-buttons {
         flex-direction: row;
         align-items: center;
         justify-content: center;
         margin: 0;
-        gap: 8px;
+        gap: 10px;
+        flex-wrap: wrap;
     }
-    
+
     .hero-buttons .btn {
         width: auto;
-        padding: 8px 14px;
-        font-size: 12px;
+        padding: 10px 18px;
+        font-size: 13px;
     }
-    
+
     .carousel-nav {
-        width: 40px;
-        height: 40px;
-        font-size: 20px;
+        width: 32px;
+        height: 32px;
+        font-size: 18px;
+        top: 40%;
     }
-    
+
     .carousel-prev {
-        left: 10px;
+        left: 6px;
     }
-    
+
     .carousel-next {
-        right: 10px;
+        right: 6px;
     }
-    
+
     .carousel-indicators {
-        bottom: 15px;
+        bottom: 8px;
     }
-    
+
     .carousel-indicator {
         width: 8px;
         height: 8px;
@@ -1462,79 +1538,48 @@ nav .nav-content {
 
 @media (max-width: 480px) {
     .hero {
-        padding-top: 0;
         margin-top: 55px;
-        height: 50vw;
-        min-height: 160px;
-        max-height: 50vw;
     }
-    
+
     .hero-carousel-slide img {
-        object-fit: cover;
-        object-position: center center;
         width: 100%;
-        height: 100%;
-        background: #000;
+        height: auto;
+        display: block;
+        object-fit: contain;
     }
-    
-    .hero-text-content h2 {
-        font-size: 1.5rem;
-        line-height: 1.3;
+
+    .hero-content {
+        padding: 10px 12px;
     }
-    
-    .hero-text-content p {
-        font-size: 0.9rem;
+
+    .hero-buttons .btn {
+        padding: 9px 14px;
+        font-size: 12px;
     }
-    
-    .hero-grid {
-        padding: 0 12px;
-    }
-    
+
     .carousel-nav {
-        width: 35px;
-        height: 35px;
-        font-size: 18px;
+        width: 28px;
+        height: 28px;
+        font-size: 16px;
     }
-    
+
     .carousel-prev {
-        left: 5px;
+        left: 4px;
     }
-    
+
     .carousel-next {
-        right: 5px;
-    }
-    
-    .carousel-indicators {
-        bottom: 10px;
-        gap: 6px;
-    }
-    
-    .carousel-indicator {
-        width: 6px;
-        height: 6px;
+        right: 4px;
     }
 }
 
 @media (max-width: 360px) {
     .hero {
-        padding-top: 0;
         margin-top: 50px;
-        height: 52vw;
-        min-height: 140px;
-        max-height: 52vw;
     }
-    
-    .hero-text-content h2 {
-        font-size: 1.25rem;
-    }
-    
-    .hero-text-content p {
-        font-size: 0.85rem;
-    }
-    
+
     .hero-buttons .btn {
-        padding: 10px 16px;
-        font-size: 14px;
+        padding: 8px 12px;
+        font-size: 11px;
     }
 }
 
@@ -1668,6 +1713,13 @@ nav .nav-content {
 .services-section {
     padding: 20px 24px 30px 24px;
     background: #ffffff;
+    overflow: hidden;
+}
+
+@media (max-width: 640px) {
+    .services-section {
+        padding: 16px 12px 24px 12px;
+    }
 }
 
 .services-grid {
@@ -1683,19 +1735,39 @@ nav .nav-content {
 
 @media (max-width: 1024px) {
     .services-grid {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(2, 1fr) !important;
         gap: 24px;
     }
 }
 
 @media (max-width: 640px) {
     .services-grid {
-        grid-template-columns: 1fr;
-        gap: 20px;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 12px;
     }
     
     .service-card {
-        padding: 24px;
+        padding: 16px;
+        word-break: break-word;
+    }
+
+    .service-card h3 {
+        font-size: 15px;
+    }
+
+    .service-card p {
+        font-size: 13px;
+    }
+
+    .service-features li {
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 400px) {
+    .services-grid {
+        grid-template-columns: 1fr !important;
+        gap: 12px;
     }
 }
 
@@ -1762,6 +1834,34 @@ nav .nav-content {
 .search-section {
     padding: 60px 24px;
     background-color: #fef2f2;
+}
+
+@media (max-width: 640px) {
+    .search-section {
+        padding: 32px 12px;
+    }
+
+    .search-container h2 {
+        font-size: 22px;
+    }
+
+    .search-container p {
+        font-size: 14px;
+    }
+
+    .search-input-group {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .search-input-group .input {
+        min-width: unset;
+        width: 100%;
+    }
+
+    .search-input-group .btn {
+        width: 100%;
+    }
 }
 
 .search-container {
