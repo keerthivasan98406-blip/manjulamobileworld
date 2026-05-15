@@ -1408,10 +1408,12 @@ nav .nav-content {
     }
     
     .hero-content {
-        bottom: 6px;
-        right: 6px;
-        left: 6px;
+        bottom: 2px;
+        right: 4px;
+        left: 4px;
         justify-content: center;
+        align-items: flex-end;
+        padding-bottom: 2px;
     }
     
     .hero-text-content h2 {
@@ -1428,14 +1430,16 @@ nav .nav-content {
         justify-content: center;
         flex-wrap: nowrap;
         margin: 0;
-        gap: 8px;
+        gap: 6px;
     }
     
     .hero-buttons .btn {
         width: auto;
-        padding: 7px 12px;
-        font-size: 11px;
+        padding: 4px 8px;
+        font-size: 9px;
         white-space: nowrap;
+        border-radius: 5px;
+        border-width: 1px;
     }
     
     .carousel-nav {
@@ -1478,6 +1482,12 @@ nav .nav-content {
         height: 100%;
         background: #000;
     }
+
+    .hero-content {
+        bottom: 2px;
+        right: 4px;
+        left: 4px;
+    }
     
     .hero-text-content h2 {
         font-size: 1.5rem;
@@ -1489,19 +1499,21 @@ nav .nav-content {
     }
     
     .hero-grid {
-        padding: 0 12px;
+        padding: 0 4px;
     }
 
     .hero-buttons {
         flex-direction: row;
         flex-wrap: nowrap;
-        gap: 6px;
+        gap: 5px;
     }
 
     .hero-buttons .btn {
-        padding: 6px 10px;
-        font-size: 10px;
+        padding: 3px 7px;
+        font-size: 8px;
         white-space: nowrap;
+        border-radius: 4px;
+        border-width: 1px;
     }
     
     .carousel-nav {
@@ -1549,13 +1561,14 @@ nav .nav-content {
     .hero-buttons {
         flex-direction: row;
         flex-wrap: nowrap;
-        gap: 5px;
+        gap: 4px;
     }
 
     .hero-buttons .btn {
-        padding: 5px 8px;
-        font-size: 9px;
+        padding: 3px 6px;
+        font-size: 7px;
         white-space: nowrap;
+        border-width: 1px;
     }
 }
 
