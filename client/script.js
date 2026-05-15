@@ -859,10 +859,10 @@ class ManjulaMobilesApp {
       indicator.classList.toggle('active', index === this.currentCarouselIndex);
     });
 
-    // Show buttons only on first slide (index 0)
+    // Always show buttons on all slides
     const heroContent = document.querySelector('.hero-content');
     if (heroContent) {
-      heroContent.style.display = this.currentCarouselIndex === 0 ? 'flex' : 'none';
+      heroContent.style.display = 'flex';
     }
   }
 
