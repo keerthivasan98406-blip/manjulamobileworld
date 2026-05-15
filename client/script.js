@@ -42,7 +42,8 @@ class ManjulaMobilesApp {
     this.carouselImages = [
       "./public/assets/images/1.jpg",
       "./public/assets/images/2.jpg",
-      "./public/assets/images/3.jpg"
+      "./public/assets/images/3.jpg",
+      "./public/assets/images/4.jpg"
     ];
     this.currentCarouselIndex = 0;
     this.carouselInterval = null;
