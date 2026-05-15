@@ -1642,7 +1642,7 @@ class ManjulaMobilesApp {
               <img src="https://i.pinimg.com/736x/e3/6f/79/e36f793e016dd6b35cd27f84030b7487.jpg" alt="Manjula Mobile World Logo" style="width: 50px; height: 50px; object-fit: contain; border-radius: 8px;" onerror="this.innerHTML='<div style=&quot;width:50px;height:50px;background:linear-gradient(135deg,#dc2626,#b91c1c);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px;&quot;>📱</div>'">
             </div>
             <div class="nav-title" data-page="home">
-              <div style="font-size: 16px; font-weight: 700; white-space: nowrap;">MANJULA MOBIL WORLD</div>
+              <div style="font-size: 16px; font-weight: 700; white-space: nowrap;">MANJULA MOBILE WORLD</div>
               <div style="font-size: 10px; font-weight: 500; margin-top: 1px;">the final world of mobile services</div>
             </div>
           </div>
@@ -4554,7 +4554,7 @@ Thank you for choosing Manjula Mobile World!`);
       </head>
       <body>
         <div class="header">
-          <h1>📱 MANJULA MOBIL WORLD</h1>
+          <h1>📱 MANJULA MOBILE WORLD</h1>
           <p>The Final World of Mobile Services</p>
           <p>📍 Ramapuram, Tamil Nadu | 📞 +91 82484 54841</p>
           <p>✉️ manjulamobiles125@gmail.com</p>
