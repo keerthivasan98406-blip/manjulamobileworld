@@ -35,7 +35,7 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 // Serve static files from client directory
 const clientPath = path.join(__dirname, '../client');
 console.log('📁 Serving static files from:', clientPath);
-console.log('🚀 Deploy version: 20260515e');
+console.log('🚀 Deploy version: 20260515f');
 app.use(express.static(clientPath, {
   etag: false,
   lastModified: false,
