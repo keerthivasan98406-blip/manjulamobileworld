@@ -3530,15 +3530,15 @@ Thank you for choosing Manjula Mobile World!`);
           </div>
 
           <!-- Map + Contact side by side -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: stretch; max-width: 1200px; margin: 0 auto;">
+          <div class="shop-location-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: stretch; max-width: 1200px; margin: 0 auto;">
             
             <!-- Map Section -->
-            <div style="background-color: rgba(30, 41, 59, 0.5); border: 1px solid #e01123ff; border-radius: 12px; overflow: hidden; min-height: 450px; position: relative; cursor: pointer;" onclick="window.open('https://maps.app.goo.gl/UEpa2L38EWea9JD67', '_blank')">
+            <div class="shop-map-block" style="background-color: rgba(30, 41, 59, 0.5); border: 1px solid #e01123ff; border-radius: 12px; overflow: hidden; min-height: 450px; position: relative; cursor: pointer;" onclick="window.open('https://maps.app.goo.gl/UEpa2L38EWea9JD67', '_blank')">
               <iframe src="https://www.google.com/maps/embed?pb=!1m28!1m12!1m3!1d1332.6836960168596!2d79.7577830285442!3d12.468113512373563!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!4m13!3e6!4m5!1s0x3a5319fc59689b47%3A0x9c923c48fdc1fb6b!2sMelmaruvathur!3m2!1d12.4268234!2d79.82995919999999!4m5!1s0x3a531020aa862667%3A0xe25d880e8f98bf09!2sVandavasi%20Rd%2C%20Ramapuram%2C%20Tamil%20Nadu%20603201!3m2!1d12.4451387!2d79.81148309999999!5e1!3m2!1sen!2sin!4v1762845054152!5m2!1sen!2sin" width="100%" height="100%" style="border:0; pointer-events: none; min-height: 450px;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
             </div>
 
             <!-- Contact Information - Side of Map -->
-            <div style="background: linear-gradient(135deg, rgba(251, 146, 60, 0.2), rgba(239, 68, 68, 0.2)); border: 1px solid rgba(251, 146, 60, 0.3); border-radius: 12px; padding: 32px; display: flex; flex-direction: column; justify-content: center; gap: 24px;">
+            <div class="shop-info-block" style="background: linear-gradient(135deg, rgba(251, 146, 60, 0.2), rgba(239, 68, 68, 0.2)); border: 1px solid rgba(251, 146, 60, 0.3); border-radius: 12px; padding: 32px; display: flex; flex-direction: column; justify-content: center; gap: 24px;">
               <h2 style="font-size: 24px; font-weight: 700; text-align: center; margin: 0;">Contact Information</h2>
               
               <div>
@@ -3569,10 +3569,22 @@ Thank you for choosing Manjula Mobile World!`);
             </div>
           </div>
 
-          <!-- Mobile: stack vertically on small screens -->
           <style>
             @media (max-width: 768px) {
-              .shop-location-grid { grid-template-columns: 1fr !important; }
+              .shop-location-grid {
+                grid-template-columns: 1fr !important;
+              }
+              .shop-map-block {
+                min-height: 280px !important;
+                order: 1;
+              }
+              .shop-map-block iframe {
+                min-height: 280px !important;
+              }
+              .shop-info-block {
+                order: 2;
+                padding: 20px !important;
+              }
             }
           </style>
         </div>
