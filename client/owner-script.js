@@ -43,6 +43,7 @@ class OwnerPortalApp {
     this.serviceSearch = "";
     this.displayStock = [];
     this.stockSearch = "";
+    this.customCategories = JSON.parse(localStorage.getItem('manjula_custom_categories') || '[]');
     
     this.init()
   }
@@ -431,11 +432,10 @@ class OwnerPortalApp {
     // Handle Enter key in search inputs
     app.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') {
-        if (e.target.id === 'adminSearch') {
-          this.renderPage('admin')
-        }
-        if (e.target.id === 'trackingSearchInput') {
-          // Search is already handled by input event
+        // Prevent Enter from navigating away on any search input
+        if (e.target.id === 'adminSearch' || 
+            e.target.id === 'trackingSearchInput' ||
+            e.target.classList.contains('input')) {
           e.preventDefault();
         }
       }
@@ -587,6 +587,10 @@ class OwnerPortalApp {
       html += this.renderAdminProducts()
     } else if (page === "admin-tracking") {
       html += this.renderAdminTracking()
+    } else if (page === "admin-tracking-daily") {
+      html += this.renderTrackingDailyIncome()
+    } else if (page === "admin-tracking-monthly") {
+      html += this.renderTrackingMonthlyIncome()
     } else if (page === "admin-orders") {
       html += this.renderAdminOrders()
     } else if (page === "admin-sales") {
@@ -642,9 +646,6 @@ class OwnerPortalApp {
               </li>
               <li class="nav-item">
                 <a class="nav-link ${this.currentPage === 'admin-sales' || this.currentPage === 'admin-sales-monthly' ? 'active' : ''}" data-page="admin-sales">🛍️ Sales Records</a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link ${this.currentPage === 'admin-services' || this.currentPage === 'admin-services-daily' || this.currentPage === 'admin-services-monthly' ? 'active' : ''}" data-page="admin-services">🔧 Services</a>
               </li>
               <li class="nav-item">
                 <a class="nav-link ${this.currentPage === 'admin-display-stock' ? 'active' : ''}" data-page="admin-display-stock">📦 Display Stock</a>
@@ -721,10 +722,6 @@ class OwnerPortalApp {
             <button class="btn btn-primary" data-page="admin-sales" style="flex: 1; min-width: 200px; padding: 16px; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px;">
               <span style="font-size: 24px;">🛍️</span>
               <span>Sales Records</span>
-            </button>
-            <button class="btn btn-primary" data-page="admin-services" style="flex: 1; min-width: 200px; padding: 16px; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px;">
-              <span style="font-size: 24px;">🔧</span>
-              <span>Services</span>
             </button>
             <button class="btn btn-primary" data-page="admin-display-stock" style="flex: 1; min-width: 200px; padding: 16px; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px;">
               <span style="font-size: 24px;">📦</span>
@@ -805,7 +802,7 @@ class OwnerPortalApp {
               placeholder="Search products..." 
               id="adminSearch"
               style="flex: 1;"
-              oninput="app.renderPage('admin-products')"
+              oninput="app.searchProducts(this.value)"
             >
             <span style="color: #94a3b8; font-size: 14px;">Total: ${filteredProducts.length} products</span>
           </div>
@@ -855,16 +852,54 @@ class OwnerPortalApp {
   }
 
   renderAdminTracking() {
+    // Calculate today's income
+    const today = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const todayRecords = this.trackingData.filter(t => t.createdAt === today);
+    const todayIncome = todayRecords.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+
+    // Calculate this month's income
+    const now = new Date();
+    const thisMonth = now.getMonth();
+    const thisYear = now.getFullYear();
+    const monthRecords = this.trackingData.filter(t => {
+      if (!t.createdAt) return false;
+      const parts = t.createdAt.split('/');
+      if (parts.length !== 3) return false;
+      const d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+      return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+    });
+    const monthIncome = monthRecords.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    const monthLabel = now.toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+
     return `
       <div style="min-height: 100vh; background-color: #f13e74fb; padding-top: 96px; padding-bottom: 80px;">
         <div class="container">
           <button class="back-button" data-page="admin" style="margin-bottom: 20px;">&#8592; Dashboard</button>
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px;">
             <div>
               <h1 style="font-size: 36px; font-weight: 700; margin-bottom: 8px;">Tracking Management</h1>
               <p style="color: #94a3b8;">Manage repair tracking records</p>
             </div>
-            <button class="btn btn-primary" data-action="toggle-tracking-form" style="padding: 12px 24px; font-size: 16px;">+ Add Tracking</button>
+            <!-- Income widgets + Add button in one row -->
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <!-- Today's Income widget -->
+              <div onclick="app.renderPage('admin-tracking-daily')" style="background: linear-gradient(135deg,#065f46,#047857); border: 2px solid #10b981; border-radius: 10px; padding: 10px 16px; cursor: pointer; min-width: 130px; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
+                <div style="font-size: 10px; color: #6ee7b7; font-weight: 600; margin-bottom: 2px;">📅 Today</div>
+                <div style="font-size: 20px; font-weight: 800; color: #fff; line-height:1;">₹${todayIncome.toLocaleString('en-IN')}</div>
+                <div style="font-size: 10px; color: #a7f3d0; margin-top: 2px;">${todayRecords.length} record${todayRecords.length !== 1 ? 's' : ''} →</div>
+              </div>
+              <!-- Monthly Income widget -->
+              <div onclick="app.renderPage('admin-tracking-monthly')" style="background: linear-gradient(135deg,#1e3a8a,#1d4ed8); border: 2px solid #3b82f6; border-radius: 10px; padding: 10px 16px; cursor: pointer; min-width: 130px; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
+                <div style="font-size: 10px; color: #93c5fd; font-weight: 600; margin-bottom: 2px;">📆 ${monthLabel}</div>
+                <div style="font-size: 20px; font-weight: 800; color: #fff; line-height:1;">₹${monthIncome.toLocaleString('en-IN')}</div>
+                <div style="font-size: 10px; color: #bfdbfe; margin-top: 2px;">${monthRecords.length} record${monthRecords.length !== 1 ? 's' : ''} →</div>
+              </div>
+              <!-- Add Tracking button -->
+              <button class="btn btn-primary" data-action="toggle-tracking-form" style="padding: 12px 24px; font-size: 16px; white-space: nowrap;">+ Add Tracking</button>
+              <!-- Export buttons -->
+              <button onclick="app.exportTrackingPDF()" style="padding: 10px 16px; background:#1e293b; color:#fff; border:none; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap;">📄 PDF</button>
+              <button onclick="app.exportTrackingXL()" style="padding: 10px 16px; background:#16a34a; color:#fff; border:none; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap;">📊 XL Sheet</button>
+            </div>
           </div>
 
           ${this.renderTrackingForm()}
@@ -872,6 +907,159 @@ class OwnerPortalApp {
         </div>
       </div>
     `
+  }
+
+  renderTrackingDailyIncome() {
+    // Group tracking records by date
+    const groups = {};
+    this.trackingData.forEach(t => {
+      const key = t.createdAt || 'Unknown';
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(t);
+    });
+
+    // Sort dates newest first (DD/MM/YYYY format)
+    const sortedKeys = Object.keys(groups).sort((a, b) => {
+      const parseDate = s => {
+        const p = s.split('/');
+        return p.length === 3 ? new Date(`${p[2]}-${p[1]}-${p[0]}`) : new Date(0);
+      };
+      return parseDate(b) - parseDate(a);
+    });
+
+    return `
+      <div style="min-height:100vh; background-color:#f13e74fb; padding-top:96px; padding-bottom:80px;">
+        <div class="container">
+          <button class="back-button" data-page="admin-tracking" style="margin-bottom:20px;">&#8592; Tracking</button>
+          <div style="margin-bottom:28px;">
+            <h1 style="font-size:32px; font-weight:700; margin-bottom:4px;">📅 Daily Tracking Income</h1>
+            <p style="color:#94a3b8;">Repair income grouped by day — ${this.trackingData.length} total records</p>
+          </div>
+
+          ${sortedKeys.length === 0 ? `
+            <div style="text-align:center; padding:60px; color:#fff; font-size:16px;">No tracking records found</div>
+          ` : sortedKeys.map(dateKey => {
+            const recs = groups[dateKey];
+            const total = recs.reduce((s, t) => s + (Number(t.amount) || 0), 0);
+            return `
+              <div style="background:rgba(255,255,255,0.95); border-radius:12px; margin-bottom:20px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+                <div style="background:linear-gradient(135deg,#065f46,#047857); padding:14px 20px; display:flex; justify-content:space-between; align-items:center;">
+                  <div style="color:#fff; font-weight:700; font-size:16px;">📅 ${dateKey}</div>
+                  <div style="text-align:right;">
+                    <div style="color:#6ee7b7; font-size:12px;">${recs.length} record${recs.length !== 1 ? 's' : ''}</div>
+                    <div style="color:#fff; font-weight:800; font-size:20px;">₹${total.toLocaleString('en-IN')}</div>
+                  </div>
+                </div>
+                <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                  <thead>
+                    <tr style="background:#f1f5f9;">
+                      <th style="padding:10px 14px; text-align:left; color:#374151; font-weight:600;">QR ID</th>
+                      <th style="padding:10px 14px; text-align:left; color:#374151; font-weight:600;">Customer</th>
+                      <th style="padding:10px 14px; text-align:left; color:#374151; font-weight:600;">Device</th>
+                      <th style="padding:10px 14px; text-align:left; color:#374151; font-weight:600;">Status</th>
+                      <th style="padding:10px 14px; text-align:right; color:#374151; font-weight:600;">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${recs.map((t, i) => `
+                      <tr style="border-top:1px solid #e5e7eb; background:${i % 2 === 0 ? '#fff' : '#f9fafb'};">
+                        <td style="padding:10px 14px; color:#1d4ed8; font-weight:600;">${t.qrId}</td>
+                        <td style="padding:10px 14px; color:#111827;">${t.customerName}</td>
+                        <td style="padding:10px 14px; color:#374151;">${t.productName || t.deviceModel || '-'}</td>
+                        <td style="padding:10px 14px;"><span style="background:#dcfce7; color:#166534; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600;">${t.status}</span></td>
+                        <td style="padding:10px 14px; text-align:right; color:#059669; font-weight:700;">₹${(Number(t.amount) || 0).toLocaleString('en-IN')}</td>
+                      </tr>
+                    `).join('')}
+                    <tr style="border-top:2px solid #10b981; background:#f0fdf4;">
+                      <td colspan="4" style="padding:10px 14px; font-weight:700; color:#065f46;">Total</td>
+                      <td style="padding:10px 14px; text-align:right; font-weight:800; color:#065f46; font-size:15px;">₹${total.toLocaleString('en-IN')}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  renderTrackingMonthlyIncome() {
+    // Group tracking records by month (YYYY-MM)
+    const groups = {};
+    this.trackingData.forEach(t => {
+      if (!t.createdAt) return;
+      const parts = t.createdAt.split('/');
+      const key = parts.length === 3 ? `${parts[2]}-${parts[1]}` : 'Unknown';
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(t);
+    });
+
+    const sortedKeys = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+
+    const monthLabel = key => {
+      if (key === 'Unknown') return 'Unknown Date';
+      const [y, m] = key.split('-');
+      return new Date(y, m - 1, 1).toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+    };
+
+    return `
+      <div style="min-height:100vh; background-color:#f13e74fb; padding-top:96px; padding-bottom:80px;">
+        <div class="container">
+          <button class="back-button" data-page="admin-tracking" style="margin-bottom:20px;">&#8592; Tracking</button>
+          <div style="margin-bottom:28px;">
+            <h1 style="font-size:32px; font-weight:700; margin-bottom:4px;">📆 Monthly Tracking Income</h1>
+            <p style="color:#94a3b8;">Repair income grouped by month — ${this.trackingData.length} total records</p>
+          </div>
+
+          ${sortedKeys.length === 0 ? `
+            <div style="text-align:center; padding:60px; color:#fff; font-size:16px;">No tracking records found</div>
+          ` : sortedKeys.map(monthKey => {
+            const recs = groups[monthKey];
+            const total = recs.reduce((s, t) => s + (Number(t.amount) || 0), 0);
+            return `
+              <div style="background:rgba(255,255,255,0.95); border-radius:12px; margin-bottom:20px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+                <div style="background:linear-gradient(135deg,#1e3a8a,#1d4ed8); padding:14px 20px; display:flex; justify-content:space-between; align-items:center;">
+                  <div style="color:#fff; font-weight:700; font-size:16px;">📆 ${monthLabel(monthKey)}</div>
+                  <div style="text-align:right;">
+                    <div style="color:#93c5fd; font-size:12px;">${recs.length} record${recs.length !== 1 ? 's' : ''}</div>
+                    <div style="color:#fff; font-weight:800; font-size:20px;">₹${total.toLocaleString('en-IN')}</div>
+                  </div>
+                </div>
+                <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                  <thead>
+                    <tr style="background:#f1f5f9;">
+                      <th style="padding:10px 14px; text-align:left; color:#374151; font-weight:600;">Date</th>
+                      <th style="padding:10px 14px; text-align:left; color:#374151; font-weight:600;">QR ID</th>
+                      <th style="padding:10px 14px; text-align:left; color:#374151; font-weight:600;">Customer</th>
+                      <th style="padding:10px 14px; text-align:left; color:#374151; font-weight:600;">Device</th>
+                      <th style="padding:10px 14px; text-align:left; color:#374151; font-weight:600;">Status</th>
+                      <th style="padding:10px 14px; text-align:right; color:#374151; font-weight:600;">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${recs.map((t, i) => `
+                      <tr style="border-top:1px solid #e5e7eb; background:${i % 2 === 0 ? '#fff' : '#f9fafb'};">
+                        <td style="padding:10px 14px; color:#374151; font-size:12px;">${t.createdAt}</td>
+                        <td style="padding:10px 14px; color:#1d4ed8; font-weight:600;">${t.qrId}</td>
+                        <td style="padding:10px 14px; color:#111827;">${t.customerName}</td>
+                        <td style="padding:10px 14px; color:#374151;">${t.productName || t.deviceModel || '-'}</td>
+                        <td style="padding:10px 14px;"><span style="background:#dbeafe; color:#1e40af; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600;">${t.status}</span></td>
+                        <td style="padding:10px 14px; text-align:right; color:#1d4ed8; font-weight:700;">₹${(Number(t.amount) || 0).toLocaleString('en-IN')}</td>
+                      </tr>
+                    `).join('')}
+                    <tr style="border-top:2px solid #3b82f6; background:#eff6ff;">
+                      <td colspan="5" style="padding:10px 14px; font-weight:700; color:#1e3a8a;">Monthly Total</td>
+                      <td style="padding:10px 14px; text-align:right; font-weight:800; color:#1e3a8a; font-size:15px;">₹${total.toLocaleString('en-IN')}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
   }
 
   renderTrackingForm() {
@@ -1113,9 +1301,10 @@ class OwnerPortalApp {
         </div>
         
         <!-- Action Buttons (like product buttons) -->
-        <div style="display: flex; gap: 6px;">
+        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
           <button class="btn btn-secondary" style="flex: 1; padding: 4px 8px; font-size: 11px;" data-action="edit-tracking" data-qr-id="${tracking.qrId}">Update</button>
           <button class="btn" style="flex: 1; padding: 4px 8px; font-size: 11px; background: rgba(244, 63, 94, 0.1); color: #f87171; border: 1px solid #f87171; border-radius: 4px;" data-action="delete-tracking" data-qr-id="${tracking.qrId}">Delete</button>
+          <button onclick="app.printTrackingCard('${tracking.qrId}')" style="flex: 1; padding: 4px 8px; font-size: 11px; background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981; border-radius: 4px; cursor: pointer; font-weight: 600;">🖨️ Print</button>
         </div>
       </div>
     `
@@ -1543,7 +1732,11 @@ class OwnerPortalApp {
 
             <div class="form-field">
               <label class="form-label">Category *</label>
-              <select class="input" id="productCategory" style="background-color: rgba(51, 65, 85, 0.5); color: #f8fafc;">
+              <select class="input" id="productCategory" style="background-color: rgba(51, 65, 85, 0.5); color: #f8fafc;" onchange="
+                const custom = document.getElementById('customCategoryWrap');
+                if(this.value === '__custom__') { custom.style.display='block'; document.getElementById('customCategoryInput').focus(); }
+                else { custom.style.display='none'; }
+              ">
                 <option value="">Select category</option>
                 <option value="Smartphones">Smartphones</option>
                 <option value="Services">Services</option>
@@ -1551,7 +1744,28 @@ class OwnerPortalApp {
                 <option value="Chargers">Chargers</option>
                 <option value="Audio">Audio</option>
                 <option value="Power">Power Banks</option>
+                ${(this.customCategories || []).map(c => `<option value="${c}">${c}</option>`).join('')}
+                <option value="__custom__">➕ Add Custom Category...</option>
               </select>
+              <div id="customCategoryWrap" style="display:none; margin-top:8px; display:none;">
+                <div style="display:flex; gap:8px;">
+                  <input type="text" id="customCategoryInput" class="input" placeholder="Type new category name..." style="flex:1;">
+                  <button type="button" onclick="
+                    const val = document.getElementById('customCategoryInput').value.trim();
+                    if(!val) return;
+                    if(!app.customCategories) app.customCategories = [];
+                    if(!app.customCategories.includes(val)) { app.customCategories.push(val); localStorage.setItem('manjula_custom_categories', JSON.stringify(app.customCategories)); }
+                    const sel = document.getElementById('productCategory');
+                    const existing = [...sel.options].find(o => o.value === val);
+                    if(!existing) {
+                      const opt = new Option(val, val);
+                      sel.insertBefore(opt, sel.options[sel.options.length - 1]);
+                    }
+                    sel.value = val;
+                    document.getElementById('customCategoryWrap').style.display='none';
+                  " style="padding:8px 16px; background:#dc2626; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:600; white-space:nowrap;">✓ Add</button>
+                </div>
+              </div>
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
@@ -1615,14 +1829,40 @@ class OwnerPortalApp {
 
             <div class="form-field">
               <label class="form-label">Category *</label>
-              <select class="input" id="productCategory" style="background-color: rgba(51, 65, 85, 0.5); color: #f8fafc;">
+              <select class="input" id="productCategory" style="background-color: rgba(51, 65, 85, 0.5); color: #f8fafc;" onchange="
+                const custom = document.getElementById('customCategoryWrapEdit');
+                if(this.value === '__custom__') { custom.style.display='block'; document.getElementById('customCategoryInputEdit').focus(); }
+                else { custom.style.display='none'; }
+              ">
                 <option value="Smartphones" ${product.category === "Smartphones" ? "selected" : ""}>Smartphones</option>
                 <option value="Services" ${product.category === "Services" ? "selected" : ""}>Services</option>
                 <option value="Accessories" ${product.category === "Accessories" ? "selected" : ""}>Accessories</option>
                 <option value="Chargers" ${product.category === "Chargers" ? "selected" : ""}>Chargers</option>
                 <option value="Audio" ${product.category === "Audio" ? "selected" : ""}>Audio</option>
                 <option value="Power" ${product.category === "Power" ? "selected" : ""}>Power Banks</option>
+                ${(this.customCategories || []).filter(c => !['Smartphones','Services','Accessories','Chargers','Audio','Power'].includes(c)).map(c => `<option value="${c}" ${product.category === c ? 'selected' : ''}>${c}</option>`).join('')}
+                ${!['Smartphones','Services','Accessories','Chargers','Audio','Power'].includes(product.category) && !(this.customCategories||[]).includes(product.category) && product.category ? `<option value="${product.category}" selected>${product.category}</option>` : ''}
+                <option value="__custom__">➕ Add Custom Category...</option>
               </select>
+              <div id="customCategoryWrapEdit" style="display:none; margin-top:8px;">
+                <div style="display:flex; gap:8px;">
+                  <input type="text" id="customCategoryInputEdit" class="input" placeholder="Type new category name..." style="flex:1;">
+                  <button type="button" onclick="
+                    const val = document.getElementById('customCategoryInputEdit').value.trim();
+                    if(!val) return;
+                    if(!app.customCategories) app.customCategories = [];
+                    if(!app.customCategories.includes(val)) { app.customCategories.push(val); localStorage.setItem('manjula_custom_categories', JSON.stringify(app.customCategories)); }
+                    const sel = document.getElementById('productCategory');
+                    const existing = [...sel.options].find(o => o.value === val);
+                    if(!existing) {
+                      const opt = new Option(val, val);
+                      sel.insertBefore(opt, sel.options[sel.options.length - 1]);
+                    }
+                    sel.value = val;
+                    document.getElementById('customCategoryWrapEdit').style.display='none';
+                  " style="padding:8px 16px; background:#dc2626; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:600; white-space:nowrap;">✓ Add</button>
+                </div>
+              </div>
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
@@ -1688,6 +1928,8 @@ class OwnerPortalApp {
             <div style="display:flex; gap:10px; flex-wrap:wrap;">
               <button class="btn btn-primary" onclick="app.toggleSalesForm()" style="padding: 12px 24px;">+ Add Sale</button>
               <button onclick="app.renderPage('admin-sales-monthly')" style="padding: 12px 24px; background:#1d4ed8; color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer;">📅 Monthly Sales</button>
+              <button onclick="app.exportSalesPDF()" style="padding: 12px 24px; background:#1e293b; color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer;">📄 PDF</button>
+              <button onclick="app.exportSalesXL()" style="padding: 12px 24px; background:#16a34a; color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer;">📊 XL Sheet</button>
             </div>
           </div>
 
@@ -1707,13 +1949,23 @@ class OwnerPortalApp {
                 <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">Address</label>
                 <input class="input" id="sale_customerAddress" placeholder="Enter customer address" style="width:100%;">
               </div>
-              <div>
+              <div style="position:relative;">
                 <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">Product Name *</label>
-                <input class="input" id="sale_productName" placeholder="e.g. Samsung Galaxy A54" style="width:100%;">
+                <input class="input" id="sale_productName" placeholder="Type to search products..." style="width:100%;" autocomplete="off"
+                  oninput="app.showProductSuggestions(this.value)"
+                  onblur="setTimeout(()=>{ const d=document.getElementById('sale_product_dropdown'); if(d) d.style.display='none'; }, 200)">
+                <div id="sale_product_dropdown" style="display:none; position:absolute; top:100%; left:0; right:0; background:#fff; border:2px solid #dc2626; border-radius:8px; max-height:200px; overflow-y:auto; z-index:9999; box-shadow:0 4px 12px rgba(0,0,0,0.15);"></div>
+              </div>
+              <div>
+                <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">Category / Type</label>
+                <input class="input" id="sale_productCategory" placeholder="Auto-filled from product" style="width:100%; background:#f9fafb; color:#374151;" readonly>
               </div>
               <div>
                 <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">Sale Amount (₹)</label>
-                <input class="input" type="number" id="sale_saleAmount" placeholder="Enter amount" style="width:100%;" oninput="app.updateBillPreview()">
+                <div style="position:relative;">
+                  <input class="input" type="number" id="sale_saleAmount" placeholder="Auto-filled from product price" style="width:100%;" oninput="app.updateBillPreview()">
+                  <span id="sale_originalPrice_ref" style="display:none; position:absolute; right:10px; top:50%; transform:translateY(-50%); font-size:11px; color:#9ca3af; pointer-events:none;"></span>
+                </div>
               </div>
               <div>
                 <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">Discount (₹)</label>
@@ -1754,9 +2006,9 @@ class OwnerPortalApp {
           <div style="margin-bottom: 20px; display: flex; gap: 12px; align-items: center;">
             <input class="input" placeholder="🔍 Search by name, phone, product or address..." 
               style="flex:1;" 
-              oninput="app.salesSearch=this.value; app.renderPage('admin-sales')"
+              oninput="app.searchSales(this.value)"
               value="${this.salesSearch || ''}">
-            <span style="color: #fff; font-size: 14px; font-weight: 600;">${filtered.length} records</span>
+            <span style="color: #fff; font-size: 14px; font-weight: 600;" class="sales-counter">${filtered.length} records</span>
           </div>
 
           <!-- Records Grid -->
@@ -1766,7 +2018,7 @@ class OwnerPortalApp {
               <p>No sales records found. Add your first sale!</p>
             </div>
           ` : `
-            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
+            <div class="sales-records-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
               ${filtered.map(sale => {
                 const amount = Number(sale.saleAmount) || 0;
                 const discount = Number(sale.discount) || 0;
@@ -1854,9 +2106,9 @@ class OwnerPortalApp {
           <div style="margin-bottom:16px; display:flex; gap:12px; align-items:center;">
             <input class="input" placeholder="🔍 Search by display name or ID..."
               style="flex:1; background:#fff; color:#111; border:1px solid #d1d5db;"
-              oninput="app.stockSearch=this.value; app.renderPage('admin-display-stock')"
+              oninput="app.searchStock(this.value)"
               value="${this.stockSearch || ''}">
-            <span style="color:#fff; font-size:14px; font-weight:600; white-space:nowrap;">${filtered.length} items</span>
+            <span style="color:#fff; font-size:14px; font-weight:600; white-space:nowrap;" class="stock-counter">${filtered.length} items</span>
           </div>
 
           <!-- Low stock warning -->
@@ -1885,7 +2137,6 @@ class OwnerPortalApp {
                       <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:130px;">Display ID</th>
                       <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:90px; text-align:center;">Price (₹)</th>
                       <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:100px; text-align:center;">Stock</th>
-                      <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:80px; text-align:center;">Status</th>
                       <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:200px; text-align:center;">Adjust Stock</th>
                       <th style="padding:12px 14px; font-weight:700; text-align:center; min-width:70px;">Action</th>
                     </tr>
@@ -1911,11 +2162,6 @@ class OwnerPortalApp {
                           <td style="padding:10px 14px; text-align:center; border-right:1px solid #e2e8f0;">
                             <span style="display:inline-block; background:${stockBg}; color:${stockColor}; font-weight:900; font-size:18px; min-width:48px; padding:4px 10px; border-radius:6px; border:1px solid ${stockColor}40;">
                               ${stock}
-                            </span>
-                          </td>
-                          <td style="padding:10px 14px; text-align:center; border-right:1px solid #e2e8f0;">
-                            <span style="background:${stockBg}; color:${stockColor}; font-size:11px; font-weight:700; padding:3px 8px; border-radius:20px; border:1px solid ${stockColor}40; white-space:nowrap;">
-                              ${stockLabel}
                             </span>
                           </td>
                           <td style="padding:8px 14px; border-right:1px solid #e2e8f0;">
@@ -2224,9 +2470,9 @@ class OwnerPortalApp {
           <div style="margin-bottom:20px; display:flex; gap:12px; align-items:center;">
             <input class="input" placeholder="🔍 Search by name, phone, address or service details..."
               style="flex:1;"
-              oninput="app.serviceSearch=this.value; app.renderPage('admin-services')"
+              oninput="app.searchServices(this.value)"
               value="${this.serviceSearch || ''}">
-            <span style="color:#fff; font-size:14px; font-weight:600;">${filtered.length} records</span>
+            <span style="color:#fff; font-size:14px; font-weight:600;" class="services-counter">${filtered.length} records</span>
           </div>
 
           <!-- Records -->
@@ -3002,6 +3248,232 @@ class OwnerPortalApp {
     }
   }
 
+  // ===== PRINT & EXPORT FUNCTIONS =====
+
+  printTrackingCard(qrId) {
+    const t = this.trackingData.find(t => t.qrId === qrId);
+    if (!t) return;
+    const win = window.open('', '_blank', 'width=400,height=700');
+    win.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Receipt - ${t.qrId}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    @page {
+      size: 80mm auto;
+      margin: 4mm 3mm;
+    }
+    body {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 11px;
+      width: 72mm;
+      color: #000;
+      background: #fff;
+    }
+    .center { text-align: center; }
+    .bold { font-weight: bold; }
+    .large { font-size: 14px; }
+    .xlarge { font-size: 16px; }
+    .divider { border-top: 1px dashed #000; margin: 5px 0; }
+    .divider-solid { border-top: 1px solid #000; margin: 5px 0; }
+    .row { display: flex; justify-content: space-between; margin: 2px 0; }
+    .label { color: #333; }
+    .value { font-weight: bold; text-align: right; max-width: 55%; word-break: break-word; }
+    .amount-row { font-size: 14px; font-weight: bold; margin: 4px 0; }
+    .footer { font-size: 10px; text-align: center; margin-top: 6px; }
+    .issue-box { border: 1px solid #000; padding: 4px; margin: 4px 0; font-size: 11px; word-break: break-word; }
+    .status-badge { border: 1px solid #000; padding: 2px 6px; font-weight: bold; font-size: 11px; }
+    @media print {
+      body { width: 72mm; }
+      button { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Shop Header -->
+  <div class="center">
+    <div class="xlarge bold">MANJULA MOBILE WORLD</div>
+    <div style="font-size:10px; margin-top:2px;">The Final World of Mobile Services</div>
+    <div style="font-size:10px;">Ramapuram, Tamil Nadu - 603201</div>
+    <div style="font-size:10px;">Ph: +91 82484 54841</div>
+    <div style="font-size:10px;">manjulamobiles125@gmail.com</div>
+  </div>
+
+  <div class="divider-solid"></div>
+
+  <div class="center bold" style="font-size:12px; letter-spacing:1px;">** REPAIR RECEIPT **</div>
+  <div class="center" style="font-size:10px;">Date: ${t.createdAt || new Date().toLocaleDateString('en-IN')}</div>
+
+  <div class="divider"></div>
+
+  <!-- Customer Details -->
+  <div class="bold" style="margin-bottom:3px;">CUSTOMER DETAILS</div>
+  <div class="row"><span class="label">Name</span><span class="value">${t.customerName}</span></div>
+  <div class="row"><span class="label">Phone</span><span class="value">${t.contact || '-'}</span></div>
+  <div class="row"><span class="label">Device</span><span class="value">${t.productName || t.deviceModel || '-'}</span></div>
+
+  <div class="divider"></div>
+
+  <!-- Tracking Details -->
+  <div class="bold" style="margin-bottom:3px;">TRACKING DETAILS</div>
+  <div class="row"><span class="label">QR ID</span><span class="value bold">${t.qrId}</span></div>
+  <div class="row"><span class="label">Password</span><span class="value bold">${t.qrPassword || '-'}</span></div>
+  <div class="row"><span class="label">Status</span><span class="value"><span class="status-badge">${t.status}</span></span></div>
+  <div class="row"><span class="label">Est. Days</span><span class="value">${t.estimatedDays || 2} days</span></div>
+
+  <div class="divider"></div>
+
+  <!-- Issue -->
+  <div class="bold" style="margin-bottom:3px;">ISSUE DESCRIPTION</div>
+  <div class="issue-box">${t.issue}</div>
+
+  <div class="divider"></div>
+
+  <!-- Amount -->
+  <div class="row amount-row">
+    <span>AMOUNT PAYABLE</span>
+    <span>Rs.${(Number(t.amount) || 0).toLocaleString('en-IN')}</span>
+  </div>
+
+  <div class="divider-solid"></div>
+
+  <!-- Track Online -->
+  <div class="center" style="font-size:10px; margin: 4px 0;">
+    <div>Track your repair online:</div>
+    <div class="bold">manjulamobilesworld.onrender.com</div>
+    <div style="margin-top:2px;">Use QR ID &amp; Password to check status</div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="footer">
+    <div>Mon-Sun: 9:00 AM - 10:00 PM</div>
+    <div>24/7 Emergency Service Available</div>
+    <div style="margin-top:4px;">*** Thank You! Visit Again ***</div>
+  </div>
+
+  <br>
+  <div style="text-align:center;">
+    <button onclick="window.print()" style="padding:8px 20px; background:#000; color:#fff; border:none; border-radius:4px; font-size:13px; cursor:pointer; font-family:monospace;">🖨️ PRINT</button>
+  </div>
+
+</body>
+</html>`);
+    win.document.close();
+    // Auto-trigger print after a short delay
+    setTimeout(() => { try { win.print(); } catch(e) {} }, 500);
+  }
+
+  exportTrackingPDF() {
+    const data = this.trackingData;
+    const win = window.open('', '_blank', 'width=900,height=700');
+    const rows = data.map((t, i) => `
+      <tr style="background:${i%2===0?'#fff':'#f9fafb'}">
+        <td>${i+1}</td><td>${t.createdAt||'-'}</td><td>${t.qrId}</td>
+        <td>${t.customerName}</td><td>${t.contact||'-'}</td>
+        <td>${t.productName||t.deviceModel||'-'}</td><td>${t.issue}</td>
+        <td>${t.status}</td><td style="font-weight:700;color:#059669;">₹${(Number(t.amount)||0).toLocaleString('en-IN')}</td>
+      </tr>`).join('');
+    const total = data.reduce((s,t)=>s+(Number(t.amount)||0),0);
+    win.document.write(`
+      <!DOCTYPE html><html><head><title>Tracking Records</title>
+      <style>
+        body{font-family:Arial,sans-serif;padding:20px;color:#111;}
+        h2{color:#dc2626;}
+        table{width:100%;border-collapse:collapse;font-size:12px;}
+        th{background:#dc2626;color:#fff;padding:8px 10px;text-align:left;}
+        td{padding:7px 10px;border-bottom:1px solid #e5e7eb;}
+        .total{font-size:16px;font-weight:800;color:#059669;margin-top:12px;}
+        @media print{button{display:none;}}
+      </style></head><body>
+      <h2>MANJULA MOBILE WORLD — Tracking Records</h2>
+      <p style="color:#6b7280;font-size:12px;">Generated: ${new Date().toLocaleString('en-IN')} | Total Records: ${data.length}</p>
+      <table><thead><tr><th>#</th><th>Date</th><th>QR ID</th><th>Customer</th><th>Contact</th><th>Device</th><th>Issue</th><th>Status</th><th>Amount</th></tr></thead>
+      <tbody>${rows}</tbody></table>
+      <div class="total">Total Income: ₹${total.toLocaleString('en-IN')}</div>
+      <br><button onclick="window.print()" style="padding:10px 24px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer;">🖨️ Print / Save as PDF</button>
+      </body></html>
+    `);
+    win.document.close();
+  }
+
+  exportTrackingXL() {
+    const data = this.trackingData;
+    const headers = ['#','Date','QR ID','Customer','Contact','Device','Issue','Status','Amount (Rs)'];
+    const rows = data.map((t, i) => [
+      i+1, t.createdAt||'', t.qrId, t.customerName, t.contact||'',
+      t.productName||t.deviceModel||'', t.issue, t.status, Number(t.amount)||0
+    ]);
+    this._downloadCSV('tracking_records', headers, rows);
+  }
+
+  exportSalesPDF() {
+    const data = this.salesRecords;
+    const win = window.open('', '_blank', 'width=900,height=700');
+    const rows = data.map((s, i) => {
+      const net = (Number(s.saleAmount)||0) - (Number(s.discount)||0);
+      return `<tr style="background:${i%2===0?'#fff':'#f9fafb'}">
+        <td>${i+1}</td><td>${s.purchaseDate||'-'}</td><td>${s.customerName}</td>
+        <td>${s.phoneNumber||'-'}</td><td>${s.productName}</td>
+        <td>${s.productModel||'-'}</td><td>${s.warrantyPeriod||'-'}</td>
+        <td>₹${(Number(s.saleAmount)||0).toLocaleString('en-IN')}</td>
+        <td>₹${(Number(s.discount)||0).toLocaleString('en-IN')}</td>
+        <td style="font-weight:700;color:#059669;">₹${net.toLocaleString('en-IN')}</td>
+      </tr>`;
+    }).join('');
+    const total = data.reduce((s,r)=>(s+(Number(r.saleAmount)||0)-(Number(r.discount)||0)),0);
+    win.document.write(`
+      <!DOCTYPE html><html><head><title>Sales Records</title>
+      <style>
+        body{font-family:Arial,sans-serif;padding:20px;color:#111;}
+        h2{color:#dc2626;}
+        table{width:100%;border-collapse:collapse;font-size:12px;}
+        th{background:#dc2626;color:#fff;padding:8px 10px;text-align:left;}
+        td{padding:7px 10px;border-bottom:1px solid #e5e7eb;}
+        .total{font-size:16px;font-weight:800;color:#059669;margin-top:12px;}
+        @media print{button{display:none;}}
+      </style></head><body>
+      <h2>MANJULA MOBILE WORLD — Sales Records</h2>
+      <p style="color:#6b7280;font-size:12px;">Generated: ${new Date().toLocaleString('en-IN')} | Total Records: ${data.length}</p>
+      <table><thead><tr><th>#</th><th>Date</th><th>Customer</th><th>Phone</th><th>Product</th><th>Model</th><th>Warranty</th><th>Amount</th><th>Discount</th><th>Net</th></tr></thead>
+      <tbody>${rows}</tbody></table>
+      <div class="total">Total Net Sales: ₹${total.toLocaleString('en-IN')}</div>
+      <br><button onclick="window.print()" style="padding:10px 24px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer;">🖨️ Print / Save as PDF</button>
+      </body></html>
+    `);
+    win.document.close();
+  }
+
+  exportSalesXL() {
+    const data = this.salesRecords;
+    const headers = ['#','Date','Customer','Phone','Product','Model','Warranty','Amount (Rs)','Discount (Rs)','Net (Rs)'];
+    const rows = data.map((s, i) => {
+      const net = (Number(s.saleAmount)||0) - (Number(s.discount)||0);
+      return [i+1, s.purchaseDate||'', s.customerName, s.phoneNumber||'', s.productName, s.productModel||'', s.warrantyPeriod||'', Number(s.saleAmount)||0, Number(s.discount)||0, net];
+    });
+    this._downloadCSV('sales_records', headers, rows);
+  }
+
+  _downloadCSV(filename, headers, rows) {
+    const escape = v => {
+      const s = String(v).replace(/"/g, '""');
+      return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s}"` : s;
+    };
+    const csv = [headers, ...rows].map(r => r.map(escape).join(',')).join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filename}_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   renderFooter() {
     return `
       <footer>
@@ -3668,6 +4140,197 @@ class OwnerPortalApp {
   filterTracking(status) {
     this.trackingFilter = status;
     this.renderTrackingListOnly();
+  }
+
+  showProductSuggestions(value) {
+    const dropdown = document.getElementById('sale_product_dropdown');
+    if (!dropdown) return;
+    const term = value.trim().toLowerCase();
+    if (!term) { dropdown.style.display = 'none'; return; }
+
+    const matches = this.products.filter(p =>
+      p.name.toLowerCase().includes(term) ||
+      (p.category && p.category.toLowerCase().includes(term))
+    ).slice(0, 10);
+
+    if (matches.length === 0) { dropdown.style.display = 'none'; return; }
+
+    dropdown.innerHTML = matches.map(p => {
+      // Use index reference to avoid quote-escaping issues with product names
+      const idx = this.products.indexOf(p);
+      const inStock = p.inStock !== false;
+      return `
+        <div onmousedown="event.preventDefault(); app.selectProductSuggestion(${idx});"
+          style="padding:10px 14px; cursor:pointer; border-bottom:1px solid #fecaca; font-size:13px; ${!inStock ? 'opacity:0.5;' : ''}"
+          onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='#fff'">
+          <div style="font-weight:600; color:#111;">${p.name} ${!inStock ? '<span style="color:#dc2626;font-size:10px;">(Out of Stock)</span>' : ''}</div>
+          <div style="font-size:11px; color:#6b7280;">
+            ${p.category ? `<span style="background:#fee2e2;color:#dc2626;padding:1px 6px;border-radius:4px;margin-right:4px;">${p.category}</span>` : ''}
+            ${p.price ? `<span style="color:#16a34a;font-weight:600;">₹${Number(p.price).toLocaleString('en-IN')}</span>` : ''}
+            ${p.originalPrice && p.originalPrice > p.price ? `<span style="color:#9ca3af;text-decoration:line-through;margin-left:4px;font-size:10px;">₹${Number(p.originalPrice).toLocaleString('en-IN')}</span>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+    dropdown.style.display = 'block';
+  }
+
+  selectProductSuggestion(productIndex) {
+    const p = this.products[productIndex];
+    if (!p) return;
+
+    const dropdown = document.getElementById('sale_product_dropdown');
+    if (dropdown) dropdown.style.display = 'none';
+
+    // Fill product name
+    const nameInput = document.getElementById('sale_productName');
+    if (nameInput) nameInput.value = p.name;
+
+    // Fill sale amount from product price
+    const amountInput = document.getElementById('sale_saleAmount');
+    if (amountInput && p.price) {
+      amountInput.value = p.price;
+    }
+
+    // Fill category/type field
+    const categoryInput = document.getElementById('sale_productCategory');
+    if (categoryInput) categoryInput.value = p.category || '';
+
+    // Show original price as reference
+    const origPriceEl = document.getElementById('sale_originalPrice_ref');
+    if (origPriceEl) {
+      if (p.originalPrice && p.originalPrice > p.price) {
+        origPriceEl.textContent = `MRP: ₹${Number(p.originalPrice).toLocaleString('en-IN')}`;
+        origPriceEl.style.display = 'inline';
+      } else {
+        origPriceEl.style.display = 'none';
+      }
+    }
+
+    // Auto-set warranty if product has a badge hint
+    const warrantySelect = document.getElementById('sale_warrantyPeriod');
+    if (warrantySelect && p.badge) {
+      const badge = p.badge.toLowerCase();
+      if (badge.includes('1 year') || badge.includes('1year')) warrantySelect.value = '1 Year';
+      else if (badge.includes('2 year') || badge.includes('2year')) warrantySelect.value = '2 Years';
+      else if (badge.includes('6 month')) warrantySelect.value = '6 Months';
+      else if (badge.includes('3 month')) warrantySelect.value = '3 Months';
+    }
+
+    this.updateBillPreview();
+  }
+
+  // ===== DEBOUNCED SEARCH METHODS (no full page re-render) =====
+
+  searchProducts(value) {
+    // Store value and update only the products grid
+    if (this._searchTimer) clearTimeout(this._searchTimer);
+    this._searchTimer = setTimeout(() => {
+      const term = value.toLowerCase();
+      const filtered = this.products.filter(p =>
+        p.name.toLowerCase().includes(term) || p.category.toLowerCase().includes(term)
+      );
+      const grid = document.querySelector('.admin-products-grid');
+      if (grid) {
+        grid.innerHTML = filtered.length > 0
+          ? filtered.map(p => this.renderAdminProductCard(p)).join('')
+          : '<div style="grid-column:1/-1;text-align:center;padding:48px;color:#94a3b8;">No products found</div>';
+      }
+      const counter = document.querySelector('#adminSearch + span');
+      if (counter) counter.textContent = `Total: ${filtered.length} products`;
+    }, 300);
+  }
+
+  searchSales(value) {
+    if (this._salesTimer) clearTimeout(this._salesTimer);
+    this.salesSearch = value;
+    this._salesTimer = setTimeout(() => {
+      const term = value.toLowerCase();
+      const filtered = this.salesRecords.filter(s =>
+        s.customerName?.toLowerCase().includes(term) ||
+        s.phoneNumber?.includes(term) ||
+        s.productName?.toLowerCase().includes(term) ||
+        s.customerAddress?.toLowerCase().includes(term)
+      );
+      const grid = document.querySelector('.sales-records-grid');
+      const counter = document.querySelector('.sales-counter');
+      if (counter) counter.textContent = `${filtered.length} records`;
+      if (!grid) return;
+      if (filtered.length === 0) {
+        grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:60px;color:#374151;font-size:16px;"><div style="font-size:48px;margin-bottom:16px;">🛍️</div><p>No sales records found.</p></div>';
+        return;
+      }
+      grid.innerHTML = filtered.map(sale => {
+        const amount = Number(sale.saleAmount) || 0;
+        const discount = Number(sale.discount) || 0;
+        const netAmount = amount - discount;
+        return `
+          <div style="background: rgba(255,255,255,0.95); border-radius: 12px; padding: 16px; border: 2px solid #fecaca; position: relative;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+              <div>
+                <div style="font-size: 16px; font-weight: 700; color: #000;">${sale.customerName}</div>
+                <div style="font-size: 13px; color: #dc2626; font-weight: 600;">📞 ${sale.phoneNumber}</div>
+                ${sale.customerAddress ? `<div style="font-size: 12px; color: #6b7280;">📍 ${sale.customerAddress}</div>` : ''}
+              </div>
+              <div style="display:flex; gap:6px;">
+                <button onclick="app.showBillModal('${sale.saleId}')" style="background: #dbeafe; border: none; border-radius: 6px; padding: 4px 8px; cursor: pointer; color: #1d4ed8; font-size: 12px;" title="View Bill">🧾</button>
+                <button onclick="app.deleteSaleRecord('${sale.saleId}')" style="background: #fee2e2; border: none; border-radius: 6px; padding: 4px 8px; cursor: pointer; color: #dc2626; font-size: 12px;" title="Delete">🗑️</button>
+              </div>
+            </div>
+            <div style="border-top: 1px solid #fecaca; padding-top: 10px; display: flex; flex-direction: column; gap: 6px;">
+              <div style="font-size: 13px; color: #000;"><span style="color: #6b7280;">📱 Product:</span> <strong>${sale.productName}</strong></div>
+              <div style="font-size: 13px; color: #000;"><span style="color: #6b7280;">📅 Date:</span> ${sale.purchaseDate}</div>
+              ${amount ? `<div style="font-size: 13px; color: #374151;">Price: ₹${amount.toLocaleString()}${discount ? ` &nbsp;|&nbsp; Discount: ₹${discount.toLocaleString()}` : ''}</div>` : ''}
+              ${amount ? `<div style="font-size: 14px; font-weight: 700; color: #16a34a;">💰 Net: ₹${netAmount.toLocaleString()}</div>` : ''}
+              ${sale.warrantyPeriod ? `<div style="font-size: 12px; background: #dcfce7; color: #16a34a; padding: 3px 8px; border-radius: 20px; display: inline-block; font-weight: 600;">🛡️ Warranty: ${sale.warrantyPeriod}</div>` : ''}
+              ${sale.notes ? `<div style="font-size: 12px; color: #6b7280; font-style: italic;">${sale.notes}</div>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }, 300);
+  }
+
+  searchStock(value) {
+    if (this._stockTimer) clearTimeout(this._stockTimer);
+    this.stockSearch = value;
+    this._stockTimer = setTimeout(() => {
+      const term = value.toLowerCase();
+      const filtered = (this.displayStock || []).filter(d =>
+        d.displayName?.toLowerCase().includes(term) ||
+        d.displayId?.toLowerCase().includes(term)
+      );
+      const tbody = document.querySelector('.stock-table-body');
+      if (tbody) {
+        tbody.innerHTML = filtered.length === 0
+          ? '<tr><td colspan="7" style="text-align:center;padding:40px;color:#94a3b8;">No items found</td></tr>'
+          : filtered.map((item, idx) => this._renderStockRow(item, idx)).join('');
+      }
+      const counter = document.querySelector('.stock-counter');
+      if (counter) counter.textContent = `${filtered.length} items`;
+    }, 300);
+  }
+
+  searchServices(value) {
+    if (this._serviceTimer) clearTimeout(this._serviceTimer);
+    this.serviceSearch = value;
+    this._serviceTimer = setTimeout(() => {
+      const term = value.toLowerCase();
+      const filtered = (this.serviceRecords || []).filter(s =>
+        s.customerName?.toLowerCase().includes(term) ||
+        s.phoneNumber?.includes(term) ||
+        s.serviceDetails?.toLowerCase().includes(term) ||
+        s.customerAddress?.toLowerCase().includes(term)
+      );
+      const tbody = document.querySelector('.services-table-body');
+      if (tbody) {
+        tbody.innerHTML = filtered.length === 0
+          ? '<tr><td colspan="9" style="text-align:center;padding:40px;color:#94a3b8;">No records found</td></tr>'
+          : filtered.map((s, i) => this._renderServiceRow(s, i)).join('');
+      }
+      const counter = document.querySelector('.services-counter');
+      if (counter) counter.textContent = `${filtered.length} records`;
+    }, 300);
   }
 
   // Render only the tracking list without re-rendering the entire page
