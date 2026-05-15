@@ -1208,6 +1208,14 @@ nav .nav-content {
 
 /* Mobile responsive nav title */
 @media (max-width: 768px) {
+    .nav-shop-name {
+        font-size: 11px !important;
+    }
+
+    .nav-shop-sub {
+        font-size: 8px !important;
+    }
+
     .nav-title div:first-child {
         font-size: 11px;
     }
@@ -1221,12 +1229,25 @@ nav .nav-content {
         height: 26px;
     }
 
+    .nav-logo img {
+        width: 26px !important;
+        height: 26px !important;
+    }
+
     .nav-brand {
         gap: 6px;
     }
 }
 
 @media (max-width: 480px) {
+    .nav-shop-name {
+        font-size: 10px !important;
+    }
+
+    .nav-shop-sub {
+        font-size: 7px !important;
+    }
+
     .nav-brand {
         gap: 5px;
     }
@@ -1242,6 +1263,11 @@ nav .nav-content {
     .nav-logo {
         width: 24px;
         height: 24px;
+    }
+
+    .nav-logo img {
+        width: 24px !important;
+        height: 24px !important;
     }
 }
 

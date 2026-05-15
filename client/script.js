@@ -1637,13 +1637,13 @@ class ManjulaMobilesApp {
     return `
       <nav>
         <div class="nav-content">
-          <div class="nav-brand" style="cursor: pointer; display: flex; align-items: center; gap: 12px;">
-            <div class="nav-logo">
+          <div class="nav-brand" style="cursor: pointer; display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; overflow: hidden;">
+            <div class="nav-logo" style="flex-shrink: 0;">
               <img src="https://i.pinimg.com/736x/e3/6f/79/e36f793e016dd6b35cd27f84030b7487.jpg" alt="Manjula Mobile World Logo" style="width: 50px; height: 50px; object-fit: contain; border-radius: 8px;" onerror="this.innerHTML='<div style=&quot;width:50px;height:50px;background:linear-gradient(135deg,#dc2626,#b91c1c);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px;&quot;>📱</div>'">
             </div>
-            <div class="nav-title" data-page="home">
-              <div style="font-size: 16px; font-weight: 700; white-space: nowrap;">MANJULA MOBILE WORLD</div>
-              <div style="font-size: 10px; font-weight: 500; margin-top: 1px;">the final world of mobile services</div>
+            <div class="nav-title" data-page="home" style="min-width: 0; overflow: hidden;">
+              <div class="nav-shop-name" style="font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">MANJULA MOBILE WORLD</div>
+              <div class="nav-shop-sub" style="font-weight: 500; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">the final world of mobile services</div>
             </div>
           </div>
           
