@@ -789,6 +789,7 @@ class OwnerPortalApp {
     return `
       <div style="min-height: 100vh; background-color: #f13e74fb; padding-top: 96px; padding-bottom: 80px;">
         <div class="container">
+          <button class="back-button" data-page="admin" style="margin-bottom: 20px;">&#8592; Dashboard</button>
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;">
             <div>
               <h1 style="font-size: 36px; font-weight: 700; margin-bottom: 8px;">Products Management</h1>
@@ -857,6 +858,7 @@ class OwnerPortalApp {
     return `
       <div style="min-height: 100vh; background-color: #f13e74fb; padding-top: 96px; padding-bottom: 80px;">
         <div class="container">
+          <button class="back-button" data-page="admin" style="margin-bottom: 20px;">&#8592; Dashboard</button>
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;">
             <div>
               <h1 style="font-size: 36px; font-weight: 700; margin-bottom: 8px;">Tracking Management</h1>
@@ -1123,6 +1125,7 @@ class OwnerPortalApp {
     return `
       <div style="min-height: 100vh; background-color: #f13e74fb; padding-top: 96px; padding-bottom: 80px;">
         <div class="container">
+          <button class="back-button" data-page="admin" style="margin-bottom: 20px;">&#8592; Dashboard</button>
           <div style="margin-bottom: 32px;">
             <h1 style="font-size: 36px; font-weight: 700; margin-bottom: 8px;">Orders Management</h1>
             <p style="color: #94a3b8;">View and manage customer orders</p>
@@ -1676,6 +1679,7 @@ class OwnerPortalApp {
     return `
       <div style="min-height: 100vh; background-color: #f13e74fb; padding-top: 96px; padding-bottom: 80px;">
         <div class="container">
+          <button class="back-button" data-page="admin" style="margin-bottom: 20px;">&#8592; Dashboard</button>
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px;">
             <div>
               <h1 style="font-size: 32px; font-weight: 700; margin-bottom: 4px;">🛍️ Sales Records</h1>
@@ -1809,7 +1813,7 @@ class OwnerPortalApp {
     return `
       <div style="min-height:100vh; background-color:#f13e74fb; padding-top:96px; padding-bottom:80px;">
         <div class="container">
-
+          <button class="back-button" data-page="admin" style="margin-bottom: 20px;">&#8592; Dashboard</button>
           <!-- Header -->
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:12px;">
             <div>
@@ -2147,6 +2151,7 @@ class OwnerPortalApp {
     return `
       <div style="min-height:100vh; background-color:#f13e74fb; padding-top:96px; padding-bottom:80px;">
         <div class="container">
+          <button class="back-button" data-page="admin" style="margin-bottom: 20px;">&#8592; Dashboard</button>
           <!-- Header -->
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:12px;">
             <div>
@@ -2466,6 +2471,7 @@ class OwnerPortalApp {
     return `
       <div style="min-height:100vh; background-color:#f13e74fb; padding-top:96px; padding-bottom:80px;">
         <div class="container">
+          <button class="back-button" data-page="admin-services" style="margin-bottom: 20px;">&#8592; Services</button>
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:28px; flex-wrap:wrap; gap:12px;">
             <div>
               <h1 style="font-size:32px; font-weight:700; margin-bottom:4px;">📅 Daily Service Records</h1>
@@ -2572,6 +2578,7 @@ class OwnerPortalApp {
     return `
       <div style="min-height:100vh; background-color:#f13e74fb; padding-top:96px; padding-bottom:80px;">
         <div class="container">
+          <button class="back-button" data-page="admin-services" style="margin-bottom: 20px;">&#8592; Services</button>
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:28px; flex-wrap:wrap; gap:12px;">
             <div>
               <h1 style="font-size:32px; font-weight:700; margin-bottom:4px;">📆 Monthly Service Records</h1>
@@ -2690,6 +2697,7 @@ class OwnerPortalApp {
     return `
       <div style="min-height:100vh; background-color:#f13e74fb; padding-top:96px; padding-bottom:80px;">
         <div class="container">
+          <button class="back-button" data-page="admin-sales" style="margin-bottom: 20px;">&#8592; Sales Records</button>
           <!-- Header -->
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:28px; flex-wrap:wrap; gap:12px;">
             <div>
