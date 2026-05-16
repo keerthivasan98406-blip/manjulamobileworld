@@ -2032,8 +2032,8 @@ class OwnerPortalApp {
                       ${sale.customerAddress ? `<div style="font-size: 12px; color: #6b7280;">📍 ${sale.customerAddress}</div>` : ''}
                     </div>
                     <div style="display:flex; gap:6px;">
-                      <button onclick="app.showBillModal('${sale.saleId}')" style="background: #dbeafe; border: none; border-radius: 6px; padding: 4px 8px; cursor: pointer; color: #1d4ed8; font-size: 12px;" title="View Bill">🧾</button>
-                      <button onclick="app.deleteSaleRecord('${sale.saleId}')" style="background: #fee2e2; border: none; border-radius: 6px; padding: 4px 8px; cursor: pointer; color: #dc2626; font-size: 12px;" title="Delete">🗑️</button>
+                      <button onclick="app.showBillModal('${sale.saleId}')" style="background:#1d4ed8; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; gap:4px;" title="Print Receipt">🧾 Print</button>
+                      <button onclick="app.deleteSaleRecord('${sale.saleId}')" style="background:#dc2626; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; gap:4px;" title="Delete">🗑️ Delete</button>
                     </div>
                   </div>
                   <div style="border-top: 1px solid #fecaca; padding-top: 10px; display: flex; flex-direction: column; gap: 6px;">
@@ -2072,7 +2072,11 @@ class OwnerPortalApp {
               <h1 style="font-size:32px; font-weight:700; margin-bottom:4px;">📦 Display Stock</h1>
               <p style="color:#94a3b8;">Manage display inventory — increase, decrease & track stock</p>
             </div>
-            <button class="btn btn-primary" onclick="app.toggleStockForm()" style="padding:12px 24px;">+ Add Display</button>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+              <button class="btn btn-primary" onclick="app.toggleStockForm()" style="padding:12px 24px;">+ Add Display</button>
+              <button onclick="app.exportDisplayStockPDF()" style="padding: 12px 24px; background:#1e293b; color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer;">📄 PDF</button>
+              <button onclick="app.exportDisplayStockXL()" style="padding: 12px 24px; background:#16a34a; color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer;">📊 XL Sheet</button>
+            </div>
           </div>
 
           <!-- Add Form -->
@@ -2666,7 +2670,7 @@ class OwnerPortalApp {
 
           <div style="display:flex;gap:12px;padding:16px 32px 24px;border-top:1px solid #e5e7eb;">
             <button onclick="app.printServiceBill()" style="flex:1;background:#dc2626;color:#fff;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;">🖨️ Print / Save PDF</button>
-            <button onclick="document.getElementById('serviceBillModal').remove()" style="flex:1;background:#f1f5f9;color:#374151;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;">✕ Close</button>
+            <button onclick="app.closeServiceBillModal()" style="flex:1;background:#f1f5f9;color:#374151;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;">✕ Close</button>
           </div>
         </div>
       </div>
@@ -2675,6 +2679,16 @@ class OwnerPortalApp {
     const existing = document.getElementById('serviceBillModal');
     if (existing) existing.remove();
     document.body.insertAdjacentHTML('beforeend', billHTML);
+  }
+
+  closeBillModal() {
+    const m = document.getElementById('billModal');
+    if (m) m.remove();
+  }
+
+  closeServiceBillModal() {
+    const m = document.getElementById('serviceBillModal');
+    if (m) m.remove();
   }
 
   printServiceBill() {
@@ -3021,7 +3035,7 @@ class OwnerPortalApp {
                             <td style="padding:10px 16px; text-align:right; color:#16a34a;">${disc ? '₹' + disc.toLocaleString() : '—'}</td>
                             <td style="padding:10px 16px; text-align:right; font-weight:700; color:#dc2626;">${amt ? '₹' + net.toLocaleString() : '—'}</td>
                             <td style="padding:10px 16px; text-align:center;">
-                              <button onclick="app.showBillModal('${sale.saleId}')" style="background:#dbeafe; border:none; border-radius:6px; padding:4px 10px; cursor:pointer; color:#1d4ed8; font-size:13px;" title="View Bill">🧾</button>
+                              <button onclick="app.showBillModal('${sale.saleId}')" style="background:#1d4ed8; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; color:#fff; font-size:13px; font-weight:700;" title="Print Receipt">🧾 Print</button>
                             </td>
                           </tr>
                         `;
@@ -3110,92 +3124,89 @@ class OwnerPortalApp {
     const sale = this.salesRecords.find(s => s.saleId === saleId);
     if (!sale) return;
 
-    const amount = Number(sale.saleAmount) || 0;
+    const amount   = Number(sale.saleAmount) || 0;
     const discount = Number(sale.discount) || 0;
-    const net = amount - discount;
+    const net      = amount - discount;
+
+    const receiptStyle = `
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 12px;
+      width: 300px;
+      color: #000;
+      background: #fff;
+      padding: 16px;
+      line-height: 1.5;
+    `;
 
     const billHTML = `
-      <div id="billModal" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;">
-        <div style="background:#fff;border-radius:12px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.4);">
-          <!-- Bill content (printable) -->
-          <div id="billContent" style="padding:32px;">
+      <div id="billModal" onclick="if(event.target===this)app.closeBillModal()" style="position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;">
+        <div style="background:#fff;border-radius:8px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+
+          <!-- Thermal Receipt Preview -->
+          <div id="billContent" style="${receiptStyle}">
+
             <!-- Header -->
-            <div style="text-align:center;border-bottom:2px solid #dc2626;padding-bottom:16px;margin-bottom:20px;">
-              <div style="font-size:22px;font-weight:800;color:#dc2626;letter-spacing:1px;">MANJULA MOBILE WORLD</div>
-              <div style="font-size:12px;color:#6b7280;margin-top:4px;">📞 +91 82484 54841 &nbsp;|&nbsp; ✉️ manjulamobiles125@gmail.com</div>
-              <div style="font-size:11px;color:#6b7280;">Your Trusted Mobile Store</div>
+            <div style="text-align:center;">
+              <div style="font-size:15px;font-weight:bold;">MANJULA MOBILE WORLD</div>
+              <div style="font-size:10px;margin-top:2px;">The Final World of Mobile Solution</div>
+              <div style="font-size:10px;">Ramapuram, Tamil Nadu - 603201</div>
+              <div style="font-size:10px;">Ph: +91 82484 54841</div>
+              <div style="font-size:10px;">manjulamobiles125@gmail.com</div>
             </div>
 
-            <!-- Bill title -->
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-              <div style="font-size:16px;font-weight:700;color:#111;">SALES INVOICE</div>
-              <div style="font-size:12px;color:#6b7280;">Date: <strong>${sale.purchaseDate}</strong></div>
+            <div style="border-top:1px solid #000;margin:6px 0;"></div>
+            <div style="text-align:center;font-weight:bold;font-size:12px;letter-spacing:1px;">** SALES RECEIPT **</div>
+            <div style="text-align:center;font-size:10px;">Date: ${sale.purchaseDate || new Date().toLocaleDateString('en-IN')}</div>
+            <div style="text-align:center;font-size:10px;">Bill No: ${sale.saleId}</div>
+            <div style="border-top:1px dashed #000;margin:6px 0;"></div>
+
+            <!-- Customer -->
+            <div style="font-weight:bold;margin-bottom:3px;">CUSTOMER DETAILS</div>
+            <div style="display:flex;justify-content:space-between;"><span>Name</span><span style="font-weight:bold;text-align:right;max-width:55%;word-break:break-word;">${sale.customerName}</span></div>
+            <div style="display:flex;justify-content:space-between;"><span>Phone</span><span style="font-weight:bold;">${sale.phoneNumber || '-'}</span></div>
+            ${sale.customerAddress ? `<div style="display:flex;justify-content:space-between;"><span>Address</span><span style="font-weight:bold;text-align:right;max-width:55%;word-break:break-word;">${sale.customerAddress}</span></div>` : ''}
+
+            <div style="border-top:1px dashed #000;margin:6px 0;"></div>
+
+            <!-- Product -->
+            <div style="font-weight:bold;margin-bottom:3px;">PRODUCT DETAILS</div>
+            <div style="display:flex;justify-content:space-between;"><span>Product</span><span style="font-weight:bold;text-align:right;max-width:55%;word-break:break-word;">${sale.productName}</span></div>
+            ${sale.productModel ? `<div style="display:flex;justify-content:space-between;"><span>Model</span><span style="font-weight:bold;">${sale.productModel}</span></div>` : ''}
+            ${sale.warrantyPeriod ? `<div style="display:flex;justify-content:space-between;"><span>Warranty</span><span style="font-weight:bold;">${sale.warrantyPeriod}</span></div>` : ''}
+
+            <div style="border-top:1px dashed #000;margin:6px 0;"></div>
+
+            <!-- Amount -->
+            <div style="display:flex;justify-content:space-between;"><span>Price</span><span style="font-weight:bold;">Rs.${amount.toLocaleString('en-IN')}</span></div>
+            ${discount > 0 ? `<div style="display:flex;justify-content:space-between;"><span>Discount</span><span style="font-weight:bold;">- Rs.${discount.toLocaleString('en-IN')}</span></div>` : ''}
+
+            <div style="border-top:1px solid #000;margin:6px 0;"></div>
+            <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:bold;">
+              <span>NET PAYABLE</span><span>Rs.${net.toLocaleString('en-IN')}</span>
             </div>
+            <div style="border-top:1px solid #000;margin:6px 0;"></div>
 
-            <!-- Customer details -->
-            <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:14px;margin-bottom:20px;">
-              <div style="font-size:12px;font-weight:700;color:#dc2626;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">Customer Details</div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
-                <div style="font-size:13px;"><span style="color:#6b7280;">Name:</span> <strong>${sale.customerName}</strong></div>
-                <div style="font-size:13px;"><span style="color:#6b7280;">Phone:</span> <strong>${sale.phoneNumber}</strong></div>
-                <div style="font-size:13px;grid-column:1/-1;"><span style="color:#6b7280;">Address:</span> <strong>${sale.customerAddress || '—'}</strong></div>
-              </div>
-            </div>
-
-            <!-- Product table -->
-            <table style="width:100%;border-collapse:collapse;margin-bottom:20px;font-size:13px;">
-              <thead>
-                <tr style="background:#dc2626;color:#fff;">
-                  <th style="padding:8px 12px;text-align:left;border-radius:6px 0 0 0;">Product</th>
-                  <th style="padding:8px 12px;text-align:right;">Price (₹)</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr style="border-bottom:1px solid #fecaca;">
-                  <td style="padding:10px 12px;">${sale.productName}</td>
-                  <td style="padding:10px 12px;text-align:right;">₹${amount.toLocaleString()}</td>
-                </tr>
-              </tbody>
-            </table>
-
-            <!-- Totals -->
-            <div style="border-top:2px solid #dc2626;padding-top:12px;margin-bottom:20px;">
-              <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;">
-                <span style="color:#6b7280;">Sub Total</span>
-                <span>₹${amount.toLocaleString()}</span>
-              </div>
-              ${discount > 0 ? `
-              <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;color:#16a34a;">
-                <span>Discount</span>
-                <span>- ₹${discount.toLocaleString()}</span>
-              </div>` : ''}
-              <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:800;color:#dc2626;border-top:1px dashed #fecaca;padding-top:8px;margin-top:4px;">
-                <span>Net Payable</span>
-                <span>₹${net.toLocaleString()}</span>
-              </div>
-            </div>
-
-            <!-- Warranty & Notes -->
-            ${sale.warrantyPeriod ? `
-            <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:13px;">
-              🛡️ <strong>Warranty:</strong> ${sale.warrantyPeriod}
-            </div>` : ''}
             ${sale.notes ? `
-            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#6b7280;">
-              📝 ${sale.notes}
-            </div>` : ''}
+            <div style="font-size:10px;margin:4px 0;">
+              <div style="font-weight:bold;">Notes:</div>
+              <div>${sale.notes}</div>
+            </div>
+            <div style="border-top:1px dashed #000;margin:6px 0;"></div>` : ''}
 
             <!-- Footer -->
-            <div style="text-align:center;border-top:1px solid #e5e7eb;padding-top:14px;font-size:11px;color:#9ca3af;">
-              Thank you for shopping at Manjula Mobile World! 🙏<br>
-              Please keep this bill for warranty claims.
+            <div style="text-align:center;font-size:10px;margin-top:6px;">
+              <div>Mon-Sun: 9:00 AM - 10:00 PM</div>
+              <div>24/7 Emergency Service Available</div>
+              <div style="margin-top:4px;">*** Thank You! Visit Again ***</div>
+              <div style="margin-top:2px;">manjulamobilesworld.onrender.com</div>
             </div>
+
           </div>
 
-          <!-- Action buttons (not printed) -->
-          <div class="no-print" style="display:flex;gap:12px;padding:16px 32px 24px;border-top:1px solid #e5e7eb;">
-            <button onclick="app.printBill()" style="flex:1;background:#dc2626;color:#fff;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;">🖨️ Print / Save PDF</button>
-            <button onclick="document.getElementById('billModal').remove()" style="flex:1;background:#f1f5f9;color:#374151;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;">✕ Close</button>
+          <!-- Action buttons -->
+          <div style="display:flex;gap:12px;padding:12px 16px;border-top:1px solid #e5e7eb;">
+            <button onclick="app.printBill('${sale.saleId}')" style="flex:1;background:#000;color:#fff;border:none;border-radius:6px;padding:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:monospace;">🖨️ PRINT</button>
+            <button onclick="app.closeBillModal()" style="flex:1;background:#f1f5f9;color:#374151;border:none;border-radius:6px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;">✕ Close</button>
           </div>
         </div>
       </div>
@@ -3206,32 +3217,122 @@ class OwnerPortalApp {
     document.body.insertAdjacentHTML('beforeend', billHTML);
   }
 
-  printBill() {
-    const billContent = document.getElementById('billContent');
-    if (!billContent) return;
+  printBill(saleId) {
+    const sale = this.salesRecords.find(s => s.saleId === saleId);
+    if (!sale) return;
 
-    const printWindow = window.open('', '_blank', 'width=600,height=800');
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <title>Sales Invoice - Manjula Mobile World</title>
-        <style>
-          body { font-family: Arial, sans-serif; margin: 0; padding: 20px; color: #111; }
-          @media print {
-            body { padding: 0; }
-            button { display: none !important; }
-          }
-        </style>
-      </head>
-      <body>
-        ${billContent.innerHTML}
-        <script>window.onload = function(){ window.print(); }<\/script>
-      </body>
-      </html>
-    `);
-    printWindow.document.close();
+    const amount   = Number(sale.saleAmount) || 0;
+    const discount = Number(sale.discount) || 0;
+    const net      = amount - discount;
+
+    const win = window.open('', '_blank', 'width=400,height=700');
+    win.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Sales Receipt - ${sale.saleId}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    @page {
+      size: 80mm auto;
+      margin: 4mm 3mm;
+    }
+    body {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 11px;
+      width: 72mm;
+      color: #000;
+      background: #fff;
+    }
+    .center { text-align: center; }
+    .bold { font-weight: bold; }
+    .large { font-size: 14px; }
+    .xlarge { font-size: 16px; }
+    .divider { border-top: 1px dashed #000; margin: 5px 0; }
+    .divider-solid { border-top: 1px solid #000; margin: 5px 0; }
+    .row { display: flex; justify-content: space-between; margin: 2px 0; }
+    .label { color: #333; }
+    .value { font-weight: bold; text-align: right; max-width: 55%; word-break: break-word; }
+    .amount-row { font-size: 14px; font-weight: bold; margin: 4px 0; }
+    .footer { font-size: 10px; text-align: center; margin-top: 6px; }
+    @media print {
+      body { width: 72mm; }
+      button { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Shop Header -->
+  <div class="center">
+    <div class="xlarge bold">MANJULA MOBILE WORLD</div>
+    <div style="font-size:10px; margin-top:2px;">The Final World of Mobile Solution</div>
+    <div style="font-size:10px;">Ramapuram, Tamil Nadu - 603201</div>
+    <div style="font-size:10px;">Ph: +91 82484 54841</div>
+    <div style="font-size:10px;">manjulamobiles125@gmail.com</div>
+  </div>
+
+  <div class="divider-solid"></div>
+
+  <div class="center bold" style="font-size:12px; letter-spacing:1px;">** SALES RECEIPT **</div>
+  <div class="center" style="font-size:10px;">Date: ${sale.purchaseDate || new Date().toLocaleDateString('en-IN')}</div>
+  <div class="center" style="font-size:10px;">Bill No: ${sale.saleId}</div>
+
+  <div class="divider"></div>
+
+  <!-- Customer Details -->
+  <div class="bold" style="margin-bottom:3px;">CUSTOMER DETAILS</div>
+  <div class="row"><span class="label">Name</span><span class="value">${sale.customerName}</span></div>
+  <div class="row"><span class="label">Phone</span><span class="value">${sale.phoneNumber || '-'}</span></div>
+  ${sale.customerAddress ? `<div class="row"><span class="label">Address</span><span class="value">${sale.customerAddress}</span></div>` : ''}
+
+  <div class="divider"></div>
+
+  <!-- Product Details -->
+  <div class="bold" style="margin-bottom:3px;">PRODUCT DETAILS</div>
+  <div class="row"><span class="label">Product</span><span class="value">${sale.productName}</span></div>
+  ${sale.productModel ? `<div class="row"><span class="label">Model</span><span class="value">${sale.productModel}</span></div>` : ''}
+  ${sale.warrantyPeriod ? `<div class="row"><span class="label">Warranty</span><span class="value">${sale.warrantyPeriod}</span></div>` : ''}
+
+  <div class="divider"></div>
+
+  <!-- Amount -->
+  <div class="row"><span class="label">Price</span><span class="value">Rs.${amount.toLocaleString('en-IN')}</span></div>
+  ${discount > 0 ? `<div class="row"><span class="label">Discount</span><span class="value">- Rs.${discount.toLocaleString('en-IN')}</span></div>` : ''}
+
+  <div class="divider-solid"></div>
+
+  <div class="row amount-row">
+    <span>NET PAYABLE</span>
+    <span>Rs.${net.toLocaleString('en-IN')}</span>
+  </div>
+
+  <div class="divider-solid"></div>
+
+  ${sale.notes ? `
+  <div style="font-size:10px; margin: 4px 0;">
+    <div class="bold">Notes:</div>
+    <div>${sale.notes}</div>
+  </div>
+  <div class="divider"></div>
+  ` : ''}
+
+  <div class="footer">
+    <div>Mon-Sun: 9:00 AM - 10:00 PM</div>
+    <div>24/7 Emergency Service Available</div>
+    <div style="margin-top:4px;">*** Thank You! Visit Again ***</div>
+    <div style="margin-top:2px;">manjulamobilesworld.onrender.com</div>
+  </div>
+
+  <br>
+  <div style="text-align:center;">
+    <button onclick="window.print()" style="padding:8px 20px; background:#000; color:#fff; border:none; border-radius:4px; font-size:13px; cursor:pointer; font-family:monospace;">🖨️ PRINT</button>
+  </div>
+
+</body>
+</html>`);
+    win.document.close();
+    setTimeout(() => { try { win.print(); } catch(e) {} }, 500);
   }
 
   async deleteSaleRecord(saleId) {
@@ -3296,7 +3397,7 @@ class OwnerPortalApp {
   <!-- Shop Header -->
   <div class="center">
     <div class="xlarge bold">MANJULA MOBILE WORLD</div>
-    <div style="font-size:10px; margin-top:2px;">The Final World of Mobile Services</div>
+    <div style="font-size:10px; margin-top:2px;">The Final World of Mobile Solution</div>
     <div style="font-size:10px;">Ramapuram, Tamil Nadu - 603201</div>
     <div style="font-size:10px;">Ph: +91 82484 54841</div>
     <div style="font-size:10px;">manjulamobiles125@gmail.com</div>
@@ -3455,6 +3556,56 @@ class OwnerPortalApp {
       return [i+1, s.purchaseDate||'', s.customerName, s.phoneNumber||'', s.productName, s.productModel||'', s.warrantyPeriod||'', Number(s.saleAmount)||0, Number(s.discount)||0, net];
     });
     this._downloadCSV('sales_records', headers, rows);
+  }
+
+  exportDisplayStockPDF() {
+    const data = this.displayStock || [];
+    const win = window.open('', '_blank', 'width=900,height=700');
+    const rows = data.map((d, i) => {
+      const stock = Number(d.stock) || 0;
+      const stockColor = stock === 0 ? '#dc2626' : stock <= 3 ? '#d97706' : '#16a34a';
+      const statusLabel = stock === 0 ? 'Out of Stock' : stock <= 3 ? 'Low Stock' : 'In Stock';
+      return `<tr style="background:${i%2===0?'#fff':'#f9fafb'}">
+        <td>${i+1}</td>
+        <td>${d.displayName}</td>
+        <td>${d.displayId}</td>
+        <td>${d.price ? '₹' + Number(d.price).toLocaleString('en-IN') : '—'}</td>
+        <td style="font-weight:900; color:${stockColor};">${stock}</td>
+        <td style="color:${stockColor}; font-weight:700;">${statusLabel}</td>
+      </tr>`;
+    }).join('');
+    const totalValue = data.reduce((sum, d) => sum + ((Number(d.price)||0) * (Number(d.stock)||0)), 0);
+    win.document.write(`
+      <!DOCTYPE html><html><head><title>Display Stock Report</title>
+      <style>
+        body{font-family:Arial,sans-serif;padding:20px;color:#111;}
+        h2{color:#1e293b;}
+        table{width:100%;border-collapse:collapse;font-size:12px;}
+        th{background:#1e293b;color:#fff;padding:8px 10px;text-align:left;}
+        td{padding:7px 10px;border-bottom:1px solid #e5e7eb;}
+        .total{font-size:16px;font-weight:800;color:#1e293b;margin-top:12px;}
+        @media print{button{display:none;}}
+      </style></head><body>
+      <h2>MANJULA MOBILE WORLD — Display Stock Report</h2>
+      <p style="color:#6b7280;font-size:12px;">Generated: ${new Date().toLocaleString('en-IN')} | Total Items: ${data.length}</p>
+      <table><thead><tr><th>#</th><th>Display Name</th><th>Display ID</th><th>Price</th><th>Stock Qty</th><th>Status</th></tr></thead>
+      <tbody>${rows}</tbody></table>
+      <div class="total">Total Stock Value: ₹${totalValue.toLocaleString('en-IN')}</div>
+      <br><button onclick="window.print()" style="padding:10px 24px;background:#1e293b;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer;">🖨️ Print / Save as PDF</button>
+      </body></html>
+    `);
+    win.document.close();
+  }
+
+  exportDisplayStockXL() {
+    const data = this.displayStock || [];
+    const headers = ['#', 'Display Name', 'Display ID', 'Price (Rs)', 'Stock Qty', 'Status'];
+    const rows = data.map((d, i) => {
+      const stock = Number(d.stock) || 0;
+      const status = stock === 0 ? 'Out of Stock' : stock <= 3 ? 'Low Stock' : 'In Stock';
+      return [i+1, d.displayName, d.displayId, Number(d.price)||0, stock, status];
+    });
+    this._downloadCSV('display_stock', headers, rows);
   }
 
   _downloadCSV(filename, headers, rows) {
@@ -4273,8 +4424,8 @@ class OwnerPortalApp {
                 ${sale.customerAddress ? `<div style="font-size: 12px; color: #6b7280;">📍 ${sale.customerAddress}</div>` : ''}
               </div>
               <div style="display:flex; gap:6px;">
-                <button onclick="app.showBillModal('${sale.saleId}')" style="background: #dbeafe; border: none; border-radius: 6px; padding: 4px 8px; cursor: pointer; color: #1d4ed8; font-size: 12px;" title="View Bill">🧾</button>
-                <button onclick="app.deleteSaleRecord('${sale.saleId}')" style="background: #fee2e2; border: none; border-radius: 6px; padding: 4px 8px; cursor: pointer; color: #dc2626; font-size: 12px;" title="Delete">🗑️</button>
+                <button onclick="app.showBillModal('${sale.saleId}')" style="background:#1d4ed8; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; gap:4px;" title="Print Receipt">🧾 Print</button>
+                <button onclick="app.deleteSaleRecord('${sale.saleId}')" style="background:#dc2626; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; gap:4px;" title="Delete">🗑️ Delete</button>
               </div>
             </div>
             <div style="border-top: 1px solid #fecaca; padding-top: 10px; display: flex; flex-direction: column; gap: 6px;">

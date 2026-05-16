@@ -1644,7 +1644,7 @@ class ManjulaMobilesApp {
             </div>
             <div class="nav-title" data-page="home" style="min-width: 0; overflow: hidden;">
               <div class="nav-shop-name" style="font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">MANJULA MOBILE WORLD</div>
-              <div class="nav-shop-sub" style="font-weight: 500; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">the final world of mobile services</div>
+              <div class="nav-shop-sub" style="font-weight: 500; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">the final world of mobile solution</div>
             </div>
           </div>
           
@@ -4568,7 +4568,7 @@ Thank you for choosing Manjula Mobile World!`);
       <body>
         <div class="header">
           <h1>📱 MANJULA MOBILE WORLD</h1>
-          <p>The Final World of Mobile Services</p>
+          <p>The Final World of Mobile Solution</p>
           <p>📍 Ramapuram, Tamil Nadu | 📞 +91 82484 54841</p>
           <p>✉️ manjulamobiles125@gmail.com</p>
         </div>
