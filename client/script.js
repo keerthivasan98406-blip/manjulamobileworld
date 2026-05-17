@@ -4,6 +4,8 @@ class ManjulaMobilesApp {
     this.currentPage = "home"
     this.cart = []
     this.cartOpen = false
+    // Restore cart from localStorage so it survives page refresh
+    this.loadCart()
     this.productSearch = ""
     this.mobileMenuOpen = false
     this.orders = [];
@@ -734,18 +736,24 @@ class ManjulaMobilesApp {
         this.toggleCart()
       }
       
-      // Close mobile menu when clicking on links
+      // Close mobile menu when clicking on links (but NOT the Services submenu toggle)
       if (e.target.closest('.nav-link') || e.target.closest('.mobile-nav-link')) {
-        this.closeMobileMenu()
+        const clickedAction = e.target.closest('[data-action]')?.dataset?.action
+        if (clickedAction !== 'toggle-mobile-service-submenu' && clickedAction !== 'toggle-service-submenu') {
+          this.closeMobileMenu()
+        }
       }
       
       // Service submenu
       if (actionElement && actionElement.dataset.action === "toggle-service-submenu") {
+        e.preventDefault()
         this.toggleServiceSubMenu()
       }
       
       // Mobile service submenu
       if (actionElement && actionElement.dataset.action === "toggle-mobile-service-submenu") {
+        e.preventDefault()
+        e.stopPropagation()
         this.toggleMobileServiceSubMenu()
       }
       
@@ -884,6 +892,10 @@ class ManjulaMobilesApp {
 
   toggleMobileMenu() {
     this.mobileMenuOpen = !this.mobileMenuOpen
+    // Always reset submenu state when toggling the menu
+    if (!this.mobileMenuOpen) {
+      this.mobileServiceSubMenuOpen = false
+    }
     const mobileMenu = document.querySelector(".mobile-nav-menu")
     const menuToggle = document.querySelector(".mobile-menu-toggle")
 
@@ -891,21 +903,33 @@ class ManjulaMobilesApp {
       if (this.mobileMenuOpen) {
         mobileMenu.classList.add("active")
         menuToggle.classList.add("active")
+        // Ensure submenu is closed when menu opens
+        const mobileServiceSubMenu = document.querySelector(".mobile-service-submenu")
+        if (mobileServiceSubMenu) mobileServiceSubMenu.classList.remove("active")
       } else {
         mobileMenu.classList.remove("active")
         menuToggle.classList.remove("active")
+        this.mobileServiceSubMenuOpen = false
+        const mobileServiceSubMenu = document.querySelector(".mobile-service-submenu")
+        if (mobileServiceSubMenu) mobileServiceSubMenu.classList.remove("active")
       }
     }
   }
 
   closeMobileMenu() {
     this.mobileMenuOpen = false
+    this.mobileServiceSubMenuOpen = false
     const mobileMenu = document.querySelector(".mobile-nav-menu")
     const menuToggle = document.querySelector(".mobile-menu-toggle")
 
     if (mobileMenu) {
       mobileMenu.classList.remove("active")
       menuToggle.classList.remove("active")
+    }
+    // Also close the mobile service submenu
+    const mobileServiceSubMenu = document.querySelector(".mobile-service-submenu")
+    if (mobileServiceSubMenu) {
+      mobileServiceSubMenu.classList.remove("active")
     }
   }
 
@@ -2631,6 +2655,7 @@ class ManjulaMobilesApp {
       } else {
         this.cart.push({ ...product, quantity: 1 })
       }
+      this.saveCart()
       this.renderPage("products")
       this.showCartNotification("Item added to cart!")
     } else {
@@ -2651,6 +2676,7 @@ class ManjulaMobilesApp {
       } else {
         this.cart.push({ ...product, quantity: 1 })
       }
+      this.saveCart()
       // Go directly to checkout
       this.renderPage("checkout")
     } else {
@@ -2662,6 +2688,7 @@ class ManjulaMobilesApp {
   removeFromCart(itemId) {
     const itemIdStr = String(itemId);
     this.cart = this.cart.filter((item) => String(item.id) !== itemIdStr && String(item._id) !== itemIdStr)
+    this.saveCart()
     this.renderPage("products")
   }
 
@@ -2670,6 +2697,7 @@ class ManjulaMobilesApp {
     const item = this.cart.find((item) => String(item.id) === itemIdStr || String(item._id) === itemIdStr)
     if (item) {
       item.quantity += 1
+      this.saveCart()
       this.renderPage("products")
     }
   }
@@ -2683,7 +2711,29 @@ class ManjulaMobilesApp {
       } else {
         this.cart = this.cart.filter((item) => String(item.id) !== itemIdStr && String(item._id) !== itemIdStr)
       }
+      this.saveCart()
       this.renderPage("products")
+    }
+  }
+
+  saveCart() {
+    try {
+      localStorage.setItem('manjula_cart', JSON.stringify(this.cart));
+    } catch(e) {
+      console.warn('Could not save cart to localStorage:', e);
+    }
+  }
+
+  loadCart() {
+    try {
+      const saved = localStorage.getItem('manjula_cart');
+      if (saved) {
+        this.cart = JSON.parse(saved);
+        console.log('🛒 Cart restored from localStorage:', this.cart.length, 'items');
+      }
+    } catch(e) {
+      console.warn('Could not load cart from localStorage:', e);
+      this.cart = [];
     }
   }
 
@@ -3029,6 +3079,7 @@ class ManjulaMobilesApp {
       
       // Clear cart and go to home
       this.cart = [];
+      this.saveCart();
       this.renderPage("home");
     } catch (error) {
       console.error('Error processing payment:', error);
@@ -3442,6 +3493,7 @@ Thank you for choosing Manjula Mobile World!`);
       
       // Clear cart and go to home
       this.cart = [];
+      this.saveCart();
       this.pendingOrder = null;
       this.renderPage("home");
     } catch (error) {
