@@ -4028,7 +4028,7 @@ Thank you for choosing Manjula Mobile World!`);
       software: {
         title: "Software Repair Services",
         description: "Comprehensive software solutions for all mobile operating systems. We fix software issues, optimize performance, and ensure your device runs smoothly.",
-        image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSCCmhvuwmCDuqt2eHyIniwfGbrFjnIfyRjHw&s",
+        image: "https://media.istockphoto.com/id/629285904/photo/programming-code-abstract-technology-background-of-software-deve.jpg?s=612x612&w=0&k=20&c=YskpkpUYyGqsz8OMtMdGZaZUr3hlAIvtTcaHpTbGL4g=",
         features: [
           "OS Installation & Updates",
           "Virus & Malware Removal",
