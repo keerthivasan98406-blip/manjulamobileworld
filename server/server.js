@@ -35,7 +35,7 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 // Serve static files from client directory
 const clientPath = path.join(__dirname, '../client');
 console.log('📁 Serving static files from:', clientPath);
-console.log('🚀 Deploy version: 20260515f');
+console.log('🚀 Deploy version: 20260517a');
 app.use(express.static(clientPath, {
   etag: false,
   lastModified: false,
@@ -85,6 +85,8 @@ const productSchema = new mongoose.Schema({
   category: { type: String, index: true },
   price: Number,
   originalPrice: Number,
+  ownerPrice: Number,
+  stock: { type: Number, default: 0 },
   image: String,
   imageUrl: String,
   imageUrl2: String,
@@ -165,10 +167,12 @@ const salesSchema = new mongoose.Schema({
   saleId: { type: String, required: true, unique: true },
   customerName: { type: String, required: true },
   phoneNumber: { type: String, required: true },
+  customerAddress: String,
   productName: { type: String, required: true },
   productModel: String,
   imeiNumber: String,
   saleAmount: Number,
+  discount: { type: Number, default: 0 },
   purchaseDate: { type: String, required: true },
   warrantyPeriod: String,
   notes: String,

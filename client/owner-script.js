@@ -783,6 +783,9 @@ class OwnerPortalApp {
         product.name.toLowerCase().includes(searchTerm) || product.category.toLowerCase().includes(searchTerm),
     );
 
+    const outOfStock = this.products.filter(p => (Number(p.stock) || 0) === 0 && p.inStock !== false);
+    const lowStock = this.products.filter(p => { const s = Number(p.stock) || 0; return s > 0 && s <= 3; });
+
     return `
       <div style="min-height: 100vh; background-color: #f13e74fb; padding-top: 96px; padding-bottom: 80px;">
         <div class="container">
@@ -792,8 +795,29 @@ class OwnerPortalApp {
               <h1 style="font-size: 36px; font-weight: 700; margin-bottom: 8px;">Products Management</h1>
               <p style="color: #94a3b8;">Manage your product inventory</p>
             </div>
-            <button class="btn btn-primary" data-action="add-product-form" style="padding: 12px 24px; font-size: 16px;">+ Add Product</button>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <button class="btn btn-primary" data-action="add-product-form" style="padding: 12px 24px; font-size: 16px;">+ Add Product</button>
+              <button onclick="app.exportProductsPDF()" style="padding: 12px 24px; background:#1e293b; color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer;">📄 PDF</button>
+            </div>
           </div>
+
+          ${(outOfStock.length > 0 || lowStock.length > 0) ? `
+          <div style="background: rgba(255,255,255,0.95); border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; border: 2px solid #fca5a5;">
+            <div style="font-weight:700; color:#111; font-size:14px; margin-bottom:10px;">⚠️ Stock Alerts</div>
+            ${outOfStock.length > 0 ? `
+              <div style="margin-bottom:8px;">
+                <span style="background:#fee2e2; color:#dc2626; padding:3px 10px; border-radius:20px; font-size:12px; font-weight:700; margin-right:8px;">🔴 Out of Stock (${outOfStock.length})</span>
+                <span style="font-size:13px; color:#dc2626; font-weight:600;">${outOfStock.map(p => p.name).join(' &nbsp;·&nbsp; ')}</span>
+              </div>
+            ` : ''}
+            ${lowStock.length > 0 ? `
+              <div>
+                <span style="background:#fef3c7; color:#d97706; padding:3px 10px; border-radius:20px; font-size:12px; font-weight:700; margin-right:8px;">🟡 Low Stock ≤3 (${lowStock.length})</span>
+                <span style="font-size:13px; color:#d97706; font-weight:600;">${lowStock.map(p => `${p.name} (${Number(p.stock)})`).join(' &nbsp;·&nbsp; ')}</span>
+              </div>
+            ` : ''}
+          </div>
+          ` : ''}
 
           <div style="margin-bottom: 24px; display: flex; gap: 16px; align-items: center;">
             <input 
@@ -821,10 +845,16 @@ class OwnerPortalApp {
 
   renderAdminProductCard(product) {
     const productId = product.id || product._id || 'unknown';
-    const discountPercent = Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
+    const discountPercent = product.originalPrice && product.price ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100) : 0;
+    const stock = Number(product.stock) || 0;
+    const stockAlert = stock === 0
+      ? `<span style="background:rgba(239,68,68,0.2);color:#ef4444;font-size:10px;padding:2px 7px;border-radius:4px;font-weight:700;">⚠️ Out of Stock</span>`
+      : stock <= 3
+      ? `<span style="background:rgba(245,158,11,0.2);color:#f59e0b;font-size:10px;padding:2px 7px;border-radius:4px;font-weight:700;">⚠️ Low Stock (${stock})</span>`
+      : `<span style="background:rgba(16,185,129,0.15);color:#10b981;font-size:10px;padding:2px 7px;border-radius:4px;font-weight:700;">📦 Stock: ${stock}</span>`;
     
     return `
-      <div class="admin-product-card" style="background-color: rgba(30, 41, 59, 0.5); border: 1px solid #334155; border-radius: 8px; padding: 16px; margin-bottom: 16px; max-width: 300px;">
+      <div class="admin-product-card" style="background-color: rgba(30, 41, 59, 0.5); border: 1px solid ${stock === 0 ? '#ef4444' : stock <= 3 ? '#f59e0b' : '#334155'}; border-radius: 8px; padding: 16px; margin-bottom: 16px; max-width: 300px;">
         <div class="admin-product-image" style="width: 100%; height: 120px; margin-bottom: 12px; display: flex; align-items: center; justify-content: center; background: rgba(51, 65, 85, 0.3); border-radius: 6px;">
           ${product.imageUrl ? 
             `<img src="${product.imageUrl}" alt="${product.name}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px;">` :
@@ -834,13 +864,15 @@ class OwnerPortalApp {
         <div class="admin-product-info">
           <h3 style="margin-bottom: 6px; font-size: 14px; font-weight: 600; color: #f8fafc;">${product.name}</h3>
           <div style="color: #94a3b8; font-size: 11px; margin-bottom: 6px;">${product.category}</div>
-          <div style="margin-bottom: 8px;">
-            <span style="font-weight: 700; color: #10b981; font-size: 14px;">₹${product.price.toLocaleString()}</span>
-            <span style="color: #94a3b8; text-decoration: line-through; margin-left: 6px; font-size: 12px;">₹${product.originalPrice.toLocaleString()}</span>
-            <span style="color: #f59e0b; font-size: 10px; margin-left: 6px;">${discountPercent}% off</span>
+          <div style="margin-bottom: 4px;">
+            <span style="font-weight: 700; color: #10b981; font-size: 14px;">₹${(product.price || 0).toLocaleString()}</span>
+            <span style="color: #94a3b8; text-decoration: line-through; margin-left: 6px; font-size: 12px;">₹${(product.originalPrice || 0).toLocaleString()}</span>
+            ${discountPercent > 0 ? `<span style="color: #f59e0b; font-size: 10px; margin-left: 6px;">${discountPercent}% off</span>` : ''}
           </div>
-          <div style="margin-bottom: 10px;">
+          ${product.ownerPrice ? `<div style="margin-bottom: 6px; font-size: 12px; color: #f59e0b; font-weight: 600;">🔒 Owner: ₹${Number(product.ownerPrice).toLocaleString()}</div>` : ''}
+          <div style="margin-bottom: 8px; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
             <span class="stock-badge ${product.inStock ? 'in-stock' : 'out-of-stock'}" style="font-size: 10px; padding: 2px 6px; border-radius: 4px; ${product.inStock ? 'background: rgba(16, 185, 129, 0.2); color: #10b981;' : 'background: rgba(239, 68, 68, 0.2); color: #ef4444;'}">${product.inStock ? 'In Stock' : 'Out of Stock'}</span>
+            ${stockAlert}
           </div>
           <div style="display: flex; gap: 6px;">
             <button class="btn btn-secondary" style="flex: 1; padding: 4px 8px; font-size: 11px;" data-action="edit-product" data-product-id="${productId}">Edit</button>
@@ -1770,12 +1802,23 @@ class OwnerPortalApp {
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
               <div class="form-field">
-                <label class="form-label">Price (₹) *</label>
+                <label class="form-label">Customer Price (₹) *</label>
                 <input type="number" class="input" placeholder="2999" id="productPrice">
               </div>
               <div class="form-field">
-                <label class="form-label">Original Price (₹)</label>
+                <label class="form-label">Original / MRP Price (₹)</label>
                 <input type="number" class="input" placeholder="3999" id="productOriginalPrice">
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div class="form-field">
+                <label class="form-label">Owner Price (₹) <span style="font-size:11px; color:#f59e0b;">🔒 Owner only</span></label>
+                <input type="number" class="input" placeholder="2500" id="productOwnerPrice">
+              </div>
+              <div class="form-field">
+                <label class="form-label">Stock Quantity</label>
+                <input type="number" class="input" placeholder="0" id="productStock" min="0">
               </div>
             </div>
 
@@ -1822,8 +1865,7 @@ class OwnerPortalApp {
           <h1 style="font-size: 36px; font-weight: 700; margin-bottom: 32px;">Edit Product</h1>
 
           <div style="background-color: rgba(30, 41, 59, 0.5); border: 1px solid #334155; border-radius: 12px; padding: 32px;">
-            <div class="form-field">
-              <label class="form-label">Product Name *</label>
+            <div class="form-field">              <label class="form-label">Product Name *</label>
               <input type="text" class="input" value="${product.name}" id="productName">
             </div>
 
@@ -1867,12 +1909,23 @@ class OwnerPortalApp {
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
               <div class="form-field">
-                <label class="form-label">Price (₹) *</label>
+                <label class="form-label">Customer Price (₹) *</label>
                 <input type="number" class="input" value="${product.price}" id="productPrice">
               </div>
               <div class="form-field">
-                <label class="form-label">Original Price (₹)</label>
+                <label class="form-label">Original / MRP Price (₹)</label>
                 <input type="number" class="input" value="${product.originalPrice}" id="productOriginalPrice">
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div class="form-field">
+                <label class="form-label">Owner Price (₹) <span style="font-size:11px; color:#f59e0b;">🔒 Owner only</span></label>
+                <input type="number" class="input" value="${product.ownerPrice || ''}" placeholder="2500" id="productOwnerPrice">
+              </div>
+              <div class="form-field">
+                <label class="form-label">Stock Quantity</label>
+                <input type="number" class="input" value="${product.stock !== undefined ? product.stock : ''}" placeholder="0" id="productStock" min="0">
               </div>
             </div>
 
@@ -2031,7 +2084,8 @@ class OwnerPortalApp {
                       <div style="font-size: 13px; color: #dc2626; font-weight: 600;">📞 ${sale.phoneNumber}</div>
                       ${sale.customerAddress ? `<div style="font-size: 12px; color: #6b7280;">📍 ${sale.customerAddress}</div>` : ''}
                     </div>
-                    <div style="display:flex; gap:6px;">
+                    <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                      <button onclick="app.showEditSaleModal('${sale.saleId}')" style="background:#16a34a; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; gap:4px;" title="Edit">✏️ Edit</button>
                       <button onclick="app.showBillModal('${sale.saleId}')" style="background:#1d4ed8; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; gap:4px;" title="Print Receipt">🧾 Print</button>
                       <button onclick="app.deleteSaleRecord('${sale.saleId}')" style="background:#dc2626; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; gap:4px;" title="Delete">🗑️ Delete</button>
                     </div>
@@ -2060,7 +2114,7 @@ class OwnerPortalApp {
       d.displayId?.toLowerCase().includes(search)
     );
 
-    const lowStock = filtered.filter(d => (Number(d.stock) || 0) <= 3);
+    const lowStock = filtered.filter(d => (Number(d.stock) || 0) === 1);
 
     return `
       <div style="min-height:100vh; background-color:#f13e74fb; padding-top:96px; padding-bottom:80px;">
@@ -2117,9 +2171,12 @@ class OwnerPortalApp {
 
           <!-- Low stock warning -->
           ${lowStock.length > 0 ? `
-            <div style="background:#fef2f2; border:2px solid #fca5a5; border-radius:10px; padding:12px 18px; margin-bottom:16px; display:flex; align-items:center; gap:10px;">
-              <span style="font-size:20px;">⚠️</span>
-              <span style="font-size:13px; color:#dc2626; font-weight:600;">Low stock alert: ${lowStock.map(d=>d.displayName).join(', ')}</span>
+            <div style="background:#fef2f2; border:2px solid #fca5a5; border-radius:10px; padding:12px 18px; margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <span style="font-size:20px;">⚠️</span>
+                <span style="font-size:13px; color:#dc2626; font-weight:600;">Only 1 unit left — ${lowStock.map(d=>d.displayName).join(', ')}</span>
+              </div>
+              <button onclick="app.downloadLowStockAlertPDF()" style="background:#1e293b; color:#fff; border:none; border-radius:7px; padding:6px 14px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;">📄 Download PDF</button>
             </div>
           ` : ''}
 
@@ -2138,9 +2195,9 @@ class OwnerPortalApp {
                     <tr style="background:#1e293b; color:#fff; text-align:left;">
                       <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; width:36px;">#</th>
                       <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:180px;">Display Name</th>
-                      <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:130px;">Display ID</th>
                       <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:90px; text-align:center;">Price (₹)</th>
                       <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:100px; text-align:center;">Stock</th>
+                      <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:120px; text-align:center;">Total Value (₹)</th>
                       <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:200px; text-align:center;">Adjust Stock</th>
                       <th style="padding:12px 14px; font-weight:700; text-align:center; min-width:70px;">Action</th>
                     </tr>
@@ -2148,25 +2205,30 @@ class OwnerPortalApp {
                   <tbody>
                     ${filtered.map((item, idx) => {
                       const stock = Number(item.stock) || 0;
-                      const stockColor  = stock === 0 ? '#dc2626' : stock <= 3 ? '#d97706' : '#16a34a';
-                      const stockBg     = stock === 0 ? '#fef2f2' : stock <= 3 ? '#fffbeb' : '#f0fdf4';
-                      const stockLabel  = stock === 0 ? '❌ Out' : stock <= 3 ? '⚠️ Low' : '✅ OK';
+                      const price = Number(item.price) || 0;
+                      const totalValue = price * stock;
+                      const stockColor  = stock === 0 ? '#dc2626' : stock <= 1 ? '#dc2626' : stock <= 3 ? '#d97706' : '#16a34a';
+                      const stockBg     = stock === 0 ? '#fef2f2' : stock <= 1 ? '#fef2f2' : stock <= 3 ? '#fffbeb' : '#f0fdf4';
                       const rowBg       = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
                       return `
                         <tr style="background:${rowBg}; border-bottom:1px solid #e2e8f0;"
                             onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='${rowBg}'">
                           <td style="padding:10px 14px; color:#9ca3af; font-weight:600; border-right:1px solid #e2e8f0; text-align:center;">${idx + 1}</td>
-                          <td style="padding:10px 14px; font-weight:700; color:#111827; border-right:1px solid #e2e8f0;">${item.displayName}</td>
-                          <td style="padding:10px 14px; border-right:1px solid #e2e8f0;">
-                            <code style="background:#f1f5f9; color:#475569; padding:2px 8px; border-radius:4px; font-size:12px;">${item.displayId}</code>
+                          <td style="padding:10px 14px; font-weight:700; color:#111827; border-right:1px solid #e2e8f0;">
+                            ${item.displayName}
+                            ${stock <= 1 && stock > 0 ? `<span style="margin-left:6px; background:#fef2f2; color:#dc2626; font-size:10px; font-weight:800; padding:2px 7px; border-radius:4px; border:1px solid #fca5a5;">⚠️ LAST 1</span>` : ''}
+                            ${stock === 0 ? `<span style="margin-left:6px; background:#fef2f2; color:#dc2626; font-size:10px; font-weight:800; padding:2px 7px; border-radius:4px; border:1px solid #fca5a5;">❌ OUT</span>` : ''}
                           </td>
                           <td style="padding:10px 14px; text-align:center; color:#374151; font-weight:600; border-right:1px solid #e2e8f0;">
-                            ${item.price ? `₹${Number(item.price).toLocaleString()}` : '<span style="color:#9ca3af;">—</span>'}
+                            ${price ? `₹${price.toLocaleString('en-IN')}` : '<span style="color:#9ca3af;">—</span>'}
                           </td>
                           <td style="padding:10px 14px; text-align:center; border-right:1px solid #e2e8f0;">
                             <span style="display:inline-block; background:${stockBg}; color:${stockColor}; font-weight:900; font-size:18px; min-width:48px; padding:4px 10px; border-radius:6px; border:1px solid ${stockColor}40;">
                               ${stock}
                             </span>
+                          </td>
+                          <td style="padding:10px 14px; text-align:center; font-weight:700; color:#1d4ed8; border-right:1px solid #e2e8f0;">
+                            ${price && stock ? `₹${totalValue.toLocaleString('en-IN')}` : '<span style="color:#9ca3af;">—</span>'}
                           </td>
                           <td style="padding:8px 14px; border-right:1px solid #e2e8f0;">
                             <div style="display:flex; gap:6px; align-items:center; justify-content:center;">
@@ -2198,6 +2260,22 @@ class OwnerPortalApp {
                       `;
                     }).join('')}
                   </tbody>
+                  <!-- Grand Total Footer Row -->
+                  <tfoot>
+                    <tr style="background:#1e293b; color:#fff; font-weight:700;">
+                      <td colspan="2" style="padding:12px 14px; font-size:13px; border-right:1px solid #334155;">📊 GRAND TOTAL</td>
+                      <td style="padding:12px 14px; text-align:center; font-size:13px; border-right:1px solid #334155;">—</td>
+                      <td style="padding:12px 14px; text-align:center; font-size:15px; font-weight:900; border-right:1px solid #334155;">
+                        ${filtered.reduce((sum, d) => sum + (Number(d.stock) || 0), 0)} units
+                      </td>
+                      <td style="padding:12px 14px; text-align:center; font-size:15px; font-weight:900; color:#86efac; border-right:1px solid #334155;">
+                        ₹${filtered.reduce((sum, d) => sum + ((Number(d.price) || 0) * (Number(d.stock) || 0)), 0).toLocaleString('en-IN')}
+                      </td>
+                      <td colspan="2" style="padding:12px 14px; text-align:center; font-size:12px; color:#94a3b8;">
+                        ${filtered.length} item${filtered.length !== 1 ? 's' : ''}
+                      </td>
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
             </div>
@@ -2280,6 +2358,12 @@ class OwnerPortalApp {
         const updated = await response.json();
         const idx = this.displayStock.findIndex(d => d.stockItemId === stockItemId);
         if (idx !== -1) this.displayStock[idx] = updated;
+
+        // Show low stock warning modal with PDF option when stock reaches 1
+        if (updated.stock === 1) {
+          this.showLowStockAlert(updated);
+        }
+
         this.renderPage('admin-display-stock');
       } else {
         alert('❌ Failed to update stock.');
@@ -2288,6 +2372,108 @@ class OwnerPortalApp {
       console.error(err);
       alert('❌ Error updating stock.');
     }
+  }
+
+  showLowStockAlert(item) {
+    const existing = document.getElementById('lowStockAlertModal');
+    if (existing) existing.remove();
+
+    const totalValue = (Number(item.price) || 0) * 1; // stock is 1
+
+    const modalHTML = `
+      <div id="lowStockAlertModal" onclick="if(event.target===this)this.remove()" 
+        style="position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;">
+        <div style="background:#fff;border-radius:14px;padding:28px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.4);text-align:center;">
+          <div style="font-size:48px;margin-bottom:12px;">⚠️</div>
+          <h2 style="font-size:20px;font-weight:800;color:#dc2626;margin-bottom:8px;">Low Stock Alert!</h2>
+          <p style="font-size:15px;font-weight:700;color:#111;margin-bottom:6px;">${item.displayName}</p>
+          <p style="font-size:13px;color:#6b7280;margin-bottom:16px;">Only <strong style="color:#dc2626;">1 unit</strong> remaining in stock. Please reorder soon.</p>
+          ${item.price ? `<p style="font-size:13px;color:#374151;margin-bottom:20px;">Unit Price: <strong>₹${Number(item.price).toLocaleString('en-IN')}</strong></p>` : ''}
+          <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+            <button onclick="app.downloadLowStockPDF('${item.stockItemId}')" 
+              style="background:#1e293b;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;">
+              📄 Download PDF
+            </button>
+            <button onclick="document.getElementById('lowStockAlertModal').remove()"
+              style="background:#f1f5f9;color:#374151;border:1px solid #d1d5db;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:600;cursor:pointer;">
+              ✕ Dismiss
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+  }
+
+  downloadLowStockAlertPDF() {
+    const lowItems = (this.displayStock || []).filter(d => Number(d.stock) === 1);
+    if (lowItems.length === 0) return;
+
+    const win = window.open('', '_blank', 'width=700,height=500');
+    const rows = lowItems.map((d, i) => `
+      <tr style="background:${i%2===0?'#fff':'#fef2f2'}">
+        <td>${i+1}</td>
+        <td style="font-weight:700;">${d.displayName}</td>
+        <td>${d.displayId}</td>
+        <td style="color:#dc2626;font-weight:900;">1 unit</td>
+        <td>${d.price ? '₹' + Number(d.price).toLocaleString('en-IN') : '—'}</td>
+      </tr>`).join('');
+
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Low Stock Alert Report</title>
+    <style>
+      body{font-family:Arial,sans-serif;padding:30px;color:#111;}
+      h2{color:#dc2626;}
+      table{width:100%;border-collapse:collapse;font-size:13px;margin-top:16px;}
+      th{background:#dc2626;color:#fff;padding:9px 12px;text-align:left;}
+      td{padding:8px 12px;border-bottom:1px solid #e5e7eb;}
+      .footer{margin-top:20px;font-size:12px;color:#6b7280;}
+      @media print{button{display:none;}}
+    </style></head><body>
+    <h2>⚠️ Low Stock Alert — Manjula Mobile World</h2>
+    <p style="color:#6b7280;font-size:13px;">Generated: ${new Date().toLocaleString('en-IN')} &nbsp;|&nbsp; Items with only 1 unit remaining: ${lowItems.length}</p>
+    <table>
+      <thead><tr><th>#</th><th>Display Name</th><th>Display ID</th><th>Stock</th><th>Unit Price</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <p style="margin-top:20px;font-size:13px;color:#dc2626;font-weight:700;">⚠️ Please reorder the above items immediately!</p>
+    <div class="footer">Manjula Mobile World | Ramapuram, Tamil Nadu | Ph: +91 82484 54841</div>
+    <br>
+    <button onclick="window.print()" style="padding:10px 24px;background:#1e293b;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer;">🖨️ Print / Save as PDF</button>
+    </body></html>`);
+    win.document.close();
+    setTimeout(() => { try { win.print(); } catch(e) {} }, 400);
+  }
+
+  downloadLowStockPDF(stockItemId) {
+    const item = (this.displayStock || []).find(d => d.stockItemId === stockItemId);
+    if (!item) return;
+
+    const win = window.open('', '_blank', 'width=600,height=500');
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Low Stock Alert</title>
+    <style>
+      body{font-family:Arial,sans-serif;padding:30px;color:#111;}
+      h2{color:#dc2626;}
+      .box{border:2px solid #dc2626;border-radius:8px;padding:20px;margin-top:16px;}
+      .row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f3f4f6;font-size:14px;}
+      .label{color:#6b7280;}
+      .value{font-weight:700;}
+      @media print{button{display:none;}}
+    </style></head><body>
+    <h2>⚠️ Low Stock Alert — Manjula Mobile World</h2>
+    <p style="color:#6b7280;font-size:13px;">Generated: ${new Date().toLocaleString('en-IN')}</p>
+    <div class="box">
+      <div class="row"><span class="label">Display Name</span><span class="value">${item.displayName}</span></div>
+      <div class="row"><span class="label">Display ID</span><span class="value">${item.displayId}</span></div>
+      <div class="row"><span class="label">Remaining Stock</span><span class="value" style="color:#dc2626;">1 unit</span></div>
+      <div class="row"><span class="label">Unit Price</span><span class="value">${item.price ? '₹' + Number(item.price).toLocaleString('en-IN') : '—'}</span></div>
+      <div class="row"><span class="label">Total Value</span><span class="value">${item.price ? '₹' + Number(item.price).toLocaleString('en-IN') : '—'}</span></div>
+    </div>
+    <p style="margin-top:20px;font-size:13px;color:#dc2626;font-weight:700;">⚠️ Please reorder this display immediately!</p>
+    <br>
+    <button onclick="window.print()" style="padding:10px 24px;background:#1e293b;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer;">🖨️ Print / Save as PDF</button>
+    </body></html>`);
+    win.document.close();
+    setTimeout(() => { try { win.print(); } catch(e) {} }, 400);
   }
 
   showEditStockModal(stockItemId) {
@@ -3035,7 +3221,10 @@ class OwnerPortalApp {
                             <td style="padding:10px 16px; text-align:right; color:#16a34a;">${disc ? '₹' + disc.toLocaleString() : '—'}</td>
                             <td style="padding:10px 16px; text-align:right; font-weight:700; color:#dc2626;">${amt ? '₹' + net.toLocaleString() : '—'}</td>
                             <td style="padding:10px 16px; text-align:center;">
-                              <button onclick="app.showBillModal('${sale.saleId}')" style="background:#1d4ed8; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; color:#fff; font-size:13px; font-weight:700;" title="Print Receipt">🧾 Print</button>
+                              <div style="display:flex;gap:6px;justify-content:center;">
+                                <button onclick="app.showEditSaleModal('${sale.saleId}')" style="background:#16a34a; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; color:#fff; font-size:13px; font-weight:700;" title="Edit">✏️ Edit</button>
+                                <button onclick="app.showBillModal('${sale.saleId}')" style="background:#1d4ed8; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; color:#fff; font-size:13px; font-weight:700;" title="Print Receipt">🧾 Print</button>
+                              </div>
                             </td>
                           </tr>
                         `;
@@ -3118,6 +3307,123 @@ class OwnerPortalApp {
     const net = amount - discount;
     const el = document.getElementById('bill_preview_total');
     if (el) el.textContent = `₹${net.toLocaleString()}`;
+  }
+
+  showEditSaleModal(saleId) {
+    const sale = this.salesRecords.find(s => s.saleId === saleId);
+    if (!sale) return;
+
+    const existing = document.getElementById('editSaleModal');
+    if (existing) existing.remove();
+
+    const modalHTML = `
+      <div id="editSaleModal" onclick="if(event.target===this)this.remove()"
+        style="position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;">
+        <div style="background:#fff;border-radius:14px;padding:28px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+          <h3 style="font-size:18px;font-weight:800;color:#111;margin-bottom:20px;">✏️ Edit Sale Record</h3>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">
+            <div>
+              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Customer Name *</label>
+              <input id="es_customerName" class="input" value="${sale.customerName || ''}" style="width:100%;color:#111;background:#f8fafc;border:1px solid #d1d5db;">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Phone Number *</label>
+              <input id="es_phoneNumber" class="input" value="${sale.phoneNumber || ''}" style="width:100%;color:#111;background:#f8fafc;border:1px solid #d1d5db;">
+            </div>
+            <div style="grid-column:1/-1;">
+              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Address</label>
+              <input id="es_customerAddress" class="input" value="${sale.customerAddress || ''}" style="width:100%;color:#111;background:#f8fafc;border:1px solid #d1d5db;">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Product Name *</label>
+              <input id="es_productName" class="input" value="${sale.productName || ''}" style="width:100%;color:#111;background:#f8fafc;border:1px solid #d1d5db;">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Sale Amount (₹)</label>
+              <input id="es_saleAmount" class="input" type="number" value="${sale.saleAmount || ''}" style="width:100%;color:#111;background:#f8fafc;border:1px solid #d1d5db;">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Discount (₹)</label>
+              <input id="es_discount" class="input" type="number" value="${sale.discount || ''}" placeholder="0" style="width:100%;color:#111;background:#f8fafc;border:1px solid #d1d5db;">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Purchase Date *</label>
+              <input id="es_purchaseDate" class="input" type="date" value="${sale.purchaseDate || ''}" style="width:100%;color:#111;background:#f8fafc;border:1px solid #d1d5db;">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Warranty Period</label>
+              <select id="es_warrantyPeriod" class="input" style="width:100%;color:#111;background:#f8fafc;border:1px solid #d1d5db;">
+                <option value="" ${!sale.warrantyPeriod ? 'selected' : ''}>No Warranty</option>
+                <option value="1 Month" ${sale.warrantyPeriod === '1 Month' ? 'selected' : ''}>1 Month</option>
+                <option value="3 Months" ${sale.warrantyPeriod === '3 Months' ? 'selected' : ''}>3 Months</option>
+                <option value="6 Months" ${sale.warrantyPeriod === '6 Months' ? 'selected' : ''}>6 Months</option>
+                <option value="1 Year" ${sale.warrantyPeriod === '1 Year' ? 'selected' : ''}>1 Year</option>
+                <option value="2 Years" ${sale.warrantyPeriod === '2 Years' ? 'selected' : ''}>2 Years</option>
+              </select>
+            </div>
+            <div style="grid-column:1/-1;">
+              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Notes</label>
+              <textarea id="es_notes" class="input" rows="2" style="width:100%;color:#111;background:#f8fafc;border:1px solid #d1d5db;resize:vertical;">${sale.notes || ''}</textarea>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:20px;">
+            <button onclick="app.saveEditSale('${sale.saleId}')"
+              style="flex:1;background:#16a34a;color:#fff;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;">
+              💾 Save Changes
+            </button>
+            <button onclick="document.getElementById('editSaleModal').remove()"
+              style="flex:1;background:#f1f5f9;color:#374151;border:1px solid #d1d5db;border-radius:8px;padding:11px;font-size:14px;font-weight:600;cursor:pointer;">
+              ✕ Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+  }
+
+  async saveEditSale(saleId) {
+    const customerName  = document.getElementById('es_customerName')?.value?.trim();
+    const phoneNumber   = document.getElementById('es_phoneNumber')?.value?.trim();
+    const productName   = document.getElementById('es_productName')?.value?.trim();
+    const purchaseDate  = document.getElementById('es_purchaseDate')?.value;
+
+    if (!customerName || !phoneNumber || !productName || !purchaseDate) {
+      alert('Please fill in Customer Name, Phone, Product Name and Date.');
+      return;
+    }
+
+    const updatedData = {
+      customerName,
+      phoneNumber,
+      customerAddress: document.getElementById('es_customerAddress')?.value?.trim(),
+      productName,
+      saleAmount:      document.getElementById('es_saleAmount')?.value || null,
+      discount:        document.getElementById('es_discount')?.value || null,
+      purchaseDate,
+      warrantyPeriod:  document.getElementById('es_warrantyPeriod')?.value,
+      notes:           document.getElementById('es_notes')?.value?.trim()
+    };
+
+    try {
+      const response = await fetch(`${this.API_URL}/sales/${saleId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedData)
+      });
+      if (response.ok) {
+        const updated = await response.json();
+        const idx = this.salesRecords.findIndex(s => s.saleId === saleId);
+        if (idx !== -1) this.salesRecords[idx] = updated;
+        document.getElementById('editSaleModal')?.remove();
+        this.renderPage('admin-sales');
+      } else {
+        alert('❌ Failed to update sale record.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('❌ Error updating sale record.');
+    }
   }
 
   showBillModal(saleId) {
@@ -3468,6 +3774,59 @@ class OwnerPortalApp {
     setTimeout(() => { try { win.print(); } catch(e) {} }, 500);
   }
 
+  exportProductsPDF() {
+    const data = this.products;
+    const win = window.open('', '_blank', 'width=1000,height=700');
+    const rows = data.map((p, i) => {
+      const stock = Number(p.stock) || 0;
+      const stockColor = stock === 0 ? '#dc2626' : stock <= 3 ? '#d97706' : '#059669';
+      const stockLabel = stock === 0 ? 'Out of Stock' : stock <= 3 ? `Low (${stock})` : stock;
+      return `<tr style="background:${i%2===0?'#fff':'#f9fafb'}">
+        <td>${i+1}</td>
+        <td><strong>${p.name}</strong></td>
+        <td>${p.category||'-'}</td>
+        <td style="color:#059669;font-weight:700;">₹${(Number(p.price)||0).toLocaleString('en-IN')}</td>
+        <td style="color:#6b7280;text-decoration:line-through;">₹${(Number(p.originalPrice)||0).toLocaleString('en-IN')}</td>
+        <td style="color:#d97706;font-weight:700;">${p.ownerPrice ? '₹'+Number(p.ownerPrice).toLocaleString('en-IN') : '-'}</td>
+        <td style="color:${stockColor};font-weight:700;">${stockLabel}</td>
+        <td><span style="background:${p.inStock?'#dcfce7':'#fee2e2'};color:${p.inStock?'#166534':'#dc2626'};padding:2px 8px;border-radius:4px;font-size:11px;">${p.inStock?'In Stock':'Out of Stock'}</span></td>
+      </tr>`;
+    }).join('');
+    const lowStockCount = data.filter(p => { const s = Number(p.stock)||0; return s > 0 && s <= 3; }).length;
+    const outOfStockCount = data.filter(p => (Number(p.stock)||0) === 0).length;
+    win.document.write(`
+      <!DOCTYPE html><html><head><title>Products Report</title>
+      <style>
+        body{font-family:Arial,sans-serif;padding:20px;color:#111;}
+        h2{color:#dc2626;margin-bottom:4px;}
+        table{width:100%;border-collapse:collapse;font-size:12px;margin-top:16px;}
+        th{background:#dc2626;color:#fff;padding:8px 10px;text-align:left;}
+        td{padding:7px 10px;border-bottom:1px solid #e5e7eb;}
+        .summary{display:flex;gap:20px;margin:12px 0;flex-wrap:wrap;}
+        .badge{padding:6px 14px;border-radius:6px;font-size:13px;font-weight:700;}
+        @media print{button{display:none;}}
+      </style></head><body>
+      <h2>MANJULA MOBILE WORLD — Products Report</h2>
+      <p style="color:#6b7280;font-size:12px;">Generated: ${new Date().toLocaleString('en-IN')} | Total Products: ${data.length}</p>
+      <div class="summary">
+        <span class="badge" style="background:#dcfce7;color:#166534;">✅ Total: ${data.length}</span>
+        <span class="badge" style="background:#fee2e2;color:#dc2626;">🔴 Out of Stock: ${outOfStockCount}</span>
+        <span class="badge" style="background:#fef3c7;color:#d97706;">🟡 Low Stock: ${lowStockCount}</span>
+      </div>
+      <table>
+        <thead><tr>
+          <th>#</th><th>Product Name</th><th>Category</th>
+          <th>Customer Price</th><th>MRP</th><th>Owner Price 🔒</th>
+          <th>Stock</th><th>Status</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <br><button onclick="window.print()" style="padding:10px 24px;background:#dc2626;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer;">🖨️ Print / Save as PDF</button>
+      </body></html>
+    `);
+    win.document.close();
+  }
+
   exportTrackingPDF() {
     const data = this.trackingData;
     const win = window.open('', '_blank', 'width=900,height=700');
@@ -3563,8 +3922,8 @@ class OwnerPortalApp {
     const win = window.open('', '_blank', 'width=900,height=700');
     const rows = data.map((d, i) => {
       const stock = Number(d.stock) || 0;
-      const stockColor = stock === 0 ? '#dc2626' : stock <= 3 ? '#d97706' : '#16a34a';
-      const statusLabel = stock === 0 ? 'Out of Stock' : stock <= 3 ? 'Low Stock' : 'In Stock';
+      const stockColor = stock === 0 ? '#dc2626' : stock <= 1 ? '#dc2626' : '#16a34a';
+      const statusLabel = stock === 0 ? 'Out of Stock' : stock <= 1 ? 'Last 1 - Reorder!' : 'In Stock';
       return `<tr style="background:${i%2===0?'#fff':'#f9fafb'}">
         <td>${i+1}</td>
         <td>${d.displayName}</td>
@@ -3602,7 +3961,7 @@ class OwnerPortalApp {
     const headers = ['#', 'Display Name', 'Display ID', 'Price (Rs)', 'Stock Qty', 'Status'];
     const rows = data.map((d, i) => {
       const stock = Number(d.stock) || 0;
-      const status = stock === 0 ? 'Out of Stock' : stock <= 3 ? 'Low Stock' : 'In Stock';
+      const status = stock === 0 ? 'Out of Stock' : stock <= 1 ? 'Last 1 - Reorder!' : 'In Stock';
       return [i+1, d.displayName, d.displayId, Number(d.price)||0, stock, status];
     });
     this._downloadCSV('display_stock', headers, rows);
@@ -3666,6 +4025,8 @@ class OwnerPortalApp {
     const category = document.getElementById("productCategory")?.value;
     const price = Number.parseInt(document.getElementById("productPrice")?.value || 0);
     const originalPrice = Number.parseInt(document.getElementById("productOriginalPrice")?.value || 0);
+    const ownerPrice = Number.parseInt(document.getElementById("productOwnerPrice")?.value || 0);
+    const stock = Number.parseInt(document.getElementById("productStock")?.value || 0);
     const imageUrl = document.getElementById("productImageUrl")?.value?.trim();
     const imageUrl2 = document.getElementById("productImageUrl2")?.value?.trim();
     const emoji = document.getElementById("productImage")?.value?.trim();
@@ -3699,6 +4060,8 @@ class OwnerPortalApp {
           category,
           price,
           originalPrice: originalPrice || price,
+          ownerPrice: ownerPrice || 0,
+          stock: stock || 0,
           imageUrl: imageUrl || "",
           imageUrl2: imageUrl2 || "",
           image: emoji || "📦",
@@ -3748,6 +4111,8 @@ class OwnerPortalApp {
           category,
           price,
           originalPrice: originalPrice || price,
+          ownerPrice: ownerPrice || 0,
+          stock: stock || 0,
           image: emoji || "📦",
           imageUrl: imageUrl || "",
           imageUrl2: imageUrl2 || "",
@@ -4423,7 +4788,8 @@ class OwnerPortalApp {
                 <div style="font-size: 13px; color: #dc2626; font-weight: 600;">📞 ${sale.phoneNumber}</div>
                 ${sale.customerAddress ? `<div style="font-size: 12px; color: #6b7280;">📍 ${sale.customerAddress}</div>` : ''}
               </div>
-              <div style="display:flex; gap:6px;">
+              <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                <button onclick="app.showEditSaleModal('${sale.saleId}')" style="background:#16a34a; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; gap:4px;" title="Edit">✏️ Edit</button>
                 <button onclick="app.showBillModal('${sale.saleId}')" style="background:#1d4ed8; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; gap:4px;" title="Print Receipt">🧾 Print</button>
                 <button onclick="app.deleteSaleRecord('${sale.saleId}')" style="background:#dc2626; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; gap:4px;" title="Delete">🗑️ Delete</button>
               </div>
