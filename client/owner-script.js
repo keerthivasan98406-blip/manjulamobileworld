@@ -1356,11 +1356,11 @@ class OwnerPortalApp {
             <span style="color: #94a3b8; font-size: 14px;">Total Orders: ${this.orders.length}</span>
           </div>
 
-          <div class="orders-list">
+          <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap:10px;">
             ${
               this.orders.length > 0
                 ? this.orders.map(order => this.renderOrderCard(order)).join('')
-                : '<div style="text-align: center; padding: 48px; color: #94a3b8;">No orders found</div>'
+                : '<div style="grid-column:1/-1; text-align: center; padding: 48px; color: #94a3b8;">No orders found</div>'
             }
           </div>
         </div>
@@ -1406,75 +1406,58 @@ class OwnerPortalApp {
     }
 
     return `
-      <div class="order-card" style="background-color: rgba(30, 41, 59, 0.5); border: 1px solid #334155; border-radius: 8px; padding: 16px; margin-bottom: 12px; max-width: 100%;">
-        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+      <div class="order-card" style="background-color: rgba(30, 41, 59, 0.6); border: 1px solid #334155; border-radius: 6px; padding: 10px 12px; margin-bottom: 8px;">
+        <!-- Header row -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
           <div>
-            <h4 style="margin-bottom: 4px; font-size: 14px; font-weight: 600;">Order #${order.id || order.orderId}</h4>
-            <div style="color: #94a3b8; font-size: 11px;">
-              📅 ${formattedDate}
-            </div>
+            <span style="font-size:12px; font-weight:700; color:#f8fafc;">Order #${order.id || order.orderId}</span>
+            <span style="font-size:10px; color:#94a3b8; margin-left:8px;">📅 ${formattedDate}</span>
           </div>
-          <span class="status-badge status-${order.status.toLowerCase().replace(/\s+/g, "-")}" style="font-size: 10px; padding: 4px 8px; border-radius: 4px; background: rgba(16, 185, 129, 0.2); color: #10b981;">${order.status}</span>
-        </div>
-        
-        <div style="margin-bottom: 12px;">
-          <div style="font-weight: 600; margin-bottom: 6px; font-size: 12px;">Customer Details</div>
-          <div style="color: #cbd5e1; font-size: 11px; line-height: 1.4;">
-            <div>${order.customer.name}</div>
-            <div>${order.customer.email} • ${order.customer.phone}</div>
-            <div>${order.customer.address}</div>
-          </div>
+          <span style="font-size:9px; padding:2px 7px; border-radius:4px; background:rgba(16,185,129,0.2); color:#10b981; font-weight:600; white-space:nowrap;">${order.status}</span>
         </div>
 
-        <div style="margin-bottom: 12px;">
-          <div style="font-weight: 600; margin-bottom: 6px; font-size: 12px;">Order Items</div>
-          <div style="background: rgba(51, 65, 85, 0.3); border-radius: 4px; padding: 8px;">
+        <!-- Customer + Items + Payment in one compact row -->
+        <div style="display:grid; grid-template-columns:1fr 1fr auto; gap:8px; align-items:start; margin-bottom:8px;">
+          <!-- Customer -->
+          <div style="font-size:10px; color:#cbd5e1; line-height:1.5;">
+            <div style="font-weight:600; color:#e2e8f0; margin-bottom:2px; font-size:11px;">👤 ${order.customer.name}</div>
+            <div>${order.customer.phone}</div>
+            <div style="color:#94a3b8;">${order.customer.email}</div>
+            <div style="color:#94a3b8; font-size:9px;">${order.customer.address}</div>
+          </div>
+
+          <!-- Items -->
+          <div style="background:rgba(51,65,85,0.4); border-radius:4px; padding:6px; font-size:10px;">
             ${order.items.map(item => `
-              <div style="display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 11px;">
-                <span style="color: #e2e8f0;">${item.name} × ${item.quantity}</span>
-                <span style="color: #10b981; font-weight: 600;">₹${(item.price * item.quantity).toLocaleString()}</span>
+              <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
+                <span style="color:#e2e8f0;">${item.name} ×${item.quantity}</span>
+                <span style="color:#10b981; font-weight:600;">₹${(item.price * item.quantity).toLocaleString()}</span>
               </div>
             `).join('')}
-            <div style="border-top: 1px solid #334155; margin-top: 6px; padding-top: 6px; display: flex; justify-content: space-between; font-weight: 700;">
-              <span style="color: #e2e8f0; font-size: 12px;">Total:</span>
-              <span style="color: #10b981; font-size: 14px;">₹${order.total.toLocaleString()}</span>
+            <div style="border-top:1px solid #334155; margin-top:4px; padding-top:4px; display:flex; justify-content:space-between; font-weight:700;">
+              <span style="color:#e2e8f0;">Total</span>
+              <span style="color:#10b981;">₹${order.total.toLocaleString()}</span>
             </div>
+          </div>
+
+          <!-- Screenshot thumbnail -->
+          <div style="text-align:center;">
+            ${order.paymentScreenshot && order.paymentScreenshot.data ? `
+              <img src="${order.paymentScreenshot.data}" alt="Screenshot"
+                style="width:60px; height:45px; object-fit:cover; border-radius:4px; border:1px solid #334155; cursor:pointer; display:block;"
+                onclick="app.showScreenshotFromOrder('${order.orderId || order.id}')"
+                onerror="this.style.display='none'">
+              <div style="font-size:8px; color:#64748b; margin-top:2px;">📎 UPI</div>
+            ` : `<div style="font-size:9px; color:#94a3b8; padding:4px;">${order.paymentMethod || 'COD'}</div>`}
           </div>
         </div>
 
-        <div style="margin-bottom: 12px; padding: 6px; background: rgba(16, 185, 129, 0.1); border-radius: 4px; border: 1px solid rgba(16, 185, 129, 0.3);">
-          <div style="font-size: 11px; color: #10b981; font-weight: 600;">Payment: ${order.paymentMethod}</div>
-          ${order.paymentScreenshot && order.paymentScreenshot.data ? `
-            <div style="margin-top: 8px;">
-              <div style="font-size: 10px; color: #94a3b8; margin-bottom: 4px;">Payment Screenshot:</div>
-              <img src="${order.paymentScreenshot.data || order.paymentScreenshot.imageUrl}" alt="Payment Screenshot" 
-                   style="max-width: 150px; max-height: 100px; border-radius: 4px; border: 1px solid #334155; cursor: pointer; display: block;"
-                   data-screenshot-id="${order.orderId || order.id}"
-                   onclick="app.showScreenshotFromOrder('${order.orderId || order.id}')"
-                   onerror="this.style.display='none'; this.nextElementSibling.innerHTML='❌ Image failed to load'; console.error('Failed to load screenshot for order:', '${order.orderId || order.id}')">
-              <div style="font-size: 9px; color: #64748b; margin-top: 2px;">
-                📎 ${order.paymentScreenshot.fileName} • ${new Date(order.paymentScreenshot.uploadTime).toLocaleString('en-IN', { 
-                  month: 'short', 
-                  day: 'numeric', 
-                  hour: '2-digit', 
-                  minute: '2-digit' 
-                })}
-                ${order.paymentScreenshot.data ? '<span style="color: #10b981;">• 📄 Image Data</span>' : '<span style="color: #f59e0b;">• ⚠️ No Image</span>'}
-              </div>
-            </div>
-          ` : order.paymentMethod.includes('Screenshot') ? `
-            <div style="margin-top: 8px; padding: 8px; background: rgba(239, 68, 68, 0.1); border-radius: 4px; border: 1px solid rgba(239, 68, 68, 0.3);">
-              <div style="font-size: 10px; color: #dc2626; font-weight: 600;">⚠️ Screenshot data missing</div>
-              <div style="font-size: 9px; color: #dc2626;">Payment screenshot was uploaded but data is not available</div>
-            </div>
-          ` : ''}
-        </div>
-
-        <div style="display: flex; gap: 6px;">
-          <button class="btn btn-primary" style="flex: 1; padding: 6px 10px; font-size: 11px; display: flex; align-items: center; justify-content: center; gap: 4px;" onclick="app.printOrder('${order.id || order.orderId}')">
-            🖨️ Print Order
+        <!-- Action buttons -->
+        <div style="display:flex; gap:6px;">
+          <button class="btn btn-primary" style="flex:1; padding:5px 8px; font-size:10px; display:flex; align-items:center; justify-content:center; gap:3px;" onclick="app.printOrder('${order.id || order.orderId}')">
+            🖨️ Print
           </button>
-          <button class="btn" style="flex: 1; padding: 6px 10px; font-size: 11px; background: rgba(244, 63, 94, 0.1); color: #f87171; border: 1px solid #f87171; border-radius: 4px;" onclick="app.deleteOrder('${order.id || order.orderId}')">Delete</button>
+          <button class="btn" style="flex:1; padding:5px 8px; font-size:10px; background:rgba(244,63,94,0.1); color:#f87171; border:1px solid #f87171; border-radius:4px;" onclick="app.deleteOrder('${order.id || order.orderId}')">🗑️ Delete</button>
         </div>
       </div>
     `
@@ -2162,10 +2145,14 @@ class OwnerPortalApp {
 
           <!-- Search -->
           <div style="margin-bottom:16px; display:flex; gap:12px; align-items:center;">
-            <input class="input" placeholder="🔍 Search by display name or ID..."
-              style="flex:1; background:#fff; color:#111; border:1px solid #d1d5db;"
-              oninput="app.searchStock(this.value)"
-              value="${this.stockSearch || ''}">
+            <div style="flex:1; position:relative;">
+              <input class="input" id="stockSearchInput" placeholder="🔍 Search by display name or ID..."
+                style="width:100%; background:#fff; color:#111; border:1px solid #d1d5db;"
+                oninput="app.searchStock(this.value)"
+                onblur="setTimeout(()=>{ const d=document.getElementById('stockSearchDropdown'); if(d) d.style.display='none'; }, 200)"
+                autocomplete="off"
+                value="${this.stockSearch || ''}">
+            </div>
             <span style="color:#fff; font-size:14px; font-weight:600; white-space:nowrap;" class="stock-counter">${filtered.length} items</span>
           </div>
 
@@ -2202,7 +2189,7 @@ class OwnerPortalApp {
                       <th style="padding:12px 14px; font-weight:700; text-align:center; min-width:70px;">Action</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody class="stock-table-body">
                     ${filtered.map((item, idx) => {
                       const stock = Number(item.stock) || 0;
                       const price = Number(item.price) || 0;
@@ -2211,7 +2198,7 @@ class OwnerPortalApp {
                       const stockBg     = stock === 0 ? '#fef2f2' : stock <= 1 ? '#fef2f2' : stock <= 3 ? '#fffbeb' : '#f0fdf4';
                       const rowBg       = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
                       return `
-                        <tr style="background:${rowBg}; border-bottom:1px solid #e2e8f0;"
+                        <tr class="stock-item-row" data-id="${item.stockItemId}" style="background:${rowBg}; border-bottom:1px solid #e2e8f0; transition:background 0.3s;"
                             onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='${rowBg}'">
                           <td style="padding:10px 14px; color:#9ca3af; font-weight:600; border-right:1px solid #e2e8f0; text-align:center;">${idx + 1}</td>
                           <td style="padding:10px 14px; font-weight:700; color:#111827; border-right:1px solid #e2e8f0;">
@@ -3549,20 +3536,23 @@ class OwnerPortalApp {
       width: 72mm;
       color: #000;
       background: #fff;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
     .center { text-align: center; }
     .bold { font-weight: bold; }
     .large { font-size: 14px; }
     .xlarge { font-size: 16px; }
     .divider { border-top: 1px dashed #000; margin: 5px 0; }
-    .divider-solid { border-top: 1px solid #000; margin: 5px 0; }
+    .divider-solid { border-top: 2px solid #000; margin: 5px 0; }
     .row { display: flex; justify-content: space-between; margin: 2px 0; }
-    .label { color: #333; }
-    .value { font-weight: bold; text-align: right; max-width: 55%; word-break: break-word; }
-    .amount-row { font-size: 14px; font-weight: bold; margin: 4px 0; }
-    .footer { font-size: 10px; text-align: center; margin-top: 6px; }
+    .label { color: #000; font-weight: 600; }
+    .value { font-weight: bold; text-align: right; max-width: 55%; word-break: break-word; color: #000; }
+    .amount-row { font-size: 14px; font-weight: bold; margin: 4px 0; color: #000; }
+    .footer { font-size: 10px; text-align: center; margin-top: 6px; color: #000; }
     @media print {
-      body { width: 72mm; }
+      body { width: 72mm; color: #000 !important; }
+      * { color: #000 !important; }
       button { display: none !important; }
     }
   </style>
@@ -3678,22 +3668,25 @@ class OwnerPortalApp {
       width: 72mm;
       color: #000;
       background: #fff;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
     .center { text-align: center; }
     .bold { font-weight: bold; }
     .large { font-size: 14px; }
     .xlarge { font-size: 16px; }
     .divider { border-top: 1px dashed #000; margin: 5px 0; }
-    .divider-solid { border-top: 1px solid #000; margin: 5px 0; }
+    .divider-solid { border-top: 2px solid #000; margin: 5px 0; }
     .row { display: flex; justify-content: space-between; margin: 2px 0; }
-    .label { color: #333; }
-    .value { font-weight: bold; text-align: right; max-width: 55%; word-break: break-word; }
-    .amount-row { font-size: 14px; font-weight: bold; margin: 4px 0; }
-    .footer { font-size: 10px; text-align: center; margin-top: 6px; }
+    .label { color: #000; font-weight: 600; }
+    .value { font-weight: bold; text-align: right; max-width: 55%; word-break: break-word; color: #000; }
+    .amount-row { font-size: 14px; font-weight: bold; margin: 4px 0; color: #000; }
+    .footer { font-size: 10px; text-align: center; margin-top: 6px; color: #000; }
     .issue-box { border: 1px solid #000; padding: 4px; margin: 4px 0; font-size: 11px; word-break: break-word; }
     .status-badge { border: 1px solid #000; padding: 2px 6px; font-weight: bold; font-size: 11px; }
     @media print {
-      body { width: 72mm; }
+      body { width: 72mm; color: #000 !important; }
+      * { color: #000 !important; }
       button { display: none !important; }
     }
   </style>
@@ -4811,21 +4804,73 @@ class OwnerPortalApp {
   searchStock(value) {
     if (this._stockTimer) clearTimeout(this._stockTimer);
     this.stockSearch = value;
+
+    // Get or create a body-level dropdown (floats above everything)
+    let dropdown = document.getElementById('stockSearchDropdown');
+    if (!dropdown) {
+      dropdown = document.createElement('div');
+      dropdown.id = 'stockSearchDropdown';
+      dropdown.style.cssText = 'display:none; position:fixed; background:#fff; border:2px solid #dc2626; border-radius:8px; max-height:200px; overflow-y:auto; z-index:99999; box-shadow:0 6px 20px rgba(0,0,0,0.18); min-width:280px;';
+      document.body.appendChild(dropdown);
+    }
+
+    // Position it under the input
+    const input = document.getElementById('stockSearchInput');
+    if (input) {
+      const rect = input.getBoundingClientRect();
+      dropdown.style.top  = (rect.bottom + window.scrollY + 4) + 'px';
+      dropdown.style.left = rect.left + 'px';
+      dropdown.style.width = rect.width + 'px';
+    }
+
+    // Hide if empty
+    if (!value.trim()) {
+      dropdown.style.display = 'none';
+      return;
+    }
+
     this._stockTimer = setTimeout(() => {
-      const term = value.toLowerCase();
-      const filtered = (this.displayStock || []).filter(d =>
+      const term = (this.stockSearch || '').toLowerCase();
+      const matched = (this.displayStock || []).filter(d =>
         d.displayName?.toLowerCase().includes(term) ||
         d.displayId?.toLowerCase().includes(term)
       );
-      const tbody = document.querySelector('.stock-table-body');
-      if (tbody) {
-        tbody.innerHTML = filtered.length === 0
-          ? '<tr><td colspan="7" style="text-align:center;padding:40px;color:#94a3b8;">No items found</td></tr>'
-          : filtered.map((item, idx) => this._renderStockRow(item, idx)).join('');
+
+      if (matched.length === 0) {
+        dropdown.innerHTML = `<div style="padding:12px; text-align:center; color:#9ca3af; font-size:12px;">No items found</div>`;
+      } else {
+        dropdown.innerHTML = matched.map(item => {
+          const stock = Number(item.stock) || 0;
+          const stockColor = stock === 0 ? '#dc2626' : stock <= 3 ? '#d97706' : '#16a34a';
+          const stockLabel = stock === 0 ? '❌ Out' : stock <= 3 ? `⚠️ ${stock} left` : `✅ ${stock}`;
+          return `
+            <div style="padding:8px 12px; border-bottom:1px solid #f1f5f9; cursor:pointer; display:flex; justify-content:space-between; align-items:center; background:#fff;"
+              onmouseover="this.style.background='#f0f9ff'" onmouseout="this.style.background='#fff'"
+              onmousedown="event.preventDefault(); document.getElementById('stockSearchInput').value=''; document.getElementById('stockSearchDropdown').style.display='none'; app.stockSearch=''; app.scrollToStockItem('${item.stockItemId}')">
+              <div>
+                <div style="font-weight:700; color:#111827; font-size:13px;">${item.displayName}</div>
+                <div style="font-size:11px; color:#6b7280; margin-top:1px;">${item.displayId}${item.price ? ' · ₹' + Number(item.price).toLocaleString('en-IN') : ''}</div>
+              </div>
+              <span style="font-size:11px; font-weight:700; color:${stockColor}; white-space:nowrap; margin-left:12px; padding:2px 8px; border-radius:12px; background:${stockColor}18;">${stockLabel}</span>
+            </div>
+          `;
+        }).join('');
       }
-      const counter = document.querySelector('.stock-counter');
-      if (counter) counter.textContent = `${filtered.length} items`;
-    }, 300);
+
+      dropdown.style.display = 'block';
+    }, 150);
+  }
+
+  scrollToStockItem(stockItemId) {
+    // Highlight the row in the table
+    const rows = document.querySelectorAll('.stock-item-row');
+    rows.forEach(row => row.style.background = '');
+    const target = document.querySelector(`.stock-item-row[data-id="${stockItemId}"]`);
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      target.style.background = '#fef9c3';
+      setTimeout(() => { target.style.background = ''; }, 2000);
+    }
   }
 
   searchServices(value) {
