@@ -2070,6 +2070,7 @@ class OwnerPortalApp {
                     <div style="display:flex; gap:6px; flex-wrap:wrap;">
                       <button onclick="app.showEditSaleModal('${sale.saleId}')" style="background:#16a34a; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; gap:4px;" title="Edit">✏️ Edit</button>
                       <button onclick="app.showBillModal('${sale.saleId}')" style="background:#1d4ed8; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; gap:4px;" title="Print Receipt">🧾 Print</button>
+                      <button onclick="app.shareSaleWhatsApp('${sale.saleId}')" style="background:#25d366; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; gap:4px;" title="Share on WhatsApp">💬 WhatsApp</button>
                       <button onclick="app.deleteSaleRecord('${sale.saleId}')" style="background:#dc2626; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; gap:4px;" title="Delete">🗑️ Delete</button>
                     </div>
                   </div>
@@ -3211,6 +3212,7 @@ class OwnerPortalApp {
                               <div style="display:flex;gap:6px;justify-content:center;">
                                 <button onclick="app.showEditSaleModal('${sale.saleId}')" style="background:#16a34a; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; color:#fff; font-size:13px; font-weight:700;" title="Edit">✏️ Edit</button>
                                 <button onclick="app.showBillModal('${sale.saleId}')" style="background:#1d4ed8; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; color:#fff; font-size:13px; font-weight:700;" title="Print Receipt">🧾 Print</button>
+                                <button onclick="app.shareSaleWhatsApp('${sale.saleId}')" style="background:#25d366; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; color:#fff; font-size:13px; font-weight:700;" title="WhatsApp">💬</button>
                               </div>
                             </td>
                           </tr>
@@ -3645,7 +3647,52 @@ class OwnerPortalApp {
     }
   }
 
-  // ===== PRINT & EXPORT FUNCTIONS =====
+  shareSaleWhatsApp(saleId) {
+    const sale = this.salesRecords.find(s => s.saleId === saleId);
+    if (!sale) return;
+
+    const amount   = Number(sale.saleAmount) || 0;
+    const discount = Number(sale.discount) || 0;
+    const net      = amount - discount;
+
+    // Build message using Unicode escapes so emojis survive encoding
+    const lines = [
+      '\uD83D\uDED2 *MANJULA MOBILE WORLD*',
+      '_The Final World of Mobile Solution_',
+      '\uD83D\uDCCD Ramapuram, Tamil Nadu - 603201',
+      '\uD83D\uDCDE +91 82484 54841',
+      '',
+      '*--- SALES RECEIPT ---*',
+      '\uD83D\uDCC5 Date: ' + (sale.purchaseDate || new Date().toLocaleDateString('en-IN')),
+      '\uD83D\uDD16 Bill No: ' + sale.saleId,
+      '',
+      '*Customer Details*',
+      '\uD83D\uDC64 Name: ' + sale.customerName,
+      '\uD83D\uDCDE Phone: ' + sale.phoneNumber,
+      sale.customerAddress ? '\uD83D\uDCCD Address: ' + sale.customerAddress : null,
+      '',
+      '*Product Details*',
+      '\uD83D\uDCF1 Product: ' + sale.productName,
+      sale.warrantyPeriod ? '\uD83D\uDEE1\uFE0F Warranty: ' + sale.warrantyPeriod : null,
+      '',
+      '*Payment Summary*',
+      '\uD83D\uDCB0 Price: \u20B9' + amount.toLocaleString('en-IN'),
+      discount > 0 ? '\uD83C\uDFF7\uFE0F Discount: -\u20B9' + discount.toLocaleString('en-IN') : null,
+      '\u2705 *Net Payable: \u20B9' + net.toLocaleString('en-IN') + '*',
+      sale.notes ? '\uD83D\uDCDD Notes: ' + sale.notes : null,
+      '',
+      '\uD83D\uDE4F Thank you for shopping with us!',
+      '\uD83C\uDF10 manjulamobilesworld.onrender.com'
+    ].filter(l => l !== null).join('\n');
+
+    // Format phone — strip non-digits, add 91 prefix if needed
+    let phone = (sale.phoneNumber || '').replace(/\D/g, '');
+    if (phone.length === 10) phone = '91' + phone;
+    else if (phone.startsWith('0')) phone = '91' + phone.slice(1);
+
+    const url = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(lines);
+    window.open(url, '_blank');
+  }
 
   printTrackingCard(qrId) {
     const t = this.trackingData.find(t => t.qrId === qrId);
@@ -4784,6 +4831,7 @@ class OwnerPortalApp {
               <div style="display:flex; gap:6px; flex-wrap:wrap;">
                 <button onclick="app.showEditSaleModal('${sale.saleId}')" style="background:#16a34a; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; gap:4px;" title="Edit">✏️ Edit</button>
                 <button onclick="app.showBillModal('${sale.saleId}')" style="background:#1d4ed8; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; gap:4px;" title="Print Receipt">🧾 Print</button>
+                <button onclick="app.shareSaleWhatsApp('${sale.saleId}')" style="background:#25d366; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; gap:4px;" title="WhatsApp">💬 WhatsApp</button>
                 <button onclick="app.deleteSaleRecord('${sale.saleId}')" style="background:#dc2626; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; gap:4px;" title="Delete">🗑️ Delete</button>
               </div>
             </div>
