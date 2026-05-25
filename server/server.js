@@ -307,6 +307,34 @@ app.get('/ping', (req, res) => {
   });
 });
 
+// Admin Login endpoint — verifies credentials server-side using HMAC-SHA256
+const crypto = require('crypto');
+app.post('/api/admin/login', (req, res) => {
+  const { phone, password } = req.body;
+
+  const expectedPhone = process.env.ADMIN_PHONE;
+  const expectedHash  = process.env.ADMIN_PASSWORD_HASH;
+  const salt          = process.env.ADMIN_SALT;
+
+  if (!expectedPhone || !expectedHash || !salt) {
+    console.error('❌ Admin credentials not configured in .env');
+    return res.status(500).json({ success: false, message: 'Server configuration error' });
+  }
+
+  const inputHash = crypto.createHmac('sha256', salt).update(password || '').digest('hex');
+
+  if (phone === expectedPhone && inputHash === expectedHash) {
+    console.log('✅ Admin login successful');
+    return res.json({ success: true });
+  }
+
+  console.warn('⚠️ Failed admin login attempt');
+  // Uniform delay to prevent timing attacks
+  setTimeout(() => {
+    res.status(401).json({ success: false, message: 'Invalid credentials' });
+  }, 500);
+});
+
 // DIRECT TEST - Add this button to test screenshot saving directly
 app.post('/api/direct-test', async (req, res) => {
   try {

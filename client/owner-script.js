@@ -443,16 +443,29 @@ class OwnerPortalApp {
   }
 
   async handleAdminLogin() {
-    const phone = document.getElementById("adminPhone")?.value || ""
+    const phone    = document.getElementById("adminPhone")?.value || ""
     const password = document.getElementById("adminPassword")?.value || ""
 
-    if (phone === "9840694616" && password === "admin123") {
-      this.isAdminLoggedIn = true
-      localStorage.setItem('manjula_admin_logged_in', 'true')
-      console.log('✅ Admin logged in - state saved to localStorage')
-      await this.renderPage("admin")
-    } else {
-      alert("Invalid credentials. Please check your phone number and password.")
+    try {
+      const response = await fetch(`${this.API_URL}/admin/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, password })
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        this.isAdminLoggedIn = true
+        localStorage.setItem('manjula_admin_logged_in', 'true')
+        console.log('✅ Admin logged in via server auth')
+        await this.renderPage("admin")
+      } else {
+        alert("Invalid credentials. Please check your phone number and password.")
+      }
+    } catch (error) {
+      console.error('❌ Login request failed:', error);
+      alert("Login failed. Please check your connection and try again.")
     }
   }
 
