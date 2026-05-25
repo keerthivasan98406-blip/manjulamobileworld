@@ -1347,7 +1347,8 @@ class OwnerPortalApp {
         
         <!-- Action Buttons (like product buttons) -->
         <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-          <button class="btn btn-secondary" style="flex: 1; padding: 4px 8px; font-size: 11px;" data-action="edit-tracking" data-qr-id="${tracking.qrId}">Update</button>
+          <button onclick="app.showEditTrackingModal('${tracking.qrId}')" style="flex: 1; padding: 4px 8px; font-size: 11px; background:#f59e0b; color:#fff; border:none; border-radius:4px; cursor:pointer; font-weight:600;">✏️ Edit</button>
+          <button class="btn btn-secondary" style="flex: 1; padding: 4px 8px; font-size: 11px;" data-action="edit-tracking" data-qr-id="${tracking.qrId}">🔄 Status</button>
           <button class="btn" style="flex: 1; padding: 4px 8px; font-size: 11px; background: rgba(244, 63, 94, 0.1); color: #f87171; border: 1px solid #f87171; border-radius: 4px;" data-action="delete-tracking" data-qr-id="${tracking.qrId}">Delete</button>
           <button onclick="app.printTrackingCard('${tracking.qrId}')" style="flex: 1; padding: 4px 8px; font-size: 11px; background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981; border-radius: 4px; cursor: pointer; font-weight: 600;">🖨️ Print</button>
         </div>
@@ -4478,6 +4479,107 @@ class OwnerPortalApp {
       }
     } catch (error) {
       console.error('❌ Background tracking sync error:', error);
+    }
+  }
+
+  showEditTrackingModal(qrId) {
+    const t = this.trackingData.find(t => t.qrId === qrId);
+    if (!t) return;
+
+    const existing = document.getElementById('editTrackingModal');
+    if (existing) existing.remove();
+
+    const modalHTML = `
+      <div id="editTrackingModal" onclick="if(event.target===this)this.remove()"
+        style="position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;">
+        <div style="background:#fff;border-radius:14px;padding:28px;max-width:540px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+          <h3 style="font-size:18px;font-weight:800;color:#111;margin-bottom:20px;">✏️ Edit Tracking Record</h3>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
+            <div>
+              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Customer Name *</label>
+              <input id="et_customerName" class="input" value="${t.customerName || ''}" style="width:100%;color:#111;background:#f8fafc;border:1px solid #d1d5db;">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Contact Number</label>
+              <input id="et_contact" class="input" value="${t.contact || ''}" style="width:100%;color:#111;background:#f8fafc;border:1px solid #d1d5db;">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Device / Product Name *</label>
+              <input id="et_productName" class="input" value="${t.productName || ''}" style="width:100%;color:#111;background:#f8fafc;border:1px solid #d1d5db;">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Payment Amount (₹)</label>
+              <input id="et_amount" class="input" type="number" value="${t.amount || ''}" style="width:100%;color:#111;background:#f8fafc;border:1px solid #d1d5db;">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Estimated Days</label>
+              <input id="et_estimatedDays" class="input" type="number" value="${t.estimatedDays || ''}" style="width:100%;color:#111;background:#f8fafc;border:1px solid #d1d5db;">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">QR Password</label>
+              <input id="et_qrPassword" class="input" value="${t.qrPassword || ''}" style="width:100%;color:#111;background:#f8fafc;border:1px solid #d1d5db;">
+            </div>
+            <div style="grid-column:1/-1;">
+              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Issue Description *</label>
+              <textarea id="et_issue" class="input" rows="3" style="width:100%;color:#111;background:#f8fafc;border:1px solid #d1d5db;resize:vertical;">${t.issue || ''}</textarea>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:20px;">
+            <button onclick="app.saveEditTracking('${t.qrId}')"
+              style="flex:1;background:#dc2626;color:#fff;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;">
+              💾 Save Changes
+            </button>
+            <button onclick="document.getElementById('editTrackingModal').remove()"
+              style="flex:1;background:#f1f5f9;color:#374151;border:1px solid #d1d5db;border-radius:8px;padding:11px;font-size:14px;font-weight:600;cursor:pointer;">
+              ✕ Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+  }
+
+  async saveEditTracking(qrId) {
+    const customerName  = document.getElementById('et_customerName')?.value?.trim();
+    const productName   = document.getElementById('et_productName')?.value?.trim();
+    const issue         = document.getElementById('et_issue')?.value?.trim();
+
+    if (!customerName || !productName || !issue) {
+      alert('Please fill in Customer Name, Device Name and Issue.');
+      return;
+    }
+
+    const updatedData = {
+      customerName,
+      productName,
+      contact:       document.getElementById('et_contact')?.value?.trim(),
+      amount:        Number(document.getElementById('et_amount')?.value) || 0,
+      estimatedDays: Number(document.getElementById('et_estimatedDays')?.value) || 0,
+      qrPassword:    document.getElementById('et_qrPassword')?.value?.trim(),
+      issue
+    };
+
+    try {
+      const response = await fetch(`${this.API_URL}/tracking/${qrId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedData)
+      });
+
+      if (response.ok) {
+        const updated = await response.json();
+        const idx = this.trackingData.findIndex(t => t.qrId === qrId);
+        if (idx !== -1) this.trackingData[idx] = { ...this.trackingData[idx], ...updated };
+        document.getElementById('editTrackingModal')?.remove();
+        this.renderTrackingListOnly();
+        alert('✅ Tracking record updated!');
+      } else {
+        alert('❌ Failed to update tracking record.');
+      }
+    } catch (error) {
+      console.error('Error updating tracking:', error);
+      alert('❌ Error updating tracking record.');
     }
   }
 

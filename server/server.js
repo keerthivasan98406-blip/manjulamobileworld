@@ -312,14 +312,10 @@ const crypto = require('crypto');
 app.post('/api/admin/login', (req, res) => {
   const { phone, password } = req.body;
 
-  const expectedPhone = process.env.ADMIN_PHONE;
-  const expectedHash  = process.env.ADMIN_PASSWORD_HASH;
-  const salt          = process.env.ADMIN_SALT;
-
-  if (!expectedPhone || !expectedHash || !salt) {
-    console.error('❌ Admin credentials not configured in .env');
-    return res.status(500).json({ success: false, message: 'Server configuration error' });
-  }
+  // Use env vars if set (production), otherwise use hardcoded defaults (fallback)
+  const expectedPhone = process.env.ADMIN_PHONE        || '9840694616';
+  const salt          = process.env.ADMIN_SALT         || 'mmw2026';
+  const expectedHash  = process.env.ADMIN_PASSWORD_HASH || '2cb298af21d955b3da5139b96971eef8f23b3d7e6a2f54dc7c3aa9d208b5750d';
 
   const inputHash = crypto.createHmac('sha256', salt).update(password || '').digest('hex');
 
@@ -328,8 +324,7 @@ app.post('/api/admin/login', (req, res) => {
     return res.json({ success: true });
   }
 
-  console.warn('⚠️ Failed admin login attempt');
-  // Uniform delay to prevent timing attacks
+  console.warn('⚠️ Failed admin login attempt for phone:', phone);
   setTimeout(() => {
     res.status(401).json({ success: false, message: 'Invalid credentials' });
   }, 500);
