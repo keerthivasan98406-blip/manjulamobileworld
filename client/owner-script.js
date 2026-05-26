@@ -2094,18 +2094,17 @@ class OwnerPortalApp {
                 const netAmount = amount - discount;
                 return `
                 <div style="background: rgba(255,255,255,0.95); border-radius: 12px; padding: 16px; border: 2px solid #fecaca; position: relative;">
-                  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-                    <div>
-                      <div style="font-size: 16px; font-weight: 700; color: #000;">${sale.customerName}</div>
-                      <div style="font-size: 13px; color: #dc2626; font-weight: 600;">📞 ${sale.phoneNumber}</div>
-                      ${sale.customerAddress ? `<div style="font-size: 12px; color: #6b7280;">📍 ${sale.customerAddress}</div>` : ''}
-                    </div>
-                    <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                      <button onclick="app.showEditSaleModal('${sale.saleId}')" style="background:#16a34a; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; gap:4px;" title="Edit">✏️ Edit</button>
-                      <button onclick="app.showBillModal('${sale.saleId}')" style="background:#1d4ed8; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; gap:4px;" title="Print Receipt">🧾 Print</button>
-                      <button onclick="app.shareSaleWhatsApp('${sale.saleId}')" style="background:#25d366; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; gap:4px;" title="Share on WhatsApp">💬 WhatsApp</button>
-                      <button onclick="app.deleteSaleRecord('${sale.saleId}')" style="background:#dc2626; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; gap:4px;" title="Delete">🗑️ Delete</button>
-                    </div>
+                  <div style="margin-bottom: 12px;">
+                    <div style="font-size: 16px; font-weight: 700; color: #000;">${sale.customerName}</div>
+                    <div style="font-size: 13px; color: #dc2626; font-weight: 600;">📞 ${sale.phoneNumber}</div>
+                    ${sale.customerAddress ? `<div style="font-size: 12px; color: #6b7280;">📍 ${sale.customerAddress}</div>` : ''}
+                  </div>
+                  <!-- Action buttons — 2×2 grid -->
+                  <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:12px;">
+                    <button onclick="app.showEditSaleModal('${sale.saleId}')" style="background:#16a34a; border:none; border-radius:8px; padding:7px 10px; cursor:pointer; color:#fff; font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:4px;" title="Edit">✏️ Edit</button>
+                    <button onclick="app.showBillModal('${sale.saleId}')" style="background:#1d4ed8; border:none; border-radius:8px; padding:7px 10px; cursor:pointer; color:#fff; font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:4px;" title="Print Receipt">🧾 Print</button>
+                    <button onclick="app.shareSaleWhatsApp('${sale.saleId}')" style="background:#25d366; border:none; border-radius:8px; padding:7px 10px; cursor:pointer; color:#fff; font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:4px;" title="Share on WhatsApp">💬 WhatsApp</button>
+                    <button onclick="app.deleteSaleRecord('${sale.saleId}')" style="background:#dc2626; border:none; border-radius:8px; padding:7px 10px; cursor:pointer; color:#fff; font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:4px;" title="Delete">🗑️ Delete</button>
                   </div>
                   <div style="border-top: 1px solid #fecaca; padding-top: 10px; display: flex; flex-direction: column; gap: 6px;">
                     <div style="font-size: 13px; color: #000;"><span style="color: #6b7280;">📱 Product:</span> <strong>${sale.productName}</strong></div>
@@ -5226,18 +5225,17 @@ class OwnerPortalApp {
         const netAmount = amount - discount;
         return `
           <div style="background: rgba(255,255,255,0.95); border-radius: 12px; padding: 16px; border: 2px solid #fecaca; position: relative;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-              <div>
-                <div style="font-size: 16px; font-weight: 700; color: #000;">${sale.customerName}</div>
-                <div style="font-size: 13px; color: #dc2626; font-weight: 600;">📞 ${sale.phoneNumber}</div>
-                ${sale.customerAddress ? `<div style="font-size: 12px; color: #6b7280;">📍 ${sale.customerAddress}</div>` : ''}
-              </div>
-              <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                <button onclick="app.showEditSaleModal('${sale.saleId}')" style="background:#16a34a; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; gap:4px;" title="Edit">✏️ Edit</button>
-                <button onclick="app.showBillModal('${sale.saleId}')" style="background:#1d4ed8; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; gap:4px;" title="Print Receipt">🧾 Print</button>
-                <button onclick="app.shareSaleWhatsApp('${sale.saleId}')" style="background:#25d366; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; gap:4px;" title="WhatsApp">💬 WhatsApp</button>
-                <button onclick="app.deleteSaleRecord('${sale.saleId}')" style="background:#dc2626; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; gap:4px;" title="Delete">🗑️ Delete</button>
-              </div>
+            <div style="margin-bottom: 12px;">
+              <div style="font-size: 16px; font-weight: 700; color: #000;">${sale.customerName}</div>
+              <div style="font-size: 13px; color: #dc2626; font-weight: 600;">📞 ${sale.phoneNumber}</div>
+              ${sale.customerAddress ? `<div style="font-size: 12px; color: #6b7280;">📍 ${sale.customerAddress}</div>` : ''}
+            </div>
+            <!-- Action buttons — 2×2 grid -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:12px;">
+              <button onclick="app.showEditSaleModal('${sale.saleId}')" style="background:#16a34a; border:none; border-radius:8px; padding:7px 10px; cursor:pointer; color:#fff; font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:4px;" title="Edit">✏️ Edit</button>
+              <button onclick="app.showBillModal('${sale.saleId}')" style="background:#1d4ed8; border:none; border-radius:8px; padding:7px 10px; cursor:pointer; color:#fff; font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:4px;" title="Print Receipt">🧾 Print</button>
+              <button onclick="app.shareSaleWhatsApp('${sale.saleId}')" style="background:#25d366; border:none; border-radius:8px; padding:7px 10px; cursor:pointer; color:#fff; font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:4px;" title="Share on WhatsApp">💬 WhatsApp</button>
+              <button onclick="app.deleteSaleRecord('${sale.saleId}')" style="background:#dc2626; border:none; border-radius:8px; padding:7px 10px; cursor:pointer; color:#fff; font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:4px;" title="Delete">🗑️ Delete</button>
             </div>
             <div style="border-top: 1px solid #fecaca; padding-top: 10px; display: flex; flex-direction: column; gap: 6px;">
               <div style="font-size: 13px; color: #000;"><span style="color: #6b7280;">📱 Product:</span> <strong>${sale.productName}</strong></div>
