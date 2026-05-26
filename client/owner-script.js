@@ -4,6 +4,7 @@ class OwnerPortalApp {
     this.currentPage = "admin-login"
     this.isAdminLoggedIn = localStorage.getItem('manjula_admin_logged_in') === 'true'
     this.editingProductId = null
+    this.previousPage = "admin-products"
     this.adminSearch = ""
     this.trackingFilter = "all"
     this.trackingSearch = ""
@@ -43,6 +44,8 @@ class OwnerPortalApp {
     this.serviceSearch = "";
     this.displayStock = [];
     this.stockSearch = "";
+    this.shopProductSearch = "";
+    this.shopHiddenIds = new Set(JSON.parse(localStorage.getItem('manjula_shop_hidden_ids') || '[]'));
     this.customCategories = JSON.parse(localStorage.getItem('manjula_custom_categories') || '[]');
     
     this.init()
@@ -386,16 +389,22 @@ class OwnerPortalApp {
         this.handleAdminLogout()
       }
       if (actionElement && actionElement.dataset.action === "add-product-form") {
+        this.previousPage = this.currentPage
         this.renderPage("admin-add-product")
       }
       if (actionElement && actionElement.dataset.action === "edit-product") {
         const productId = actionElement.dataset.productId
         this.editingProductId = productId
+        this.previousPage = this.currentPage
         this.renderPage("admin-edit-product")
       }
       if (actionElement && actionElement.dataset.action === "delete-product") {
         const productId = actionElement.dataset.productId
         this.deleteProduct(productId)
+      }
+      if (actionElement && actionElement.dataset.action === "remove-from-shop") {
+        const productId = actionElement.dataset.productId
+        this.removeFromShop(productId)
       }
       if (actionElement && actionElement.dataset.action === "save-product") {
         this.saveProduct()
@@ -618,6 +627,8 @@ class OwnerPortalApp {
       html += this.renderMonthlyServices()
     } else if (page === "admin-display-stock") {
       html += this.renderDisplayStock()
+    } else if (page === "admin-shop-products") {
+      html += this.renderShopProducts()
     } else if (page === "admin-add-product") {
       html += this.renderAddProductForm()
     } else if (page === "admin-edit-product") {
@@ -662,6 +673,9 @@ class OwnerPortalApp {
               </li>
               <li class="nav-item">
                 <a class="nav-link ${this.currentPage === 'admin-display-stock' ? 'active' : ''}" data-page="admin-display-stock">📦 Display Stock</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link ${this.currentPage === 'admin-shop-products' ? 'active' : ''}" data-page="admin-shop-products">🏪 Shop Products</a>
               </li>
               <li class="nav-item">
                 <a class="nav-link" href="index.html">← Main Site</a>
@@ -739,6 +753,10 @@ class OwnerPortalApp {
             <button class="btn btn-primary" data-page="admin-display-stock" style="flex: 1; min-width: 200px; padding: 16px; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px;">
               <span style="font-size: 24px;">📦</span>
               <span>Display Stock</span>
+            </button>
+            <button class="btn btn-primary" data-page="admin-shop-products" style="flex: 1; min-width: 200px; padding: 16px; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+              <span style="font-size: 24px;">🏪</span>
+              <span>Shop Products</span>
             </button>
           </div>
 
@@ -1748,20 +1766,20 @@ class OwnerPortalApp {
 
   renderAddProductForm() {
     return `
-      <div style="min-height: 100vh; background-color: #020617; padding-top: 96px; padding-bottom: 80px;">
+      <div style="min-height: 100vh; background-color: #f13e74fb; padding-top: 96px; padding-bottom: 80px;">
         <div class="container" style="max-width: 600px;">
-          <button class="back-button" data-page="admin-products">← Back to Products</button>
-          <h1 style="font-size: 36px; font-weight: 700; margin-bottom: 32px;">Add New Product</h1>
+          <button class="back-button" data-page="admin-products" style="margin-bottom:20px;">← Back to Products</button>
+          <h1 style="font-size: 36px; font-weight: 700; margin-bottom: 32px; color: #fff;">Add New Product</h1>
 
-          <div style="background-color: rgba(30, 41, 59, 0.5); border: 1px solid #334155; border-radius: 12px; padding: 32px;">
+          <div style="background-color: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 32px;">
             <div class="form-field">
-              <label class="form-label">Product Name *</label>
-              <input type="text" class="input" placeholder="Enter product name" id="productName">
+              <label style="display:block; font-size:13px; font-weight:700; color:#1e293b; margin-bottom:6px;">Product Name *</label>
+              <input type="text" class="input" placeholder="Enter product name" id="productName" style="background:#f8fafc; color:#111; border:1px solid #cbd5e1;">
             </div>
 
             <div class="form-field">
-              <label class="form-label">Category *</label>
-              <select class="input" id="productCategory" style="background-color: rgba(51, 65, 85, 0.5); color: #f8fafc;" onchange="
+              <label style="display:block; font-size:13px; font-weight:700; color:#1e293b; margin-bottom:6px;">Category *</label>
+              <select class="input" id="productCategory" style="background:#f8fafc; color:#111; border:1px solid #cbd5e1;" onchange="
                 const custom = document.getElementById('customCategoryWrap');
                 if(this.value === '__custom__') { custom.style.display='block'; document.getElementById('customCategoryInput').focus(); }
                 else { custom.style.display='none'; }
@@ -1776,9 +1794,9 @@ class OwnerPortalApp {
                 ${(this.customCategories || []).map(c => `<option value="${c}">${c}</option>`).join('')}
                 <option value="__custom__">➕ Add Custom Category...</option>
               </select>
-              <div id="customCategoryWrap" style="display:none; margin-top:8px; display:none;">
+              <div id="customCategoryWrap" style="display:none; margin-top:8px;">
                 <div style="display:flex; gap:8px;">
-                  <input type="text" id="customCategoryInput" class="input" placeholder="Type new category name..." style="flex:1;">
+                  <input type="text" id="customCategoryInput" class="input" placeholder="Type new category name..." style="flex:1; background:#f8fafc; color:#111; border:1px solid #cbd5e1;">
                   <button type="button" onclick="
                     const val = document.getElementById('customCategoryInput').value.trim();
                     if(!val) return;
@@ -1799,47 +1817,47 @@ class OwnerPortalApp {
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
               <div class="form-field">
-                <label class="form-label">Customer Price (₹) *</label>
-                <input type="number" class="input" placeholder="2999" id="productPrice">
+                <label style="display:block; font-size:13px; font-weight:700; color:#1e293b; margin-bottom:6px;">Customer Price (₹) *</label>
+                <input type="number" class="input" placeholder="2999" id="productPrice" style="background:#f8fafc; color:#111; border:1px solid #cbd5e1;">
               </div>
               <div class="form-field">
-                <label class="form-label">Original / MRP Price (₹)</label>
-                <input type="number" class="input" placeholder="3999" id="productOriginalPrice">
+                <label style="display:block; font-size:13px; font-weight:700; color:#1e293b; margin-bottom:6px;">Original / MRP Price (₹)</label>
+                <input type="number" class="input" placeholder="3999" id="productOriginalPrice" style="background:#f8fafc; color:#111; border:1px solid #cbd5e1;">
               </div>
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
               <div class="form-field">
-                <label class="form-label">Owner Price (₹) <span style="font-size:11px; color:#f59e0b;">🔒 Owner only</span></label>
-                <input type="number" class="input" placeholder="2500" id="productOwnerPrice">
+                <label style="display:block; font-size:13px; font-weight:700; color:#1e293b; margin-bottom:6px;">Owner Price (₹) <span style="font-size:11px; color:#f59e0b;">🔒 Owner only</span></label>
+                <input type="number" class="input" placeholder="2500" id="productOwnerPrice" style="background:#f8fafc; color:#111; border:1px solid #cbd5e1;">
               </div>
               <div class="form-field">
-                <label class="form-label">Stock Quantity</label>
-                <input type="number" class="input" placeholder="0" id="productStock" min="0">
+                <label style="display:block; font-size:13px; font-weight:700; color:#1e293b; margin-bottom:6px;">Stock Quantity</label>
+                <input type="number" class="input" placeholder="0" id="productStock" min="0" style="background:#f8fafc; color:#111; border:1px solid #cbd5e1;">
               </div>
             </div>
 
             <div class="form-field">
-              <label class="form-label">Product Images</label>
-              <div style="margin-bottom: 16px; padding: 16px; background: rgba(51, 65, 85, 0.3); border-radius: 8px;">
-                <p style="color: #94a3b8; font-size: 12px; margin-bottom: 8px; font-weight: 600;">Image 1 (Main)</p>
-                <input type="url" class="input" placeholder="https://example.com/image1.jpg" id="productImageUrl" style="margin-bottom: 8px;">
-                <input type="file" class="input" accept="image/*" id="productImageFile1" onchange="app.handleImageUpload(event, 1)" style="font-size: 12px;">
+              <label style="display:block; font-size:13px; font-weight:700; color:#1e293b; margin-bottom:6px;">Product Images</label>
+              <div style="margin-bottom: 16px; padding: 16px; background: #f1f5f9; border-radius: 8px; border:1px solid #e2e8f0;">
+                <p style="color: #475569; font-size: 12px; margin-bottom: 8px; font-weight: 600;">Image 1 (Main)</p>
+                <input type="url" class="input" placeholder="https://example.com/image1.jpg" id="productImageUrl" style="margin-bottom: 8px; background:#fff; color:#111; border:1px solid #cbd5e1;">
+                <input type="file" class="input" accept="image/*" id="productImageFile1" onchange="app.handleImageUpload(event, 1)" style="font-size: 12px; background:#fff; color:#111; border:1px solid #cbd5e1;">
               </div>
-              <div style="margin-bottom: 16px; padding: 16px; background: rgba(51, 65, 85, 0.3); border-radius: 8px;">
-                <p style="color: #94a3b8; font-size: 12px; margin-bottom: 8px; font-weight: 600;">Image 2 (Secondary)</p>
-                <input type="url" class="input" placeholder="https://example.com/image2.jpg" id="productImageUrl2" style="margin-bottom: 8px;">
-                <input type="file" class="input" accept="image/*" id="productImageFile2" onchange="app.handleImageUpload(event, 2)" style="font-size: 12px;">
+              <div style="margin-bottom: 16px; padding: 16px; background: #f1f5f9; border-radius: 8px; border:1px solid #e2e8f0;">
+                <p style="color: #475569; font-size: 12px; margin-bottom: 8px; font-weight: 600;">Image 2 (Secondary)</p>
+                <input type="url" class="input" placeholder="https://example.com/image2.jpg" id="productImageUrl2" style="margin-bottom: 8px; background:#fff; color:#111; border:1px solid #cbd5e1;">
+                <input type="file" class="input" accept="image/*" id="productImageFile2" onchange="app.handleImageUpload(event, 2)" style="font-size: 12px; background:#fff; color:#111; border:1px solid #cbd5e1;">
               </div>
               <div style="margin-bottom: 12px;">
-                <p style="color: #94a3b8; font-size: 12px; margin-bottom: 8px;">Emoji/Icon (if no images)</p>
-                <input type="text" class="input" placeholder="📱 or 🔧 or 📦" id="productImage" maxlength="2">
+                <p style="color: #475569; font-size: 12px; margin-bottom: 8px; font-weight:600;">Emoji/Icon (if no images)</p>
+                <input type="text" class="input" placeholder="📱 or 🔧 or 📦" id="productImage" maxlength="2" style="background:#f8fafc; color:#111; border:1px solid #cbd5e1;">
               </div>
             </div>
 
             <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
               <input type="checkbox" id="productInStock" checked style="width: 18px; height: 18px; cursor: pointer;">
-              <label for="productInStock" style="cursor: pointer; color: #cbd5e1;">In Stock</label>
+              <label for="productInStock" style="cursor: pointer; color: #1e293b; font-weight:600; font-size:14px;">In Stock</label>
             </div>
 
             <button class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 16px; margin-bottom: 12px;" data-action="save-product">Add Product</button>
@@ -1856,19 +1874,20 @@ class OwnerPortalApp {
     if (!product) return `<div>Product not found</div>`
 
     return `
-      <div style="min-height: 100vh; background-color: #020617; padding-top: 96px; padding-bottom: 80px;">
+      <div style="min-height: 100vh; background-color: #f13e74fb; padding-top: 96px; padding-bottom: 80px;">
         <div class="container" style="max-width: 600px;">
-          <button class="back-button" data-page="admin-products">← Back to Products</button>
-          <h1 style="font-size: 36px; font-weight: 700; margin-bottom: 32px;">Edit Product</h1>
+          <button class="back-button" data-page="admin-products" style="margin-bottom:20px;">← Back to Products</button>
+          <h1 style="font-size: 36px; font-weight: 700; margin-bottom: 32px; color:#fff;">Edit Product</h1>
 
-          <div style="background-color: rgba(30, 41, 59, 0.5); border: 1px solid #334155; border-radius: 12px; padding: 32px;">
-            <div class="form-field">              <label class="form-label">Product Name *</label>
-              <input type="text" class="input" value="${product.name}" id="productName">
+          <div style="background-color: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 32px;">
+            <div class="form-field">
+              <label style="display:block; font-size:13px; font-weight:700; color:#1e293b; margin-bottom:6px;">Product Name *</label>
+              <input type="text" class="input" value="${product.name}" id="productName" style="background:#f8fafc; color:#111; border:1px solid #cbd5e1;">
             </div>
 
             <div class="form-field">
-              <label class="form-label">Category *</label>
-              <select class="input" id="productCategory" style="background-color: rgba(51, 65, 85, 0.5); color: #f8fafc;" onchange="
+              <label style="display:block; font-size:13px; font-weight:700; color:#1e293b; margin-bottom:6px;">Category *</label>
+              <select class="input" id="productCategory" style="background:#f8fafc; color:#111; border:1px solid #cbd5e1;" onchange="
                 const custom = document.getElementById('customCategoryWrapEdit');
                 if(this.value === '__custom__') { custom.style.display='block'; document.getElementById('customCategoryInputEdit').focus(); }
                 else { custom.style.display='none'; }
@@ -1885,7 +1904,7 @@ class OwnerPortalApp {
               </select>
               <div id="customCategoryWrapEdit" style="display:none; margin-top:8px;">
                 <div style="display:flex; gap:8px;">
-                  <input type="text" id="customCategoryInputEdit" class="input" placeholder="Type new category name..." style="flex:1;">
+                  <input type="text" id="customCategoryInputEdit" class="input" placeholder="Type new category name..." style="flex:1; background:#f8fafc; color:#111; border:1px solid #cbd5e1;">
                   <button type="button" onclick="
                     const val = document.getElementById('customCategoryInputEdit').value.trim();
                     if(!val) return;
@@ -1906,47 +1925,47 @@ class OwnerPortalApp {
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
               <div class="form-field">
-                <label class="form-label">Customer Price (₹) *</label>
-                <input type="number" class="input" value="${product.price}" id="productPrice">
+                <label style="display:block; font-size:13px; font-weight:700; color:#1e293b; margin-bottom:6px;">Customer Price (₹) *</label>
+                <input type="number" class="input" value="${product.price}" id="productPrice" style="background:#f8fafc; color:#111; border:1px solid #cbd5e1;">
               </div>
               <div class="form-field">
-                <label class="form-label">Original / MRP Price (₹)</label>
-                <input type="number" class="input" value="${product.originalPrice}" id="productOriginalPrice">
+                <label style="display:block; font-size:13px; font-weight:700; color:#1e293b; margin-bottom:6px;">Original / MRP Price (₹)</label>
+                <input type="number" class="input" value="${product.originalPrice}" id="productOriginalPrice" style="background:#f8fafc; color:#111; border:1px solid #cbd5e1;">
               </div>
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
               <div class="form-field">
-                <label class="form-label">Owner Price (₹) <span style="font-size:11px; color:#f59e0b;">🔒 Owner only</span></label>
-                <input type="number" class="input" value="${product.ownerPrice || ''}" placeholder="2500" id="productOwnerPrice">
+                <label style="display:block; font-size:13px; font-weight:700; color:#1e293b; margin-bottom:6px;">Owner Price (₹) <span style="font-size:11px; color:#f59e0b;">🔒 Owner only</span></label>
+                <input type="number" class="input" value="${product.ownerPrice || ''}" placeholder="2500" id="productOwnerPrice" style="background:#f8fafc; color:#111; border:1px solid #cbd5e1;">
               </div>
               <div class="form-field">
-                <label class="form-label">Stock Quantity</label>
-                <input type="number" class="input" value="${product.stock !== undefined ? product.stock : ''}" placeholder="0" id="productStock" min="0">
+                <label style="display:block; font-size:13px; font-weight:700; color:#1e293b; margin-bottom:6px;">Stock Quantity</label>
+                <input type="number" class="input" value="${product.stock !== undefined ? product.stock : ''}" placeholder="0" id="productStock" min="0" style="background:#f8fafc; color:#111; border:1px solid #cbd5e1;">
               </div>
             </div>
 
             <div class="form-field">
-              <label class="form-label">Product Images</label>
-              <div style="margin-bottom: 16px; padding: 16px; background: rgba(51, 65, 85, 0.3); border-radius: 8px;">
-                <p style="color: #94a3b8; font-size: 12px; margin-bottom: 8px; font-weight: 600;">Image 1 (Main)</p>
-                <input type="url" class="input" placeholder="https://example.com/image1.jpg" id="productImageUrl" value="${product.imageUrl || ""}" style="margin-bottom: 8px;">
-                <input type="file" class="input" accept="image/*" id="productImageFile1" onchange="app.handleImageUpload(event, 1)" style="font-size: 12px;">
+              <label style="display:block; font-size:13px; font-weight:700; color:#1e293b; margin-bottom:6px;">Product Images</label>
+              <div style="margin-bottom: 16px; padding: 16px; background: #f1f5f9; border-radius: 8px; border:1px solid #e2e8f0;">
+                <p style="color: #475569; font-size: 12px; margin-bottom: 8px; font-weight: 600;">Image 1 (Main)</p>
+                <input type="url" class="input" placeholder="https://example.com/image1.jpg" id="productImageUrl" value="${product.imageUrl || ""}" style="margin-bottom: 8px; background:#fff; color:#111; border:1px solid #cbd5e1;">
+                <input type="file" class="input" accept="image/*" id="productImageFile1" onchange="app.handleImageUpload(event, 1)" style="font-size: 12px; background:#fff; color:#111; border:1px solid #cbd5e1;">
               </div>
-              <div style="margin-bottom: 16px; padding: 16px; background: rgba(51, 65, 85, 0.3); border-radius: 8px;">
-                <p style="color: #94a3b8; font-size: 12px; margin-bottom: 8px; font-weight: 600;">Image 2 (Secondary)</p>
-                <input type="url" class="input" placeholder="https://example.com/image2.jpg" id="productImageUrl2" value="${product.imageUrl2 || ""}" style="margin-bottom: 8px;">
-                <input type="file" class="input" accept="image/*" id="productImageFile2" onchange="app.handleImageUpload(event, 2)" style="font-size: 12px;">
+              <div style="margin-bottom: 16px; padding: 16px; background: #f1f5f9; border-radius: 8px; border:1px solid #e2e8f0;">
+                <p style="color: #475569; font-size: 12px; margin-bottom: 8px; font-weight: 600;">Image 2 (Secondary)</p>
+                <input type="url" class="input" placeholder="https://example.com/image2.jpg" id="productImageUrl2" value="${product.imageUrl2 || ""}" style="margin-bottom: 8px; background:#fff; color:#111; border:1px solid #cbd5e1;">
+                <input type="file" class="input" accept="image/*" id="productImageFile2" onchange="app.handleImageUpload(event, 2)" style="font-size: 12px; background:#fff; color:#111; border:1px solid #cbd5e1;">
               </div>
               <div style="margin-bottom: 12px;">
-                <p style="color: #94a3b8; font-size: 12px; margin-bottom: 8px;">Emoji/Icon (if no images)</p>
-                <input type="text" class="input" value="${product.image}" id="productImage" maxlength="2">
+                <p style="color: #475569; font-size: 12px; margin-bottom: 8px; font-weight:600;">Emoji/Icon (if no images)</p>
+                <input type="text" class="input" value="${product.image}" id="productImage" maxlength="2" style="background:#f8fafc; color:#111; border:1px solid #cbd5e1;">
               </div>
             </div>
 
             <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
               <input type="checkbox" id="productInStock" ${product.inStock ? "checked" : ""} style="width: 18px; height: 18px; cursor: pointer;">
-              <label for="productInStock" style="cursor: pointer; color: #cbd5e1;">In Stock</label>
+              <label for="productInStock" style="cursor: pointer; color: #1e293b; font-weight:600; font-size:14px;">In Stock</label>
             </div>
 
             <button class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 16px; margin-bottom: 12px;" data-action="save-product">Update Product</button>
@@ -2103,6 +2122,276 @@ class OwnerPortalApp {
         </div>
       </div>
     `
+  }
+
+  renderShopProducts() {
+    const search = (this.shopProductSearch || '').toLowerCase();
+    const filtered = (this.products || []).filter(p => {
+      const id = String(p.id || p._id || '');
+      if (this.shopHiddenIds.has(id)) return false;
+      return (p.name || '').toLowerCase().includes(search) ||
+             (p.category || '').toLowerCase().includes(search);
+    });
+
+    const outOfStock = filtered.filter(p => (Number(p.stock) || 0) === 0);
+    const lowStock   = filtered.filter(p => { const s = Number(p.stock) || 0; return s > 0 && s <= 3; });
+
+    const totalValue = filtered.reduce((sum, p) => sum + ((Number(p.price) || 0) * (Number(p.stock) || 0)), 0);
+    const totalUnits = filtered.reduce((sum, p) => sum + (Number(p.stock) || 0), 0);
+
+    return `
+      <div style="min-height:100vh; background-color:#f13e74fb; padding-top:96px; padding-bottom:80px;">
+        <div class="container">
+          <button class="back-button" data-page="admin" style="margin-bottom:20px;">&#8592; Dashboard</button>
+
+          <!-- Header -->
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:12px;">
+            <div>
+              <h1 style="font-size:32px; font-weight:700; margin-bottom:4px;">🏪 Shop Products</h1>
+              <p style="color:#94a3b8;">Products available in your shop — auto-synced from Products page</p>
+            </div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+              <button onclick="app.exportShopProductsPDF()" style="padding:12px 24px; background:#1e293b; color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer;">📄 PDF</button>
+              <button onclick="app.exportShopProductsXL()" style="padding:12px 24px; background:#16a34a; color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer;">📊 XL Sheet</button>
+            </div>
+          </div>
+
+          <!-- Stock Alerts -->
+          ${(outOfStock.length > 0 || lowStock.length > 0) ? `
+            <div style="background:rgba(255,255,255,0.97); border:2px solid #fca5a5; border-radius:10px; padding:14px 18px; margin-bottom:18px;">
+              <div style="font-weight:700; color:#111; font-size:14px; margin-bottom:8px;">⚠️ Stock Alerts</div>
+              ${outOfStock.length > 0 ? `
+                <div style="margin-bottom:6px;">
+                  <span style="background:#fee2e2; color:#dc2626; padding:3px 10px; border-radius:20px; font-size:12px; font-weight:700; margin-right:8px;">🔴 Out of Stock (${outOfStock.length})</span>
+                  <span style="font-size:13px; color:#dc2626; font-weight:600;">${outOfStock.map(p => p.name).join(' · ')}</span>
+                </div>
+              ` : ''}
+              ${lowStock.length > 0 ? `
+                <div>
+                  <span style="background:#fef3c7; color:#d97706; padding:3px 10px; border-radius:20px; font-size:12px; font-weight:700; margin-right:8px;">🟡 Low Stock ≤3 (${lowStock.length})</span>
+                  <span style="font-size:13px; color:#d97706; font-weight:600;">${lowStock.map(p => `${p.name} (${Number(p.stock)})`).join(' · ')}</span>
+                </div>
+              ` : ''}
+            </div>
+          ` : ''}
+
+          <!-- Summary Cards -->
+          <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:20px;">
+            <div style="background:rgba(255,255,255,0.95); border-radius:10px; padding:16px; text-align:center; border:2px solid #e2e8f0;">
+              <div style="font-size:26px; font-weight:800; color:#1d4ed8;">${filtered.length}</div>
+              <div style="font-size:12px; color:#64748b; font-weight:600; margin-top:2px;">Total Products</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.95); border-radius:10px; padding:16px; text-align:center; border:2px solid #e2e8f0;">
+              <div style="font-size:26px; font-weight:800; color:#16a34a;">${totalUnits}</div>
+              <div style="font-size:12px; color:#64748b; font-weight:600; margin-top:2px;">Total Units</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.95); border-radius:10px; padding:16px; text-align:center; border:2px solid #e2e8f0;">
+              <div style="font-size:22px; font-weight:800; color:#7c3aed;">₹${totalValue.toLocaleString('en-IN')}</div>
+              <div style="font-size:12px; color:#64748b; font-weight:600; margin-top:2px;">Total Stock Value</div>
+            </div>
+            <div style="background:rgba(255,255,255,0.95); border-radius:10px; padding:16px; text-align:center; border:2px solid #e2e8f0;">
+              <div style="font-size:26px; font-weight:800; color:#dc2626;">${outOfStock.length}</div>
+              <div style="font-size:12px; color:#64748b; font-weight:600; margin-top:2px;">Out of Stock</div>
+            </div>
+          </div>
+
+          <!-- Search -->
+          <div style="margin-bottom:16px; display:flex; gap:12px; align-items:center;">
+            <div style="flex:1; position:relative;">
+              <input class="input" id="shopProductSearchInput"
+                placeholder="🔍 Search by product name or category..."
+                style="width:100%; background:#fff; color:#111; border:1px solid #d1d5db;"
+                oninput="app.searchShopProducts(this.value)"
+                value="${this.shopProductSearch || ''}">
+            </div>
+            <span style="color:#fff; font-size:14px; font-weight:600; white-space:nowrap;">${filtered.length} products</span>
+          </div>
+
+          <!-- Table -->
+          ${filtered.length === 0 ? `
+            <div style="text-align:center; padding:60px; color:#fff; font-size:16px;">
+              <div style="font-size:48px; margin-bottom:16px;">🏪</div>
+              <p>No products found. Add products from the Products Management page!</p>
+            </div>
+          ` : `
+            <div style="background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,0.15); border:2px solid #e2e8f0;">
+              <div style="overflow-x:auto;">
+                <table style="width:100%; border-collapse:collapse; font-size:13px; min-width:700px;">
+                  <thead>
+                    <tr style="background:#1e293b; color:#fff; text-align:left;">
+                      <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; width:36px;">#</th>
+                      <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:180px;">Product Name</th>
+                      <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:120px;">Category</th>
+                      <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:100px; text-align:center;">Sale Price (₹)</th>
+                      <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:100px; text-align:center;">Owner Price (₹)</th>
+                      <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:80px; text-align:center;">Stock</th>
+                      <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:120px; text-align:center;">Stock Value (₹)</th>
+                      <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:80px; text-align:center;">Status</th>
+                      <th style="padding:12px 14px; font-weight:700; text-align:center; min-width:80px;">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${filtered.map((product, idx) => {
+                      const productId = product.id || product._id || '';
+                      const stock     = Number(product.stock) || 0;
+                      const price     = Number(product.price) || 0;
+                      const ownerPrice = Number(product.ownerPrice) || 0;
+                      const stockValue = price * stock;
+                      const stockColor = stock === 0 ? '#dc2626' : stock <= 3 ? '#d97706' : '#16a34a';
+                      const stockBg    = stock === 0 ? '#fef2f2' : stock <= 3 ? '#fffbeb' : '#f0fdf4';
+                      const rowBg      = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
+                      return `
+                        <tr style="background:${rowBg}; border-bottom:1px solid #e2e8f0; transition:background 0.2s;"
+                            onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='${rowBg}'">
+                          <td style="padding:10px 14px; color:#9ca3af; font-weight:600; border-right:1px solid #e2e8f0; text-align:center;">${idx + 1}</td>
+                          <td style="padding:10px 14px; font-weight:700; color:#111827; border-right:1px solid #e2e8f0;">
+                            ${product.name}
+                            ${product.badge ? `<span style="margin-left:6px; background:#fef3c7; color:#92400e; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px;">${product.badge}</span>` : ''}
+                            ${stock === 0 ? `<span style="margin-left:6px; background:#fef2f2; color:#dc2626; font-size:10px; font-weight:800; padding:2px 7px; border-radius:4px; border:1px solid #fca5a5;">❌ OUT</span>` : ''}
+                            ${stock > 0 && stock <= 3 ? `<span style="margin-left:6px; background:#fffbeb; color:#d97706; font-size:10px; font-weight:800; padding:2px 7px; border-radius:4px; border:1px solid #fcd34d;">⚠️ LOW</span>` : ''}
+                          </td>
+                          <td style="padding:10px 14px; color:#374151; border-right:1px solid #e2e8f0;">
+                            <span style="background:#e0e7ff; color:#3730a3; font-size:11px; font-weight:700; padding:3px 8px; border-radius:12px;">${product.category || '—'}</span>
+                          </td>
+                          <td style="padding:10px 14px; text-align:center; font-weight:700; color:#16a34a; border-right:1px solid #e2e8f0;">
+                            ${price ? `₹${price.toLocaleString('en-IN')}` : '<span style="color:#9ca3af;">—</span>'}
+                          </td>
+                          <td style="padding:10px 14px; text-align:center; font-weight:600; color:#d97706; border-right:1px solid #e2e8f0;">
+                            ${ownerPrice ? `₹${ownerPrice.toLocaleString('en-IN')}` : '<span style="color:#9ca3af;">—</span>'}
+                          </td>
+                          <td style="padding:10px 14px; text-align:center; border-right:1px solid #e2e8f0;">
+                            <span style="display:inline-block; background:${stockBg}; color:${stockColor}; font-weight:900; font-size:18px; min-width:44px; padding:4px 10px; border-radius:6px; border:1px solid ${stockColor}40;">
+                              ${stock}
+                            </span>
+                          </td>
+                          <td style="padding:10px 14px; text-align:center; font-weight:700; color:#1d4ed8; border-right:1px solid #e2e8f0;">
+                            ${price && stock ? `₹${stockValue.toLocaleString('en-IN')}` : '<span style="color:#9ca3af;">—</span>'}
+                          </td>
+                          <td style="padding:10px 14px; text-align:center; border-right:1px solid #e2e8f0;">
+                            <span style="display:inline-block; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700;
+                              ${product.inStock ? 'background:#dcfce7; color:#16a34a;' : 'background:#fee2e2; color:#dc2626;'}">
+                              ${product.inStock ? '✅ In Stock' : '❌ Out'}
+                            </span>
+                          </td>
+                          <td style="padding:10px 14px; text-align:center;">
+                            <div style="display:flex; gap:6px; justify-content:center;">
+                              <button data-action="remove-from-shop" data-product-id="${productId}"
+                                style="background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; border-radius:6px; padding:5px 12px; font-size:12px; cursor:pointer;" title="Remove from shop list">
+                                🗑️ Remove
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      `;
+                    }).join('')}
+                  </tbody>
+                  <tfoot>
+                    <tr style="background:#1e293b; color:#fff; font-weight:700;">
+                      <td colspan="3" style="padding:12px 14px; font-size:13px; border-right:1px solid #334155;">📊 GRAND TOTAL</td>
+                      <td style="padding:12px 14px; text-align:center; font-size:13px; border-right:1px solid #334155;">—</td>
+                      <td style="padding:12px 14px; text-align:center; font-size:13px; border-right:1px solid #334155;">—</td>
+                      <td style="padding:12px 14px; text-align:center; font-size:15px; font-weight:900; border-right:1px solid #334155;">
+                        ${totalUnits} units
+                      </td>
+                      <td style="padding:12px 14px; text-align:center; font-size:15px; font-weight:900; color:#86efac; border-right:1px solid #334155;">
+                        ₹${totalValue.toLocaleString('en-IN')}
+                      </td>
+                      <td colspan="2" style="padding:12px 14px; text-align:center; font-size:12px; color:#94a3b8;">
+                        ${filtered.length} product${filtered.length !== 1 ? 's' : ''}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          `}
+        </div>
+      </div>
+    `;
+  }
+
+  searchShopProducts(value) {
+    this.shopProductSearch = value || '';
+    clearTimeout(this._shopSearchTimer);
+    this._shopSearchTimer = setTimeout(() => {
+      if (this.currentPage === 'admin-shop-products') {
+        this.renderPage('admin-shop-products');
+      }
+    }, 250);
+  }
+
+  removeFromShop(productId) {
+    if (!confirm('Remove this product from the Shop Products list?\n\n(This will NOT delete it from the Products page or website — it only hides it from this shop list.)')) return;
+    const id = String(productId);
+    this.shopHiddenIds.add(id);
+    localStorage.setItem('manjula_shop_hidden_ids', JSON.stringify([...this.shopHiddenIds]));
+    this.renderPage('admin-shop-products');
+  }
+
+  exportShopProductsPDF() {
+    const data = (this.products || []).filter(p => !this.shopHiddenIds.has(String(p.id || p._id || '')));
+    const win = window.open('', '_blank', 'width=1000,height=750');
+    const rows = data.map((p, i) => {
+      const stock = Number(p.stock) || 0;
+      const price = Number(p.price) || 0;
+      const stockColor = stock === 0 ? '#dc2626' : stock <= 3 ? '#d97706' : '#16a34a';
+      return `
+        <tr style="background:${i % 2 === 0 ? '#fff' : '#f8fafc'};">
+          <td style="padding:8px 10px; border:1px solid #e2e8f0; text-align:center; color:#9ca3af;">${i + 1}</td>
+          <td style="padding:8px 10px; border:1px solid #e2e8f0; font-weight:700;">${p.name || '—'}</td>
+          <td style="padding:8px 10px; border:1px solid #e2e8f0;">${p.category || '—'}</td>
+          <td style="padding:8px 10px; border:1px solid #e2e8f0; text-align:center; color:#16a34a; font-weight:700;">${price ? '₹' + price.toLocaleString('en-IN') : '—'}</td>
+          <td style="padding:8px 10px; border:1px solid #e2e8f0; text-align:center; color:#d97706; font-weight:700;">${p.ownerPrice ? '₹' + Number(p.ownerPrice).toLocaleString('en-IN') : '—'}</td>
+          <td style="padding:8px 10px; border:1px solid #e2e8f0; text-align:center; font-weight:900; color:${stockColor};">${stock}</td>
+          <td style="padding:8px 10px; border:1px solid #e2e8f0; text-align:center; font-weight:700; color:#1d4ed8;">${price && stock ? '₹' + (price * stock).toLocaleString('en-IN') : '—'}</td>
+          <td style="padding:8px 10px; border:1px solid #e2e8f0; text-align:center;">${p.inStock ? '✅ In Stock' : '❌ Out'}</td>
+        </tr>`;
+    }).join('');
+    const totalUnits = data.reduce((s, p) => s + (Number(p.stock) || 0), 0);
+    const totalValue = data.reduce((s, p) => s + ((Number(p.price) || 0) * (Number(p.stock) || 0)), 0);
+    win.document.write(`
+      <html><head><title>Shop Products - Manjula Mobile World</title>
+      <style>body{font-family:Arial,sans-serif;padding:20px;} table{width:100%;border-collapse:collapse;font-size:12px;} th{background:#1e293b;color:#fff;padding:10px;text-align:left;} tfoot td{background:#1e293b;color:#fff;font-weight:700;padding:10px;}</style>
+      </head><body>
+      <h2 style="margin-bottom:4px;">🏪 Shop Products — Manjula Mobile World</h2>
+      <p style="color:#64748b; font-size:12px; margin-bottom:16px;">Generated: ${new Date().toLocaleString('en-IN')}</p>
+      <table>
+        <thead><tr><th>#</th><th>Product Name</th><th>Category</th><th>Sale Price</th><th>Owner Price</th><th>Stock</th><th>Stock Value</th><th>Status</th></tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr><td colspan="5" style="text-align:right;">GRAND TOTAL</td><td style="text-align:center;">${totalUnits} units</td><td style="text-align:center;">₹${totalValue.toLocaleString('en-IN')}</td><td></td></tr></tfoot>
+      </table>
+      <script>window.print();<\/script>
+      </body></html>`);
+    win.document.close();
+  }
+
+  exportShopProductsXL() {
+    const data = (this.products || []).filter(p => !this.shopHiddenIds.has(String(p.id || p._id || '')));
+    const headers = ['#', 'Product Name', 'Category', 'Sale Price (₹)', 'Owner Price (₹)', 'Stock Qty', 'Stock Value (₹)', 'Status'];
+    const rows = data.map((p, i) => [
+      i + 1,
+      p.name || '',
+      p.category || '',
+      Number(p.price) || 0,
+      Number(p.ownerPrice) || 0,
+      Number(p.stock) || 0,
+      (Number(p.price) || 0) * (Number(p.stock) || 0),
+      p.inStock ? 'In Stock' : 'Out of Stock'
+    ]);
+    const totalUnits = data.reduce((s, p) => s + (Number(p.stock) || 0), 0);
+    const totalValue = data.reduce((s, p) => s + ((Number(p.price) || 0) * (Number(p.stock) || 0)), 0);
+    rows.push(['', 'GRAND TOTAL', '', '', '', totalUnits, totalValue, '']);
+
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `shop-products-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   renderDisplayStock() {
