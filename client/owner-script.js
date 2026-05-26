@@ -3957,34 +3957,34 @@ class OwnerPortalApp {
     const discount = Number(sale.discount) || 0;
     const net      = amount - discount;
 
-    // Build message using Unicode escapes so emojis survive encoding
+    // Build message using plain text markers — no emoji to avoid rendering issues
     const lines = [
-      '\uD83D\uDED2 *MANJULA MOBILE WORLD*',
+      '*MANJULA MOBILE WORLD*',
       '_The Final World of Mobile Solution_',
-      '\uD83D\uDCCD Ramapuram, Tamil Nadu - 603201',
-      '\uD83D\uDCDE +91 82484 54841',
+      'Ramapuram, Tamil Nadu - 603201',
+      'Ph: +91 82484 54841',
       '',
       '*--- SALES RECEIPT ---*',
-      '\uD83D\uDCC5 Date: ' + (sale.purchaseDate || new Date().toLocaleDateString('en-IN')),
-      '\uD83D\uDD16 Bill No: ' + sale.saleId,
+      'Date: ' + (sale.purchaseDate || new Date().toLocaleDateString('en-IN')),
+      'Bill No: ' + sale.saleId,
       '',
       '*Customer Details*',
-      '\uD83D\uDC64 Name: ' + sale.customerName,
-      '\uD83D\uDCDE Phone: ' + sale.phoneNumber,
-      sale.customerAddress ? '\uD83D\uDCCD Address: ' + sale.customerAddress : null,
+      'Name: ' + sale.customerName,
+      'Phone: ' + sale.phoneNumber,
+      sale.customerAddress ? 'Address: ' + sale.customerAddress : null,
       '',
       '*Product Details*',
-      '\uD83D\uDCF1 Product: ' + sale.productName,
-      sale.warrantyPeriod ? '\uD83D\uDEE1\uFE0F Warranty: ' + sale.warrantyPeriod : null,
+      'Product: ' + sale.productName,
+      sale.warrantyPeriod ? 'Warranty: ' + sale.warrantyPeriod : null,
       '',
       '*Payment Summary*',
-      '\uD83D\uDCB0 Price: \u20B9' + amount.toLocaleString('en-IN'),
-      discount > 0 ? '\uD83C\uDFF7\uFE0F Discount: -\u20B9' + discount.toLocaleString('en-IN') : null,
-      '\u2705 *Net Payable: \u20B9' + net.toLocaleString('en-IN') + '*',
-      sale.notes ? '\uD83D\uDCDD Notes: ' + sale.notes : null,
+      'Price: \u20B9' + amount.toLocaleString('en-IN'),
+      discount > 0 ? 'Discount: -\u20B9' + discount.toLocaleString('en-IN') : null,
+      '*Net Payable: \u20B9' + net.toLocaleString('en-IN') + '*',
+      sale.notes ? 'Notes: ' + sale.notes : null,
       '',
-      '\uD83D\uDE4F Thank you for shopping with us!',
-      '\uD83C\uDF10 manjulamobilesworld.onrender.com'
+      'Thank you for shopping with us!',
+      'manjulamobilesworld.onrender.com'
     ].filter(l => l !== null).join('\n');
 
     // Format phone — strip non-digits, add 91 prefix if needed
