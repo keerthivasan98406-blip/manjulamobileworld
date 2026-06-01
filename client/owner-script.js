@@ -44,8 +44,8 @@ class OwnerPortalApp {
     this.serviceSearch = "";
     this.displayStock = [];
     this.stockSearch = "";
-    this.shopProductSearch = "";
-    this.shopHiddenIds = new Set(JSON.parse(localStorage.getItem('manjula_shop_hidden_ids') || '[]'));
+    this.sparePartsStock = [];
+    this.sparePartsSearch = "";
     this.customCategories = JSON.parse(localStorage.getItem('manjula_custom_categories') || '[]');
     
     this.init()
@@ -228,6 +228,10 @@ class OwnerPortalApp {
         this.loadDisplayStockFromStorage().catch(err => {
           console.log('⚠️ Display stock load failed:', err.message);
           this.displayStock = [];
+        }),
+        this.loadSparePartsFromStorage().catch(err => {
+          console.log('⚠️ Spare parts load failed:', err.message);
+          this.sparePartsStock = [];
         })
       ]);
       
@@ -401,10 +405,6 @@ class OwnerPortalApp {
       if (actionElement && actionElement.dataset.action === "delete-product") {
         const productId = actionElement.dataset.productId
         this.deleteProduct(productId)
-      }
-      if (actionElement && actionElement.dataset.action === "remove-from-shop") {
-        const productId = actionElement.dataset.productId
-        this.removeFromShop(productId)
       }
       if (actionElement && actionElement.dataset.action === "save-product") {
         this.saveProduct()
@@ -591,6 +591,21 @@ class OwnerPortalApp {
     }
   }
 
+  async loadSparePartsFromStorage() {
+    try {
+      const response = await fetch(`${this.API_URL}/spare-parts`);
+      if (response.ok) {
+        this.sparePartsStock = await response.json();
+        console.log('✅ Loaded spare parts from database:', this.sparePartsStock.length);
+      } else {
+        this.sparePartsStock = [];
+      }
+    } catch (error) {
+      console.error('❌ Error loading spare parts:', error);
+      this.sparePartsStock = [];
+    }
+  }
+
   async renderPage(page) {
     const app = document.getElementById("app")
     this.currentPage = page
@@ -627,8 +642,8 @@ class OwnerPortalApp {
       html += this.renderMonthlyServices()
     } else if (page === "admin-display-stock") {
       html += this.renderDisplayStock()
-    } else if (page === "admin-shop-products") {
-      html += this.renderShopProducts()
+    } else if (page === "admin-spare-parts") {
+      html += this.renderSpareParts()
     } else if (page === "admin-add-product") {
       html += this.renderAddProductForm()
     } else if (page === "admin-edit-product") {
@@ -675,7 +690,7 @@ class OwnerPortalApp {
                 <a class="nav-link ${this.currentPage === 'admin-display-stock' ? 'active' : ''}" data-page="admin-display-stock">📦 Display Stock</a>
               </li>
               <li class="nav-item">
-                <a class="nav-link ${this.currentPage === 'admin-shop-products' ? 'active' : ''}" data-page="admin-shop-products">🏪 Shop Products</a>
+                <a class="nav-link ${this.currentPage === 'admin-spare-parts' ? 'active' : ''}" data-page="admin-spare-parts">🔩 Spare Parts</a>
               </li>
               <li class="nav-item">
                 <a class="nav-link" href="index.html">← Main Site</a>
@@ -754,9 +769,9 @@ class OwnerPortalApp {
               <span style="font-size: 24px;">📦</span>
               <span>Display Stock</span>
             </button>
-            <button class="btn btn-primary" data-page="admin-shop-products" style="flex: 1; min-width: 200px; padding: 16px; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px;">
-              <span style="font-size: 24px;">🏪</span>
-              <span>Shop Products</span>
+            <button class="btn btn-primary" data-page="admin-spare-parts" style="flex: 1; min-width: 200px; padding: 16px; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+              <span style="font-size: 24px;">🔩</span>
+              <span>Spare Parts</span>
             </button>
           </div>
 
@@ -2121,276 +2136,6 @@ class OwnerPortalApp {
         </div>
       </div>
     `
-  }
-
-  renderShopProducts() {
-    const search = (this.shopProductSearch || '').toLowerCase();
-    const filtered = (this.products || []).filter(p => {
-      const id = String(p.id || p._id || '');
-      if (this.shopHiddenIds.has(id)) return false;
-      return (p.name || '').toLowerCase().includes(search) ||
-             (p.category || '').toLowerCase().includes(search);
-    });
-
-    const outOfStock = filtered.filter(p => (Number(p.stock) || 0) === 0);
-    const lowStock   = filtered.filter(p => { const s = Number(p.stock) || 0; return s > 0 && s <= 3; });
-
-    const totalValue = filtered.reduce((sum, p) => sum + ((Number(p.price) || 0) * (Number(p.stock) || 0)), 0);
-    const totalUnits = filtered.reduce((sum, p) => sum + (Number(p.stock) || 0), 0);
-
-    return `
-      <div style="min-height:100vh; background-color:#f13e74fb; padding-top:96px; padding-bottom:80px;">
-        <div class="container">
-          <button class="back-button" data-page="admin" style="margin-bottom:20px;">&#8592; Dashboard</button>
-
-          <!-- Header -->
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:12px;">
-            <div>
-              <h1 style="font-size:32px; font-weight:700; margin-bottom:4px;">🏪 Shop Products</h1>
-              <p style="color:#94a3b8;">Products available in your shop — auto-synced from Products page</p>
-            </div>
-            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-              <button onclick="app.exportShopProductsPDF()" style="padding:12px 24px; background:#1e293b; color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer;">📄 PDF</button>
-              <button onclick="app.exportShopProductsXL()" style="padding:12px 24px; background:#16a34a; color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer;">📊 XL Sheet</button>
-            </div>
-          </div>
-
-          <!-- Stock Alerts -->
-          ${(outOfStock.length > 0 || lowStock.length > 0) ? `
-            <div style="background:rgba(255,255,255,0.97); border:2px solid #fca5a5; border-radius:10px; padding:14px 18px; margin-bottom:18px;">
-              <div style="font-weight:700; color:#111; font-size:14px; margin-bottom:8px;">⚠️ Stock Alerts</div>
-              ${outOfStock.length > 0 ? `
-                <div style="margin-bottom:6px;">
-                  <span style="background:#fee2e2; color:#dc2626; padding:3px 10px; border-radius:20px; font-size:12px; font-weight:700; margin-right:8px;">🔴 Out of Stock (${outOfStock.length})</span>
-                  <span style="font-size:13px; color:#dc2626; font-weight:600;">${outOfStock.map(p => p.name).join(' · ')}</span>
-                </div>
-              ` : ''}
-              ${lowStock.length > 0 ? `
-                <div>
-                  <span style="background:#fef3c7; color:#d97706; padding:3px 10px; border-radius:20px; font-size:12px; font-weight:700; margin-right:8px;">🟡 Low Stock ≤3 (${lowStock.length})</span>
-                  <span style="font-size:13px; color:#d97706; font-weight:600;">${lowStock.map(p => `${p.name} (${Number(p.stock)})`).join(' · ')}</span>
-                </div>
-              ` : ''}
-            </div>
-          ` : ''}
-
-          <!-- Summary Cards -->
-          <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:20px;">
-            <div style="background:rgba(255,255,255,0.95); border-radius:10px; padding:16px; text-align:center; border:2px solid #e2e8f0;">
-              <div style="font-size:26px; font-weight:800; color:#1d4ed8;">${filtered.length}</div>
-              <div style="font-size:12px; color:#64748b; font-weight:600; margin-top:2px;">Total Products</div>
-            </div>
-            <div style="background:rgba(255,255,255,0.95); border-radius:10px; padding:16px; text-align:center; border:2px solid #e2e8f0;">
-              <div style="font-size:26px; font-weight:800; color:#16a34a;">${totalUnits}</div>
-              <div style="font-size:12px; color:#64748b; font-weight:600; margin-top:2px;">Total Units</div>
-            </div>
-            <div style="background:rgba(255,255,255,0.95); border-radius:10px; padding:16px; text-align:center; border:2px solid #e2e8f0;">
-              <div style="font-size:22px; font-weight:800; color:#7c3aed;">₹${totalValue.toLocaleString('en-IN')}</div>
-              <div style="font-size:12px; color:#64748b; font-weight:600; margin-top:2px;">Total Stock Value</div>
-            </div>
-            <div style="background:rgba(255,255,255,0.95); border-radius:10px; padding:16px; text-align:center; border:2px solid #e2e8f0;">
-              <div style="font-size:26px; font-weight:800; color:#dc2626;">${outOfStock.length}</div>
-              <div style="font-size:12px; color:#64748b; font-weight:600; margin-top:2px;">Out of Stock</div>
-            </div>
-          </div>
-
-          <!-- Search -->
-          <div style="margin-bottom:16px; display:flex; gap:12px; align-items:center;">
-            <div style="flex:1; position:relative;">
-              <input class="input" id="shopProductSearchInput"
-                placeholder="🔍 Search by product name or category..."
-                style="width:100%; background:#fff; color:#111; border:1px solid #d1d5db;"
-                oninput="app.searchShopProducts(this.value)"
-                value="${this.shopProductSearch || ''}">
-            </div>
-            <span style="color:#fff; font-size:14px; font-weight:600; white-space:nowrap;">${filtered.length} products</span>
-          </div>
-
-          <!-- Table -->
-          ${filtered.length === 0 ? `
-            <div style="text-align:center; padding:60px; color:#fff; font-size:16px;">
-              <div style="font-size:48px; margin-bottom:16px;">🏪</div>
-              <p>No products found. Add products from the Products Management page!</p>
-            </div>
-          ` : `
-            <div style="background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,0.15); border:2px solid #e2e8f0;">
-              <div style="overflow-x:auto;">
-                <table style="width:100%; border-collapse:collapse; font-size:13px; min-width:700px;">
-                  <thead>
-                    <tr style="background:#1e293b; color:#fff; text-align:left;">
-                      <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; width:36px;">#</th>
-                      <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:180px;">Product Name</th>
-                      <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:120px;">Category</th>
-                      <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:100px; text-align:center;">Sale Price (₹)</th>
-                      <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:100px; text-align:center;">Owner Price (₹)</th>
-                      <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:80px; text-align:center;">Stock</th>
-                      <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:120px; text-align:center;">Stock Value (₹)</th>
-                      <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:80px; text-align:center;">Status</th>
-                      <th style="padding:12px 14px; font-weight:700; text-align:center; min-width:80px;">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${filtered.map((product, idx) => {
-                      const productId = product.id || product._id || '';
-                      const stock     = Number(product.stock) || 0;
-                      const price     = Number(product.price) || 0;
-                      const ownerPrice = Number(product.ownerPrice) || 0;
-                      const stockValue = price * stock;
-                      const stockColor = stock === 0 ? '#dc2626' : stock <= 3 ? '#d97706' : '#16a34a';
-                      const stockBg    = stock === 0 ? '#fef2f2' : stock <= 3 ? '#fffbeb' : '#f0fdf4';
-                      const rowBg      = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
-                      return `
-                        <tr style="background:${rowBg}; border-bottom:1px solid #e2e8f0; transition:background 0.2s;"
-                            onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='${rowBg}'">
-                          <td style="padding:10px 14px; color:#9ca3af; font-weight:600; border-right:1px solid #e2e8f0; text-align:center;">${idx + 1}</td>
-                          <td style="padding:10px 14px; font-weight:700; color:#111827; border-right:1px solid #e2e8f0;">
-                            ${product.name}
-                            ${product.badge ? `<span style="margin-left:6px; background:#fef3c7; color:#92400e; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px;">${product.badge}</span>` : ''}
-                            ${stock === 0 ? `<span style="margin-left:6px; background:#fef2f2; color:#dc2626; font-size:10px; font-weight:800; padding:2px 7px; border-radius:4px; border:1px solid #fca5a5;">❌ OUT</span>` : ''}
-                            ${stock > 0 && stock <= 3 ? `<span style="margin-left:6px; background:#fffbeb; color:#d97706; font-size:10px; font-weight:800; padding:2px 7px; border-radius:4px; border:1px solid #fcd34d;">⚠️ LOW</span>` : ''}
-                          </td>
-                          <td style="padding:10px 14px; color:#374151; border-right:1px solid #e2e8f0;">
-                            <span style="background:#e0e7ff; color:#3730a3; font-size:11px; font-weight:700; padding:3px 8px; border-radius:12px;">${product.category || '—'}</span>
-                          </td>
-                          <td style="padding:10px 14px; text-align:center; font-weight:700; color:#16a34a; border-right:1px solid #e2e8f0;">
-                            ${price ? `₹${price.toLocaleString('en-IN')}` : '<span style="color:#9ca3af;">—</span>'}
-                          </td>
-                          <td style="padding:10px 14px; text-align:center; font-weight:600; color:#d97706; border-right:1px solid #e2e8f0;">
-                            ${ownerPrice ? `₹${ownerPrice.toLocaleString('en-IN')}` : '<span style="color:#9ca3af;">—</span>'}
-                          </td>
-                          <td style="padding:10px 14px; text-align:center; border-right:1px solid #e2e8f0;">
-                            <span style="display:inline-block; background:${stockBg}; color:${stockColor}; font-weight:900; font-size:18px; min-width:44px; padding:4px 10px; border-radius:6px; border:1px solid ${stockColor}40;">
-                              ${stock}
-                            </span>
-                          </td>
-                          <td style="padding:10px 14px; text-align:center; font-weight:700; color:#1d4ed8; border-right:1px solid #e2e8f0;">
-                            ${price && stock ? `₹${stockValue.toLocaleString('en-IN')}` : '<span style="color:#9ca3af;">—</span>'}
-                          </td>
-                          <td style="padding:10px 14px; text-align:center; border-right:1px solid #e2e8f0;">
-                            <span style="display:inline-block; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700;
-                              ${product.inStock ? 'background:#dcfce7; color:#16a34a;' : 'background:#fee2e2; color:#dc2626;'}">
-                              ${product.inStock ? '✅ In Stock' : '❌ Out'}
-                            </span>
-                          </td>
-                          <td style="padding:10px 14px; text-align:center;">
-                            <div style="display:flex; gap:6px; justify-content:center;">
-                              <button data-action="remove-from-shop" data-product-id="${productId}"
-                                style="background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; border-radius:6px; padding:5px 12px; font-size:12px; cursor:pointer;" title="Remove from shop list">
-                                🗑️ Remove
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      `;
-                    }).join('')}
-                  </tbody>
-                  <tfoot>
-                    <tr style="background:#1e293b; color:#fff; font-weight:700;">
-                      <td colspan="3" style="padding:12px 14px; font-size:13px; border-right:1px solid #334155;">📊 GRAND TOTAL</td>
-                      <td style="padding:12px 14px; text-align:center; font-size:13px; border-right:1px solid #334155;">—</td>
-                      <td style="padding:12px 14px; text-align:center; font-size:13px; border-right:1px solid #334155;">—</td>
-                      <td style="padding:12px 14px; text-align:center; font-size:15px; font-weight:900; border-right:1px solid #334155;">
-                        ${totalUnits} units
-                      </td>
-                      <td style="padding:12px 14px; text-align:center; font-size:15px; font-weight:900; color:#86efac; border-right:1px solid #334155;">
-                        ₹${totalValue.toLocaleString('en-IN')}
-                      </td>
-                      <td colspan="2" style="padding:12px 14px; text-align:center; font-size:12px; color:#94a3b8;">
-                        ${filtered.length} product${filtered.length !== 1 ? 's' : ''}
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </div>
-          `}
-        </div>
-      </div>
-    `;
-  }
-
-  searchShopProducts(value) {
-    this.shopProductSearch = value || '';
-    clearTimeout(this._shopSearchTimer);
-    this._shopSearchTimer = setTimeout(() => {
-      if (this.currentPage === 'admin-shop-products') {
-        this.renderPage('admin-shop-products');
-      }
-    }, 250);
-  }
-
-  removeFromShop(productId) {
-    if (!confirm('Remove this product from the Shop Products list?\n\n(This will NOT delete it from the Products page or website — it only hides it from this shop list.)')) return;
-    const id = String(productId);
-    this.shopHiddenIds.add(id);
-    localStorage.setItem('manjula_shop_hidden_ids', JSON.stringify([...this.shopHiddenIds]));
-    this.renderPage('admin-shop-products');
-  }
-
-  exportShopProductsPDF() {
-    const data = (this.products || []).filter(p => !this.shopHiddenIds.has(String(p.id || p._id || '')));
-    const win = window.open('', '_blank', 'width=1000,height=750');
-    const rows = data.map((p, i) => {
-      const stock = Number(p.stock) || 0;
-      const price = Number(p.price) || 0;
-      const stockColor = stock === 0 ? '#dc2626' : stock <= 3 ? '#d97706' : '#16a34a';
-      return `
-        <tr style="background:${i % 2 === 0 ? '#fff' : '#f8fafc'};">
-          <td style="padding:8px 10px; border:1px solid #e2e8f0; text-align:center; color:#9ca3af;">${i + 1}</td>
-          <td style="padding:8px 10px; border:1px solid #e2e8f0; font-weight:700;">${p.name || '—'}</td>
-          <td style="padding:8px 10px; border:1px solid #e2e8f0;">${p.category || '—'}</td>
-          <td style="padding:8px 10px; border:1px solid #e2e8f0; text-align:center; color:#16a34a; font-weight:700;">${price ? '₹' + price.toLocaleString('en-IN') : '—'}</td>
-          <td style="padding:8px 10px; border:1px solid #e2e8f0; text-align:center; color:#d97706; font-weight:700;">${p.ownerPrice ? '₹' + Number(p.ownerPrice).toLocaleString('en-IN') : '—'}</td>
-          <td style="padding:8px 10px; border:1px solid #e2e8f0; text-align:center; font-weight:900; color:${stockColor};">${stock}</td>
-          <td style="padding:8px 10px; border:1px solid #e2e8f0; text-align:center; font-weight:700; color:#1d4ed8;">${price && stock ? '₹' + (price * stock).toLocaleString('en-IN') : '—'}</td>
-          <td style="padding:8px 10px; border:1px solid #e2e8f0; text-align:center;">${p.inStock ? '✅ In Stock' : '❌ Out'}</td>
-        </tr>`;
-    }).join('');
-    const totalUnits = data.reduce((s, p) => s + (Number(p.stock) || 0), 0);
-    const totalValue = data.reduce((s, p) => s + ((Number(p.price) || 0) * (Number(p.stock) || 0)), 0);
-    win.document.write(`
-      <html><head><title>Shop Products - Manjula Mobile World</title>
-      <style>body{font-family:Arial,sans-serif;padding:20px;} table{width:100%;border-collapse:collapse;font-size:12px;} th{background:#1e293b;color:#fff;padding:10px;text-align:left;} tfoot td{background:#1e293b;color:#fff;font-weight:700;padding:10px;}</style>
-      </head><body>
-      <h2 style="margin-bottom:4px;">🏪 Shop Products — Manjula Mobile World</h2>
-      <p style="color:#64748b; font-size:12px; margin-bottom:16px;">Generated: ${new Date().toLocaleString('en-IN')}</p>
-      <table>
-        <thead><tr><th>#</th><th>Product Name</th><th>Category</th><th>Sale Price</th><th>Owner Price</th><th>Stock</th><th>Stock Value</th><th>Status</th></tr></thead>
-        <tbody>${rows}</tbody>
-        <tfoot><tr><td colspan="5" style="text-align:right;">GRAND TOTAL</td><td style="text-align:center;">${totalUnits} units</td><td style="text-align:center;">₹${totalValue.toLocaleString('en-IN')}</td><td></td></tr></tfoot>
-      </table>
-      <script>window.print();<\/script>
-      </body></html>`);
-    win.document.close();
-  }
-
-  exportShopProductsXL() {
-    const data = (this.products || []).filter(p => !this.shopHiddenIds.has(String(p.id || p._id || '')));
-    const headers = ['#', 'Product Name', 'Category', 'Sale Price (₹)', 'Owner Price (₹)', 'Stock Qty', 'Stock Value (₹)', 'Status'];
-    const rows = data.map((p, i) => [
-      i + 1,
-      p.name || '',
-      p.category || '',
-      Number(p.price) || 0,
-      Number(p.ownerPrice) || 0,
-      Number(p.stock) || 0,
-      (Number(p.price) || 0) * (Number(p.stock) || 0),
-      p.inStock ? 'In Stock' : 'Out of Stock'
-    ]);
-    const totalUnits = data.reduce((s, p) => s + (Number(p.stock) || 0), 0);
-    const totalValue = data.reduce((s, p) => s + ((Number(p.price) || 0) * (Number(p.stock) || 0)), 0);
-    rows.push(['', 'GRAND TOTAL', '', '', '', totalUnits, totalValue, '']);
-
-    const csvContent = [headers, ...rows]
-      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-      .join('\n');
-    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href     = url;
-    a.download = `shop-products-${new Date().toISOString().slice(0,10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
   }
 
   renderDisplayStock() {
@@ -4888,7 +4633,7 @@ class OwnerPortalApp {
       { value: 'Quality Check',   label: '✅ Quality Check',    desc: 'Final testing' },
       { value: 'Ready for Pickup',label: '📢 Ready for Pickup', desc: 'Ready for collection' },
       { value: 'Completed',       label: '🎉 Completed',        desc: 'Service completed' },
-      { value: 'Delivered',       label: '� Delivered',        desc: 'Device delivered to customer' }
+      { value: 'Delivered',       label: '🚚 Delivered',        desc: 'Device delivered to customer' }
     ];
 
     // Which options to hide when Return is selected
@@ -5383,7 +5128,7 @@ class OwnerPortalApp {
       'Quality Check':    '✅',
       'Ready for Pickup': '📢',
       'Completed':        '🎉',
-      'Delivered':        '�'
+      'Delivered':        '🚚'
     }
     return emojiMap[status] || '📱'
   }
@@ -5440,6 +5185,555 @@ class OwnerPortalApp {
         alert(`❌ Failed to delete order: ${error.message}`);
       }
     }
+  }
+
+  // ===== SPARE PARTS METHODS =====
+
+  renderSpareParts() {
+    const search = (this.sparePartsSearch || '').toLowerCase();
+    const filtered = (this.sparePartsStock || []).filter(d =>
+      d.partName?.toLowerCase().includes(search) ||
+      d.partId?.toLowerCase().includes(search)
+    );
+    const lowStock = filtered.filter(d => (Number(d.stock) || 0) === 1);
+    return `
+      <div style="min-height:100vh; background-color:#f13e74fb; padding-top:96px; padding-bottom:80px;">
+        <div class="container">
+          <button class="back-button" data-page="admin" style="margin-bottom:20px;">&#8592; Dashboard</button>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:12px;">
+            <div>
+              <h1 style="font-size:32px; font-weight:700; margin-bottom:4px;">🔩 Spare Parts</h1>
+              <p style="color:#94a3b8;">Manage spare parts inventory — increase, decrease &amp; track stock</p>
+            </div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+              <button class="btn btn-primary" onclick="app.toggleSparePartsForm()" style="padding:12px 24px;">+ Add Part</button>
+              <button onclick="app.exportSparePartsPDF()" style="padding:12px 24px; background:#1e293b; color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer;">📄 PDF</button>
+              <button onclick="app.exportSparePartsXL()" style="padding:12px 24px; background:#16a34a; color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer;">📊 XL Sheet</button>
+            </div>
+          </div>
+          <div id="sparePartsForm" style="display:none; background:rgba(255,255,255,0.97); border:2px solid #dc2626; border-radius:12px; padding:24px; margin-bottom:24px;">
+            <h3 style="font-size:18px; font-weight:700; margin-bottom:16px; color:#000;">Add New Spare Part</h3>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px;">
+              <div>
+                <label style="font-size:13px; font-weight:600; color:#374151; display:block; margin-bottom:4px;">Part Name *</label>
+                <input class="input" id="sp_partName" placeholder="e.g. Samsung A54 Battery" style="width:100%;">
+              </div>
+              <div>
+                <label style="font-size:13px; font-weight:600; color:#374151; display:block; margin-bottom:4px;">Part ID *</label>
+                <input class="input" id="sp_partId" placeholder="e.g. PART-SA54-BAT" style="width:100%;">
+              </div>
+              <div>
+                <label style="font-size:13px; font-weight:600; color:#374151; display:block; margin-bottom:4px;">Initial Stock *</label>
+                <input class="input" type="number" id="sp_stock" placeholder="Enter quantity" min="0" style="width:100%;">
+              </div>
+              <div>
+                <label style="font-size:13px; font-weight:600; color:#d97706; display:block; margin-bottom:4px;">Owner Price (₹)</label>
+                <input class="input" type="number" id="sp_ownerPrice" placeholder="Cost price" min="0" style="width:100%;">
+              </div>
+              <div>
+                <label style="font-size:13px; font-weight:600; color:#16a34a; display:block; margin-bottom:4px;">Customer Price (₹)</label>
+                <input class="input" type="number" id="sp_customerPrice" placeholder="Selling price" min="0" style="width:100%;">
+              </div>
+            </div>
+            <div style="display:flex; gap:12px; margin-top:16px;">
+              <button class="btn btn-primary" onclick="app.saveSparePart()" style="padding:10px 24px;">💾 Save Part</button>
+              <button class="btn btn-secondary" onclick="app.toggleSparePartsForm()" style="padding:10px 24px;">Cancel</button>
+            </div>
+          </div>
+          <div style="margin-bottom:16px; display:flex; gap:12px; align-items:center;">
+            <div style="flex:1;">
+              <input class="input" id="sparePartsSearchInput" placeholder="🔍 Search by part name or ID..."
+                style="width:100%; background:#fff; color:#111; border:1px solid #d1d5db;"
+                oninput="app.searchSpareParts(this.value)"
+                value="${this.sparePartsSearch || ''}">
+            </div>
+            <span style="color:#fff; font-size:14px; font-weight:600; white-space:nowrap;">${filtered.length} items</span>
+          </div>
+          ${lowStock.length > 0 ? `
+            <div style="background:#fef2f2; border:2px solid #fca5a5; border-radius:10px; padding:12px 18px; margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <span style="font-size:20px;">⚠️</span>
+                <span style="font-size:13px; color:#dc2626; font-weight:600;">Only 1 unit left — ${lowStock.map(d => d.partName).join(', ')}</span>
+              </div>
+              <button onclick="app.downloadSparePartsLowStockAlertPDF()" style="background:#1e293b; color:#fff; border:none; border-radius:7px; padding:6px 14px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;">📄 Download PDF</button>
+            </div>
+          ` : ''}
+          ${filtered.length === 0 ? `
+            <div style="text-align:center; padding:60px; color:#fff; font-size:16px;">
+              <div style="font-size:48px; margin-bottom:16px;">🖥️</div>
+              <p>No spare parts found. Add your first part!</p>
+            </div>
+          ` : `
+            <div style="background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 4px 24px rgba(0,0,0,0.15); border:2px solid #e2e8f0;">
+              <div style="overflow-x:auto;">
+                <table style="width:100%; border-collapse:collapse; font-size:13px; min-width:680px;">
+                  <thead>
+                    <tr style="background:#1e293b; color:#fff; text-align:left;">
+                      <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; width:36px;">#</th>
+                      <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:180px;">Part Name</th>
+                      <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:100px; text-align:center;">Owner Price (₹)</th>
+                      <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:110px; text-align:center;">Customer Price (₹)</th>
+                      <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:100px; text-align:center;">Stock</th>
+                      <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:120px; text-align:center;">Total Value (₹)</th>
+                      <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:200px; text-align:center;">Adjust Stock</th>
+                      <th style="padding:12px 14px; font-weight:700; text-align:center; min-width:70px;">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${filtered.map((item, idx) => {
+                      const stock = Number(item.stock) || 0;
+                      const ownerPrice    = Number(item.ownerPrice) || 0;
+                      const customerPrice = Number(item.customerPrice) || 0;
+                      const totalValue = customerPrice * stock;
+                      const stockColor = stock === 0 ? '#dc2626' : stock <= 1 ? '#dc2626' : stock <= 3 ? '#d97706' : '#16a34a';
+                      const stockBg    = stock === 0 ? '#fef2f2' : stock <= 1 ? '#fef2f2' : stock <= 3 ? '#fffbeb' : '#f0fdf4';
+                      const rowBg      = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
+                      return `
+                        <tr style="background:${rowBg}; border-bottom:1px solid #e2e8f0; transition:background 0.3s;"
+                            onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='${rowBg}'">
+                          <td style="padding:10px 14px; color:#9ca3af; font-weight:600; border-right:1px solid #e2e8f0; text-align:center;">${idx + 1}</td>
+                          <td style="padding:10px 14px; font-weight:700; color:#111827; border-right:1px solid #e2e8f0;">
+                            ${item.partName}
+                            ${stock <= 1 && stock > 0 ? `<span style="margin-left:6px; background:#fef2f2; color:#dc2626; font-size:10px; font-weight:800; padding:2px 7px; border-radius:4px; border:1px solid #fca5a5;">⚠️ LAST 1</span>` : ''}
+                            ${stock === 0 ? `<span style="margin-left:6px; background:#fef2f2; color:#dc2626; font-size:10px; font-weight:800; padding:2px 7px; border-radius:4px; border:1px solid #fca5a5;">❌ OUT</span>` : ''}
+                          </td>
+                          <td style="padding:10px 14px; text-align:center; color:#d97706; font-weight:700; border-right:1px solid #e2e8f0;">
+                            ${ownerPrice ? `₹${ownerPrice.toLocaleString('en-IN')}` : '<span style="color:#9ca3af;">—</span>'}
+                          </td>
+                          <td style="padding:10px 14px; text-align:center; color:#16a34a; font-weight:700; border-right:1px solid #e2e8f0;">
+                            ${customerPrice ? `₹${customerPrice.toLocaleString('en-IN')}` : '<span style="color:#9ca3af;">—</span>'}
+                          </td>
+                          <td style="padding:10px 14px; text-align:center; border-right:1px solid #e2e8f0;">
+                            <span style="display:inline-block; background:${stockBg}; color:${stockColor}; font-weight:900; font-size:18px; min-width:48px; padding:4px 10px; border-radius:6px; border:1px solid ${stockColor}40;">
+                              ${stock}
+                            </span>
+                          </td>
+                          <td style="padding:10px 14px; text-align:center; font-weight:700; color:#1d4ed8; border-right:1px solid #e2e8f0;">
+                            ${customerPrice && stock ? `₹${totalValue.toLocaleString('en-IN')}` : '<span style="color:#9ca3af;">—</span>'}
+                          </td>
+                          <td style="padding:8px 14px; border-right:1px solid #e2e8f0;">
+                            <div style="display:flex; gap:6px; align-items:center; justify-content:center;">
+                              <input type="number" id="spqty_${item.partItemId}" min="1" value="1"
+                                style="width:52px; padding:5px 6px; border:1px solid #d1d5db; border-radius:6px; font-size:13px; text-align:center; color:#111;">
+                              <button onclick="app.adjustSparePart('${item.partItemId}', 1)"
+                                style="background:#16a34a; color:#fff; border:none; border-radius:6px; padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;">
+                                ▲ In
+                              </button>
+                              <button onclick="app.adjustSparePart('${item.partItemId}', -1)"
+                                style="background:#dc2626; color:#fff; border:none; border-radius:6px; padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; ${stock===0?'opacity:0.45;cursor:not-allowed;':''}">
+                                ▼ Out
+                              </button>
+                            </div>
+                          </td>
+                          <td style="padding:10px 14px; text-align:center;">
+                            <div style="display:flex; gap:6px; justify-content:center;">
+                              <button onclick="app.showEditSparePartModal('${item.partItemId}')"
+                                style="background:#dbeafe; color:#1d4ed8; border:1px solid #93c5fd; border-radius:6px; padding:5px 10px; font-size:12px; cursor:pointer;" title="Edit">
+                                ✏️
+                              </button>
+                              <button onclick="app.deleteSparePart('${item.partItemId}')"
+                                style="background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; border-radius:6px; padding:5px 10px; font-size:12px; cursor:pointer;" title="Delete">
+                                🗑️
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      `;
+                    }).join('')}
+                  </tbody>
+                  <tfoot>
+                    <tr style="background:#1e293b; color:#fff; font-weight:700;">
+                      <td colspan="2" style="padding:12px 14px; font-size:13px; border-right:1px solid #334155;">📊 GRAND TOTAL</td>
+                      <td style="padding:12px 14px; text-align:center; font-size:13px; border-right:1px solid #334155;">—</td>
+                      <td style="padding:12px 14px; text-align:center; font-size:13px; border-right:1px solid #334155;">—</td>
+                      <td style="padding:12px 14px; text-align:center; font-size:15px; font-weight:900; border-right:1px solid #334155;">
+                        ${filtered.reduce((sum, d) => sum + (Number(d.stock) || 0), 0)} units
+                      </td>
+                      <td style="padding:12px 14px; text-align:center; font-size:15px; font-weight:900; color:#86efac; border-right:1px solid #334155;">
+                        ₹${filtered.reduce((sum, d) => sum + ((Number(d.customerPrice) || 0) * (Number(d.stock) || 0)), 0).toLocaleString('en-IN')}
+                      </td>
+                      <td colspan="2" style="padding:12px 14px; text-align:center; font-size:12px; color:#94a3b8;">
+                        ${filtered.length} item${filtered.length !== 1 ? 's' : ''}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          `}
+        </div>
+      </div>`;
+  }
+
+  toggleSparePartsForm() {
+    const f = document.getElementById('sparePartsForm');
+    if (f) f.style.display = f.style.display === 'none' ? 'block' : 'none';
+  }
+
+  searchSpareParts(value) {
+    this.sparePartsSearch = value || '';
+    clearTimeout(this._sparePartsSearchTimer);
+    this._sparePartsSearchTimer = setTimeout(() => {
+      if (this.currentPage === 'admin-spare-parts') {
+        this.renderPage('admin-spare-parts');
+      }
+    }, 250);
+  }
+
+  async saveSparePart() {
+    const partName      = document.getElementById('sp_partName')?.value?.trim();
+    const partId        = document.getElementById('sp_partId')?.value?.trim();
+    const stock         = document.getElementById('sp_stock')?.value;
+    const ownerPrice    = document.getElementById('sp_ownerPrice')?.value;
+    const customerPrice = document.getElementById('sp_customerPrice')?.value;
+
+    if (!partName || !partId || stock === '' || stock === null) {
+      alert('Please fill in Part Name, Part ID and Initial Stock.');
+      return;
+    }
+
+    const data = {
+      partName,
+      partId,
+      stock: Number(stock),
+      ownerPrice:    ownerPrice    ? Number(ownerPrice)    : null,
+      customerPrice: customerPrice ? Number(customerPrice) : null,
+      history: [{ change: Number(stock), stockAfter: Number(stock), date: new Date().toLocaleDateString('en-IN') }]
+    };
+
+    try {
+      const response = await fetch(`${this.API_URL}/spare-parts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (response.ok) {
+        const saved = await response.json();
+        this.sparePartsStock.unshift(saved);
+        alert('✅ Spare part saved!');
+        this.renderPage('admin-spare-parts');
+      } else {
+        alert('❌ Failed to save spare part.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('❌ Error saving spare part.');
+    }
+  }
+
+  async adjustSparePart(partItemId, direction) {
+    const qtyInput = document.getElementById(`spqty_${partItemId}`);
+    const qty = Math.max(1, Number(qtyInput?.value) || 1);
+    const item = (this.sparePartsStock || []).find(d => d.partItemId === partItemId);
+    if (!item) return;
+
+    const change = direction * qty;
+    const newStock = Math.max(0, (Number(item.stock) || 0) + change);
+
+    const historyEntry = {
+      change,
+      stockAfter: newStock,
+      date: new Date().toLocaleDateString('en-IN')
+    };
+
+    try {
+      const response = await fetch(`${this.API_URL}/spare-parts/${partItemId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stock: newStock, historyEntry })
+      });
+      if (response.ok) {
+        const updated = await response.json();
+        const idx = this.sparePartsStock.findIndex(d => d.partItemId === partItemId);
+        if (idx !== -1) this.sparePartsStock[idx] = updated;
+
+        // Show low stock warning modal when stock reaches 1
+        if (updated.stock === 1) {
+          this.showSparePartsLowStockAlert(updated);
+        }
+
+        this.renderPage('admin-spare-parts');
+      } else {
+        alert('❌ Failed to update stock.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('❌ Error updating stock.');
+    }
+  }
+
+  showSparePartsLowStockAlert(item) {
+    const existing = document.getElementById('sparePartsLowStockModal');
+    if (existing) existing.remove();
+
+    const modalHTML = `
+      <div id="sparePartsLowStockModal" onclick="if(event.target===this)this.remove()"
+        style="position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;">
+        <div style="background:#fff;border-radius:14px;padding:28px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.4);text-align:center;">
+          <div style="font-size:48px;margin-bottom:12px;">⚠️</div>
+          <h2 style="font-size:20px;font-weight:800;color:#dc2626;margin-bottom:8px;">Low Stock Alert!</h2>
+          <p style="font-size:15px;font-weight:700;color:#111;margin-bottom:6px;">${item.partName}</p>
+          <p style="font-size:13px;color:#6b7280;margin-bottom:16px;">Only <strong style="color:#dc2626;">1 unit</strong> remaining in stock. Please reorder soon.</p>
+          ${item.customerPrice ? `<p style="font-size:13px;color:#374151;margin-bottom:4px;">Customer Price: <strong>₹${Number(item.customerPrice).toLocaleString('en-IN')}</strong></p>` : ''}
+          ${item.ownerPrice ? `<p style="font-size:13px;color:#374151;margin-bottom:20px;">Owner Price: <strong>₹${Number(item.ownerPrice).toLocaleString('en-IN')}</strong></p>` : ''}
+          <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+            <button onclick="app.downloadSparePartsLowStockPDF('${item.partItemId}')"
+              style="background:#1e293b;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;">
+              📄 Download PDF
+            </button>
+            <button onclick="document.getElementById('sparePartsLowStockModal').remove()"
+              style="background:#f1f5f9;color:#374151;border:1px solid #d1d5db;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:600;cursor:pointer;">
+              ✕ Dismiss
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+  }
+
+  downloadSparePartsLowStockAlertPDF() {
+    const lowItems = (this.sparePartsStock || []).filter(d => Number(d.stock) === 1);
+    if (lowItems.length === 0) return;
+
+    const win = window.open('', '_blank', 'width=700,height=500');
+    const rows = lowItems.map((d, i) => `
+      <tr style="background:${i % 2 === 0 ? '#fff' : '#fef2f2'}">
+        <td>${i + 1}</td>
+        <td style="font-weight:700;">${d.partName}</td>
+        <td>${d.partId}</td>
+        <td style="color:#dc2626;font-weight:900;">1 unit</td>
+        <td style="color:#d97706;font-weight:700;">${d.ownerPrice ? '₹' + Number(d.ownerPrice).toLocaleString('en-IN') : '—'}</td>
+        <td style="color:#16a34a;font-weight:700;">${d.customerPrice ? '₹' + Number(d.customerPrice).toLocaleString('en-IN') : '—'}</td>
+      </tr>`).join('');
+
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Low Stock Alert — Spare Parts</title>
+    <style>
+      body{font-family:Arial,sans-serif;padding:30px;color:#111;}
+      h2{color:#dc2626;}
+      table{width:100%;border-collapse:collapse;font-size:13px;margin-top:16px;}
+      th{background:#dc2626;color:#fff;padding:9px 12px;text-align:left;}
+      td{padding:8px 12px;border-bottom:1px solid #e5e7eb;}
+      .footer{margin-top:20px;font-size:12px;color:#6b7280;}
+      @media print{button{display:none;}}
+    </style></head><body>
+    <h2>⚠️ Low Stock Alert — Spare Parts</h2>
+    <p style="color:#6b7280;font-size:13px;">Generated: ${new Date().toLocaleString('en-IN')} &nbsp;|&nbsp; Items with only 1 unit remaining: ${lowItems.length}</p>
+    <table>
+      <thead><tr><th>#</th><th>Part Name</th><th>Part ID</th><th>Stock</th><th>Owner Price</th><th>Customer Price</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <p style="margin-top:20px;font-size:13px;color:#dc2626;font-weight:700;">⚠️ Please reorder the above parts immediately!</p>
+    <div class="footer">Manjula Mobile World | Ramapuram, Tamil Nadu | Ph: +91 82484 54841</div>
+    <br>
+    <button onclick="window.print()" style="padding:10px 24px;background:#1e293b;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer;">🖨️ Print / Save as PDF</button>
+    </body></html>`);
+    win.document.close();
+    setTimeout(() => { try { win.print(); } catch(e) {} }, 400);
+  }
+
+  downloadSparePartsLowStockPDF(partItemId) {
+    const item = (this.sparePartsStock || []).find(d => d.partItemId === partItemId);
+    if (!item) return;
+
+    const win = window.open('', '_blank', 'width=600,height=500');
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Low Stock Alert</title>
+    <style>
+      body{font-family:Arial,sans-serif;padding:30px;color:#111;}
+      h2{color:#dc2626;}
+      .box{border:2px solid #dc2626;border-radius:8px;padding:20px;margin-top:16px;}
+      .row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f3f4f6;font-size:14px;}
+      .label{color:#6b7280;}
+      .value{font-weight:700;}
+      @media print{button{display:none;}}
+    </style></head><body>
+    <h2>⚠️ Low Stock Alert — Spare Parts</h2>
+    <p style="color:#6b7280;font-size:13px;">Generated: ${new Date().toLocaleString('en-IN')}</p>
+    <div class="box">
+      <div class="row"><span class="label">Part Name</span><span class="value">${item.partName}</span></div>
+      <div class="row"><span class="label">Part ID</span><span class="value">${item.partId}</span></div>
+      <div class="row"><span class="label">Remaining Stock</span><span class="value" style="color:#dc2626;">1 unit</span></div>
+      <div class="row"><span class="label">Owner Price</span><span class="value" style="color:#d97706;">${item.ownerPrice ? '₹' + Number(item.ownerPrice).toLocaleString('en-IN') : '—'}</span></div>
+      <div class="row"><span class="label">Customer Price</span><span class="value" style="color:#16a34a;">${item.customerPrice ? '₹' + Number(item.customerPrice).toLocaleString('en-IN') : '—'}</span></div>
+    </div>
+    <p style="margin-top:20px;font-size:13px;color:#dc2626;font-weight:700;">⚠️ Please reorder this part immediately!</p>
+    <br>
+    <button onclick="window.print()" style="padding:10px 24px;background:#1e293b;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer;">🖨️ Print / Save as PDF</button>
+    </body></html>`);
+    win.document.close();
+    setTimeout(() => { try { win.print(); } catch(e) {} }, 400);
+  }
+
+  showEditSparePartModal(partItemId) {
+    const item = (this.sparePartsStock || []).find(d => d.partItemId === partItemId);
+    if (!item) return;
+
+    const existing = document.getElementById('editSparePartModal');
+    if (existing) existing.remove();
+
+    const modalHTML = `
+      <div id="editSparePartModal" onclick="if(event.target===this)this.remove()"
+        style="position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;">
+        <div style="background:#fff;border-radius:14px;padding:28px;max-width:520px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+          <h2 style="font-size:18px;font-weight:800;color:#111;margin-bottom:20px;">✏️ Edit Spare Part</h2>
+          <div style="display:grid;gap:12px;">
+            <div>
+              <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Part Name *</label>
+              <input class="input" id="edit_sp_partName" value="${item.partName}" style="width:100%;background:#f8fafc;color:#111;border:1px solid #d1d5db;">
+            </div>
+            <div>
+              <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Part ID *</label>
+              <input class="input" id="edit_sp_partId" value="${item.partId}" style="width:100%;background:#f8fafc;color:#111;border:1px solid #d1d5db;">
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+              <div>
+                <label style="font-size:13px;font-weight:600;color:#d97706;display:block;margin-bottom:4px;">Owner Price (₹)</label>
+                <input class="input" type="number" id="edit_sp_ownerPrice" value="${item.ownerPrice || ''}" placeholder="Cost price" min="0" style="width:100%;background:#f8fafc;color:#111;border:1px solid #d1d5db;">
+              </div>
+              <div>
+                <label style="font-size:13px;font-weight:600;color:#16a34a;display:block;margin-bottom:4px;">Customer Price (₹)</label>
+                <input class="input" type="number" id="edit_sp_customerPrice" value="${item.customerPrice || ''}" placeholder="Selling price" min="0" style="width:100%;background:#f8fafc;color:#111;border:1px solid #d1d5db;">
+              </div>
+              <div>
+                <label style="font-size:13px;font-weight:600;color:#1d4ed8;display:block;margin-bottom:4px;">Stock Qty</label>
+                <input class="input" type="number" id="edit_sp_stock" value="${item.stock || 0}" placeholder="Quantity" min="0" style="width:100%;background:#f8fafc;color:#111;border:1px solid #d1d5db;">
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:20px;">
+            <button onclick="app.saveEditSparePart('${partItemId}')"
+              style="flex:1;background:#1d4ed8;color:#fff;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;">
+              💾 Save Changes
+            </button>
+            <button onclick="document.getElementById('editSparePartModal').remove()"
+              style="flex:1;background:#f1f5f9;color:#374151;border:1px solid #d1d5db;border-radius:8px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;">
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+  }
+
+  async saveEditSparePart(partItemId) {
+    const partName      = document.getElementById('edit_sp_partName')?.value?.trim();
+    const partId        = document.getElementById('edit_sp_partId')?.value?.trim();
+    const ownerPrice    = document.getElementById('edit_sp_ownerPrice')?.value;
+    const customerPrice = document.getElementById('edit_sp_customerPrice')?.value;
+    const stock         = document.getElementById('edit_sp_stock')?.value;
+
+    if (!partName || !partId) {
+      alert('Part Name and Part ID are required.');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${this.API_URL}/spare-parts/${partItemId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          partName,
+          partId,
+          ownerPrice:    ownerPrice    ? Number(ownerPrice)    : null,
+          customerPrice: customerPrice ? Number(customerPrice) : null,
+          stock:         stock !== '' && stock !== undefined ? Number(stock) : undefined
+        })
+      });
+      if (response.ok) {
+        const updated = await response.json();
+        const idx = this.sparePartsStock.findIndex(d => d.partItemId === partItemId);
+        if (idx !== -1) this.sparePartsStock[idx] = updated;
+        document.getElementById('editSparePartModal')?.remove();
+        this.renderPage('admin-spare-parts');
+      } else {
+        alert('❌ Failed to update spare part.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('❌ Error updating spare part.');
+    }
+  }
+
+  async deleteSparePart(partItemId) {
+    if (!confirm('Delete this spare part? This cannot be undone.')) return;
+    try {
+      const response = await fetch(`${this.API_URL}/spare-parts/${partItemId}`, { method: 'DELETE' });
+      if (response.ok) {
+        this.sparePartsStock = this.sparePartsStock.filter(d => d.partItemId !== partItemId);
+        this.renderPage('admin-spare-parts');
+      } else {
+        alert('❌ Failed to delete spare part.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('❌ Error deleting spare part.');
+    }
+  }
+
+  exportSparePartsPDF() {
+    const data = this.sparePartsStock || [];
+    const win = window.open('', '_blank', 'width=1000,height=750');
+    const rows = data.map((p, i) => {
+      const stock         = Number(p.stock) || 0;
+      const ownerPrice    = Number(p.ownerPrice) || 0;
+      const customerPrice = Number(p.customerPrice) || 0;
+      const stockColor = stock === 0 ? '#dc2626' : stock <= 3 ? '#d97706' : '#16a34a';
+      return `
+        <tr style="background:${i % 2 === 0 ? '#fff' : '#f8fafc'};">
+          <td style="padding:8px 10px; border:1px solid #e2e8f0; text-align:center; color:#9ca3af;">${i + 1}</td>
+          <td style="padding:8px 10px; border:1px solid #e2e8f0; font-weight:700;">${p.partName || '—'}</td>
+          <td style="padding:8px 10px; border:1px solid #e2e8f0;">${p.partId || '—'}</td>
+          <td style="padding:8px 10px; border:1px solid #e2e8f0; text-align:center; color:#d97706; font-weight:700;">${ownerPrice ? '₹' + ownerPrice.toLocaleString('en-IN') : '—'}</td>
+          <td style="padding:8px 10px; border:1px solid #e2e8f0; text-align:center; color:#16a34a; font-weight:700;">${customerPrice ? '₹' + customerPrice.toLocaleString('en-IN') : '—'}</td>
+          <td style="padding:8px 10px; border:1px solid #e2e8f0; text-align:center; font-weight:900; color:${stockColor};">${stock}</td>
+          <td style="padding:8px 10px; border:1px solid #e2e8f0; text-align:center; font-weight:700; color:#1d4ed8;">${customerPrice && stock ? '₹' + (customerPrice * stock).toLocaleString('en-IN') : '—'}</td>
+        </tr>`;
+    }).join('');
+    const totalUnits = data.reduce((s, p) => s + (Number(p.stock) || 0), 0);
+    const totalValue = data.reduce((s, p) => s + ((Number(p.customerPrice) || 0) * (Number(p.stock) || 0)), 0);
+    win.document.write(`
+      <html><head><title>Spare Parts - Manjula Mobile World</title>
+      <style>body{font-family:Arial,sans-serif;padding:20px;} table{width:100%;border-collapse:collapse;font-size:12px;} th{background:#1e293b;color:#fff;padding:10px;text-align:left;} tfoot td{background:#1e293b;color:#fff;font-weight:700;padding:10px;}</style>
+      </head><body>
+      <h2 style="margin-bottom:4px;">� Spare Parts — Manjula Mobile World</h2>
+      <p style="color:#64748b; font-size:12px; margin-bottom:16px;">Generated: ${new Date().toLocaleString('en-IN')}</p>
+      <table>
+        <thead><tr><th>#</th><th>Part Name</th><th>Part ID</th><th>Owner Price</th><th>Customer Price</th><th>Stock</th><th>Total Value</th></tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr><td colspan="5" style="text-align:right;">GRAND TOTAL</td><td style="text-align:center;">${totalUnits} units</td><td style="text-align:center;">₹${totalValue.toLocaleString('en-IN')}</td></tr></tfoot>
+      </table>
+      <script>window.print();<\/script>
+      </body></html>`);
+    win.document.close();
+  }
+
+  exportSparePartsXL() {
+    const data = this.sparePartsStock || [];
+    const headers = ['#', 'Part Name', 'Part ID', 'Owner Price (₹)', 'Customer Price (₹)', 'Stock Qty', 'Total Value (₹)'];
+    const rows = data.map((p, i) => [
+      i + 1,
+      p.partName || '',
+      p.partId || '',
+      Number(p.ownerPrice) || 0,
+      Number(p.customerPrice) || 0,
+      Number(p.stock) || 0,
+      (Number(p.customerPrice) || 0) * (Number(p.stock) || 0)
+    ]);
+    const totalUnits = data.reduce((s, p) => s + (Number(p.stock) || 0), 0);
+    const totalValue = data.reduce((s, p) => s + ((Number(p.customerPrice) || 0) * (Number(p.stock) || 0)), 0);
+    rows.push(['', 'GRAND TOTAL', '', '', '', totalUnits, totalValue]);
+
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `spare-parts-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 }
 

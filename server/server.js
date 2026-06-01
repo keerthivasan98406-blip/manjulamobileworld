@@ -207,6 +207,19 @@ const displayStockSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const DisplayStock = mongoose.model('DisplayStock', displayStockSchema);
+
+// Spare Parts Stock Schema
+const sparePartsSchema = new mongoose.Schema({
+  partItemId:    { type: String, required: true, unique: true },
+  partName:      { type: String, required: true },
+  partId:        { type: String, required: true },
+  stock:         { type: Number, default: 0 },
+  ownerPrice:    { type: Number, default: null },
+  customerPrice: { type: Number, default: null },
+  history:       { type: Array, default: [] }
+}, { timestamps: true });
+
+const SpareParts = mongoose.model('SpareParts', sparePartsSchema);
 const uploadImageToCloud = async (base64Data, fileName) => {
   try {
     // File saving disabled - screenshots only stored in database as base64
@@ -1122,6 +1135,78 @@ Payment: ${orderDetails.paymentMethod}`;
     });
   } catch (error) {
     console.error('Error processing order:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ===== SPARE PARTS ROUTES =====
+app.get('/api/spare-parts', async (req, res) => {
+  try {
+    const items = await SpareParts.find().sort({ createdAt: -1 });
+    res.json(items);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/spare-parts', async (req, res) => {
+  try {
+    const partItemId = 'PART-' + Date.now();
+    const item = new SpareParts({ ...req.body, partItemId });
+    await item.save();
+    res.json(item);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/spare-parts/:partItemId', async (req, res) => {
+  try {
+    const { partName, partId, ownerPrice, customerPrice, stock } = req.body;
+    const updateFields = { partName, partId, ownerPrice: ownerPrice ?? null, customerPrice: customerPrice ?? null };
+    if (stock !== undefined) updateFields.stock = stock;
+    const item = await SpareParts.findOneAndUpdate(
+      { partItemId: req.params.partItemId },
+      { $set: updateFields },
+      { new: true }
+    );
+    if (!item) return res.status(404).json({ error: 'Not found' });
+    res.json(item);
+  } catch (error) {
+    console.error('❌ Error editing spare part:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.patch('/api/spare-parts/:partItemId', async (req, res) => {
+  try {
+    const { stock, historyEntry } = req.body;
+    const item = await SpareParts.findOne({ partItemId: req.params.partItemId });
+    if (!item) return res.status(404).json({ error: 'Not found' });
+
+    if (historyEntry) {
+      const updated = await SpareParts.findOneAndUpdate(
+        { partItemId: req.params.partItemId },
+        { $set: { stock }, $push: { history: historyEntry } },
+        { new: true }
+      );
+      return res.json(updated);
+    }
+
+    item.stock = stock;
+    await item.save();
+    res.json(item);
+  } catch (error) {
+    console.error('❌ Error updating spare part stock:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/spare-parts/:partItemId', async (req, res) => {
+  try {
+    await SpareParts.findOneAndDelete({ partItemId: req.params.partItemId });
+    res.json({ success: true });
+  } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
