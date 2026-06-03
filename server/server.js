@@ -169,6 +169,7 @@ const salesSchema = new mongoose.Schema({
   phoneNumber: { type: String, required: true },
   customerAddress: String,
   productName: { type: String, required: true },
+  productItems: { type: Array, default: [] },  // multi-item support
   productModel: String,
   imeiNumber: String,
   saleAmount: Number,

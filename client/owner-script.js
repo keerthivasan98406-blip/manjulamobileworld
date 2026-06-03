@@ -2033,28 +2033,31 @@ class OwnerPortalApp {
                 <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">Address</label>
                 <input class="input" id="sale_customerAddress" placeholder="Enter customer address" style="width:100%;">
               </div>
-              <div style="position:relative;">
-                <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">Product Name *</label>
-                <input class="input" id="sale_productName" placeholder="Type to search products..." style="width:100%;" autocomplete="off"
-                  oninput="app.showProductSuggestions(this.value)"
-                  onblur="setTimeout(()=>{ const d=document.getElementById('sale_product_dropdown'); if(d) d.style.display='none'; }, 200)">
-                <div id="sale_product_dropdown" style="display:none; position:absolute; top:100%; left:0; right:0; background:#fff; border:2px solid #dc2626; border-radius:8px; max-height:200px; overflow-y:auto; z-index:9999; box-shadow:0 4px 12px rgba(0,0,0,0.15);"></div>
-              </div>
-              <div>
-                <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">Category / Type</label>
-                <input class="input" id="sale_productCategory" placeholder="Auto-filled from product" style="width:100%; background:#f9fafb; color:#374151;" readonly>
-              </div>
-              <div>
-                <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">Sale Amount (₹)</label>
-                <div style="position:relative;">
-                  <input class="input" type="number" id="sale_saleAmount" placeholder="Auto-filled from product price" style="width:100%;" oninput="app.updateBillPreview()">
-                  <span id="sale_originalPrice_ref" style="display:none; position:absolute; right:10px; top:50%; transform:translateY(-50%); font-size:11px; color:#9ca3af; pointer-events:none;"></span>
+
+              <!-- ── PRODUCTS SECTION ── -->
+              <div style="grid-column: 1/-1;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                  <label style="font-size:13px; font-weight:700; color:#374151;">Products *</label>
+                  <button type="button" onclick="app.addSaleProductRow()"
+                    style="background:#dc2626; color:#fff; border:none; border-radius:6px; padding:5px 14px; font-size:12px; font-weight:700; cursor:pointer;">
+                    + Add Product
+                  </button>
                 </div>
+
+                <!-- Column headers -->
+                <div style="display:grid; grid-template-columns:2fr 1.2fr 1fr 1fr 32px; gap:6px; margin-bottom:4px; padding:0 2px;">
+                  <span style="font-size:11px; font-weight:700; color:#6b7280;">Product Name</span>
+                  <span style="font-size:11px; font-weight:700; color:#6b7280;">Category</span>
+                  <span style="font-size:11px; font-weight:700; color:#6b7280;">Amount (₹)</span>
+                  <span style="font-size:11px; font-weight:700; color:#6b7280;">Discount (₹)</span>
+                  <span></span>
+                </div>
+
+                <!-- Product rows container -->
+                <div id="sale_items_container"></div>
               </div>
-              <div>
-                <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">Discount (₹)</label>
-                <input class="input" type="number" id="sale_discount" placeholder="Enter discount (0 if none)" style="width:100%;" oninput="app.updateBillPreview()">
-              </div>
+              <!-- ── END PRODUCTS ── -->
+
               <div>
                 <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">Purchase Date *</label>
                 <input class="input" type="date" id="sale_purchaseDate" value="${new Date().toISOString().split('T')[0]}" style="width:100%;">
@@ -3288,30 +3291,149 @@ class OwnerPortalApp {
 
   toggleSalesForm() {
     const form = document.getElementById('salesForm');
-    if (form) form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    if (!form) return;
+    const isHidden = form.style.display === 'none';
+    form.style.display = isHidden ? 'block' : 'none';
+    if (isHidden) {
+      // Seed one empty product row when opening
+      const container = document.getElementById('sale_items_container');
+      if (container && container.children.length === 0) {
+        this.addSaleProductRow();
+      }
+      this.updateBillPreview();
+    }
+  }
+
+  // Generate a unique row ID
+  _saleRowId() {
+    return 'row_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+  }
+
+  addSaleProductRow() {
+    const container = document.getElementById('sale_items_container');
+    if (!container) return;
+    const rowId = this._saleRowId();
+    const rowHtml = `
+      <div id="${rowId}" style="display:grid; grid-template-columns:2fr 1.2fr 1fr 1fr 32px; gap:6px; margin-bottom:6px; align-items:start;">
+        <div style="position:relative;">
+          <input class="input sp_name" data-row="${rowId}" placeholder="Type to search products..."
+            style="width:100%; font-size:13px; color:#111; background:#fff; border:1px solid #d1d5db;"
+            autocomplete="off"
+            oninput="app.showRowProductSuggestions(this, '${rowId}')"
+            onblur="setTimeout(()=>{ const d=document.getElementById('dd_${rowId}'); if(d) d.style.display='none'; }, 150)">
+          <div id="dd_${rowId}" style="display:none; position:absolute; top:100%; left:0; right:0; background:#fff; border:2px solid #dc2626; border-radius:8px; max-height:180px; overflow-y:auto; z-index:9999; box-shadow:0 4px 12px rgba(0,0,0,0.15);"></div>
+        </div>
+        <input class="input sp_cat" data-row="${rowId}" placeholder="Category" readonly
+          style="width:100%; font-size:13px; background:#f9fafb; color:#6b7280; border:1px solid #e5e7eb;">
+        <input class="input sp_amount" data-row="${rowId}" type="number" placeholder="Amount" min="0"
+          style="width:100%; font-size:13px; color:#111; border:1px solid #d1d5db;"
+          oninput="app.updateBillPreview()">
+        <input class="input sp_discount" data-row="${rowId}" type="number" placeholder="0" min="0" value="0"
+          style="width:100%; font-size:13px; color:#111; border:1px solid #d1d5db;"
+          oninput="app.updateBillPreview()">
+        <button type="button" onclick="app.removeSaleProductRow('${rowId}')"
+          style="background:#fee2e2; color:#dc2626; border:1px solid #fca5a5; border-radius:6px; width:28px; height:34px; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; flex-shrink:0;">
+          ×
+        </button>
+      </div>`;
+    container.insertAdjacentHTML('beforeend', rowHtml);
+    // Focus the name input of the new row
+    const newRow = document.getElementById(rowId);
+    if (newRow) newRow.querySelector('.sp_name')?.focus();
+    this.updateBillPreview();
+  }
+
+  removeSaleProductRow(rowId) {
+    const row = document.getElementById(rowId);
+    if (!row) return;
+    // Always keep at least 1 row
+    const container = document.getElementById('sale_items_container');
+    if (container && container.children.length <= 1) {
+      alert('You need at least one product.');
+      return;
+    }
+    row.remove();
+    this.updateBillPreview();
+  }
+
+  showRowProductSuggestions(input, rowId) {
+    const query = input.value.toLowerCase();
+    const dropdown = document.getElementById(`dd_${rowId}`);
+    if (!dropdown) return;
+
+    if (!query) { dropdown.style.display = 'none'; return; }
+
+    const matches = (this.products || []).filter(p =>
+      p.name?.toLowerCase().includes(query) || p.category?.toLowerCase().includes(query)
+    ).slice(0, 8);
+
+    if (matches.length === 0) { dropdown.style.display = 'none'; return; }
+
+    dropdown.innerHTML = matches.map(p => `
+      <div onmousedown="app.selectRowProduct('${rowId}', '${(p.name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'")}', '${(p.category || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'")}', ${Number(p.price) || 0})"
+        style="padding:10px 14px; cursor:pointer; border-bottom:1px solid #f3f4f6; font-size:13px; display:flex; justify-content:space-between; align-items:center;"
+        onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='#fff'">
+        <span style="font-weight:600; color:#111;">${p.name || '—'}</span>
+        <span style="color:#16a34a; font-weight:700; font-size:12px;">${p.price ? '₹' + Number(p.price).toLocaleString('en-IN') : ''}</span>
+      </div>
+    `).join('');
+    dropdown.style.display = 'block';
+  }
+
+  selectRowProduct(rowId, name, category, price) {
+    const row = document.getElementById(rowId);
+    if (!row) return;
+    const nameInput     = row.querySelector('.sp_name');
+    const catInput      = row.querySelector('.sp_cat');
+    const amountInput   = row.querySelector('.sp_amount');
+    const dropdown      = document.getElementById(`dd_${rowId}`);
+
+    if (nameInput)   nameInput.value   = name;
+    if (catInput)    catInput.value    = category;
+    if (amountInput) amountInput.value = price || '';
+    if (dropdown)    dropdown.style.display = 'none';
+
+    this.updateBillPreview();
   }
 
   async saveSaleRecord() {
     const customerName = document.getElementById('sale_customerName')?.value?.trim();
-    const phoneNumber = document.getElementById('sale_phoneNumber')?.value?.trim();
-    const productName = document.getElementById('sale_productName')?.value?.trim();
+    const phoneNumber  = document.getElementById('sale_phoneNumber')?.value?.trim();
     const purchaseDate = document.getElementById('sale_purchaseDate')?.value;
 
-    if (!customerName || !phoneNumber || !productName || !purchaseDate) {
-      alert('Please fill in Customer Name, Phone Number, Product Name and Purchase Date.');
+    if (!customerName || !phoneNumber || !purchaseDate) {
+      alert('Please fill in Customer Name, Phone Number and Purchase Date.');
       return;
     }
 
-    const saleAmount = document.getElementById('sale_saleAmount')?.value || null;
-    const discount = document.getElementById('sale_discount')?.value || null;
+    // Collect all product rows
+    const container = document.getElementById('sale_items_container');
+    const rows = container ? Array.from(container.children) : [];
+    const items = rows.map(row => ({
+      name:     (row.querySelector('.sp_name')?.value || '').trim(),
+      category: (row.querySelector('.sp_cat')?.value  || '').trim(),
+      amount:   Number(row.querySelector('.sp_amount')?.value)   || 0,
+      discount: Number(row.querySelector('.sp_discount')?.value) || 0
+    })).filter(i => i.name);
+
+    if (items.length === 0) {
+      alert('Please add at least one product.');
+      return;
+    }
+
+    // Build combined fields for backward-compat storage
+    const productName = items.map(i => i.name).join(', ');
+    const totalAmount = items.reduce((s, i) => s + i.amount, 0);
+    const totalDiscount = items.reduce((s, i) => s + i.discount, 0);
 
     const saleData = {
       customerName,
       phoneNumber,
       customerAddress: document.getElementById('sale_customerAddress')?.value?.trim(),
       productName,
-      saleAmount,
-      discount,
+      productItems: items,         // full multi-item array
+      saleAmount:  totalAmount   || null,
+      discount:    totalDiscount || null,
       purchaseDate,
       warrantyPeriod: document.getElementById('sale_warrantyPeriod')?.value,
       notes: document.getElementById('sale_notes')?.value?.trim()
@@ -3338,11 +3460,17 @@ class OwnerPortalApp {
   }
 
   updateBillPreview() {
-    const amount = Number(document.getElementById('sale_saleAmount')?.value) || 0;
-    const discount = Number(document.getElementById('sale_discount')?.value) || 0;
-    const net = amount - discount;
+    const container = document.getElementById('sale_items_container');
+    let total = 0;
+    if (container) {
+      Array.from(container.children).forEach(row => {
+        const amount   = Number(row.querySelector('.sp_amount')?.value)   || 0;
+        const discount = Number(row.querySelector('.sp_discount')?.value) || 0;
+        total += Math.max(0, amount - discount);
+      });
+    }
     const el = document.getElementById('bill_preview_total');
-    if (el) el.textContent = `₹${net.toLocaleString()}`;
+    if (el) el.textContent = `₹${total.toLocaleString('en-IN')}`;
   }
 
   showEditSaleModal(saleId) {
@@ -3694,51 +3822,138 @@ class OwnerPortalApp {
     }
   }
 
-  shareSaleWhatsApp(saleId) {
+  async shareSaleWhatsApp(saleId) {
     const sale = this.salesRecords.find(s => s.saleId === saleId);
     if (!sale) return;
 
     const amount   = Number(sale.saleAmount) || 0;
-    const discount = Number(sale.discount) || 0;
+    const discount = Number(sale.discount)   || 0;
     const net      = amount - discount;
 
-    // Build message using plain text markers — no emoji to avoid rendering issues
-    const lines = [
-      '*MANJULA MOBILE WORLD*',
-      '_The Final World of Mobile Solution_',
-      'Ramapuram, Tamil Nadu - 603201',
-      'Ph: +91 82484 54841',
-      '',
-      '*--- SALES RECEIPT ---*',
-      'Date: ' + (sale.purchaseDate || new Date().toLocaleDateString('en-IN')),
-      'Bill No: ' + sale.saleId,
-      '',
-      '*Customer Details*',
-      'Name: ' + sale.customerName,
-      'Phone: ' + sale.phoneNumber,
-      sale.customerAddress ? 'Address: ' + sale.customerAddress : null,
-      '',
-      '*Product Details*',
-      'Product: ' + sale.productName,
-      sale.warrantyPeriod ? 'Warranty: ' + sale.warrantyPeriod : null,
-      '',
-      '*Payment Summary*',
-      'Price: \u20B9' + amount.toLocaleString('en-IN'),
-      discount > 0 ? 'Discount: -\u20B9' + discount.toLocaleString('en-IN') : null,
-      '*Net Payable: \u20B9' + net.toLocaleString('en-IN') + '*',
-      sale.notes ? 'Notes: ' + sale.notes : null,
-      '',
-      'Thank you for shopping with us!',
-      'manjulamobilesworld.onrender.com'
-    ].filter(l => l !== null).join('\n');
+    const items = sale.productItems && sale.productItems.length > 0
+      ? sale.productItems
+      : [{ name: sale.productName, category: '', amount: amount, discount: discount }];
 
-    // Format phone — strip non-digits, add 91 prefix if needed
+    // ── Build PDF using jsPDF ─────────────────────────────────────────────
+    const { jsPDF } = window.jspdf;
+    if (!jsPDF) { alert('PDF library not loaded yet. Please try again in a moment.'); return; }
+
+    const doc = new jsPDF({ unit: 'mm', format: [80, 200], orientation: 'portrait' });
+    const W = 80;
+    let y = 6;
+
+    const centerText = (text, size, bold) => {
+      doc.setFontSize(size);
+      doc.setFont('courier', bold ? 'bold' : 'normal');
+      doc.text(text, W / 2, y, { align: 'center' });
+      y += size * 0.45 + 1;
+    };
+    const rowText = (label, value, size = 9) => {
+      doc.setFontSize(size); doc.setFont('courier', 'normal');
+      doc.text(label, 4, y);
+      doc.setFont('courier', 'bold');
+      doc.text(value, W - 4, y, { align: 'right' });
+      y += size * 0.4 + 1.5;
+    };
+    const dashed = () => {
+      doc.setLineDashPattern([1, 1], 0); doc.setDrawColor(0); doc.setLineWidth(0.3);
+      doc.line(4, y, W - 4, y); y += 3;
+    };
+    const solid = () => {
+      doc.setLineDashPattern([], 0); doc.setLineWidth(0.5);
+      doc.line(4, y, W - 4, y); y += 3;
+    };
+
+    centerText('MANJULA MOBILE WORLD', 11, true);
+    centerText('The Final World of Mobile Solution', 7, false);
+    centerText('Ramapuram, Tamil Nadu - 603201', 7, false);
+    centerText('Ph: +91 82484 54841', 7, false);
+    centerText('manjulamobiles125@gmail.com', 7, false);
+    y += 1; solid();
+    centerText('** SALES RECEIPT **', 9, true); y += 1;
+    doc.setFontSize(8); doc.setFont('courier', 'normal');
+    doc.text('Date: ' + (sale.purchaseDate || new Date().toLocaleDateString('en-IN')), 4, y); y += 4;
+    doc.text('Bill No: ' + sale.saleId, 4, y); y += 4;
+    dashed();
+    doc.setFontSize(9); doc.setFont('courier', 'bold');
+    doc.text('CUSTOMER DETAILS', 4, y); y += 5;
+    rowText('Name', sale.customerName);
+    rowText('Phone', sale.phoneNumber || '-');
+    if (sale.customerAddress) rowText('Address', sale.customerAddress);
+    dashed();
+    doc.setFontSize(9); doc.setFont('courier', 'bold');
+    doc.text('PRODUCT DETAILS', 4, y); y += 5;
+    items.forEach((it, i) => {
+      const itAmt = Number(it.amount || 0), itDisc = Number(it.discount || 0);
+      rowText(`${i + 1}. ${it.name || '—'}`, 'Rs.' + itAmt.toLocaleString('en-IN'));
+      if (itDisc > 0) rowText('   Discount', '- Rs.' + itDisc.toLocaleString('en-IN'));
+    });
+    if (sale.warrantyPeriod) rowText('Warranty', sale.warrantyPeriod);
+    dashed();
+    if (discount > 0) {
+      rowText('Sub-Total', 'Rs.' + amount.toLocaleString('en-IN'));
+      rowText('Discount',  '- Rs.' + discount.toLocaleString('en-IN'));
+    }
+    solid();
+    doc.setFontSize(11); doc.setFont('courier', 'bold');
+    doc.text('NET PAYABLE', 4, y);
+    doc.text('Rs.' + net.toLocaleString('en-IN'), W - 4, y, { align: 'right' });
+    y += 6; solid();
+    if (sale.notes) {
+      doc.setFontSize(8); doc.setFont('courier', 'normal');
+      doc.text('Notes: ' + sale.notes, 4, y); y += 5; dashed();
+    }
+    centerText('Mon-Sun: 9:00 AM - 10:00 PM', 7, false);
+    centerText('24/7 Emergency Service Available', 7, false);
+    y += 1;
+    centerText('*** Thank You! Visit Again ***', 8, true);
+    centerText('manjulamobilesworld-whwt.onrender.com', 7, false);
+
+    // ── Share caption text ────────────────────────────────────────────────
+    const productList = items.map(it => it.name).join(', ');
+    const caption = [
+      '*MANJULA MOBILE WORLD*',
+      '_Ramapuram, Tamil Nadu | +91 82484 54841_',
+      '',
+      'Dear *' + sale.customerName + '*,',
+      'Thank you for your purchase!',
+      '',
+      'Bill No: ' + sale.saleId,
+      'Date: ' + (sale.purchaseDate || new Date().toLocaleDateString('en-IN')),
+      'Product: ' + productList,
+      sale.warrantyPeriod ? 'Warranty: ' + sale.warrantyPeriod : null,
+      '*Net Payable: \u20B9' + net.toLocaleString('en-IN') + '*',
+      '',
+      'Visit us: https://manjulamobilesworld-whwt.onrender.com'
+    ].filter(Boolean).join('\n');
+
+    const fileName = `receipt-${sale.saleId}.pdf`;
+
+    // ── Try Web Share API first (mobile — shares PDF directly into WhatsApp) ──
+    if (navigator.canShare) {
+      try {
+        const pdfBlob = doc.output('blob');
+        const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: 'Receipt - ' + sale.saleId, text: caption });
+          return; // Done — user picked WhatsApp (or any app) from the share sheet
+        }
+      } catch (err) {
+        if (err.name !== 'AbortError') console.warn('Share API failed:', err);
+        // Fall through to download + WhatsApp link
+      }
+    }
+
+    // ── Fallback: download PDF + open WhatsApp with message ──────────────
+    doc.save(fileName);
+
     let phone = (sale.phoneNumber || '').replace(/\D/g, '');
     if (phone.length === 10) phone = '91' + phone;
     else if (phone.startsWith('0')) phone = '91' + phone.slice(1);
 
-    const url = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(lines);
-    window.open(url, '_blank');
+    setTimeout(() => {
+      window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(caption), '_blank');
+    }, 600);
   }
 
   printTrackingCard(qrId) {
