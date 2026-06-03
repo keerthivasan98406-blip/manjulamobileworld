@@ -3929,31 +3929,35 @@ class OwnerPortalApp {
 
     const fileName = `receipt-${sale.saleId}.pdf`;
 
-    // ── Try Web Share API first (mobile — shares PDF directly into WhatsApp) ──
+    // Build the direct WhatsApp link for this customer's number
+    let phone = (sale.phoneNumber || '').replace(/\D/g, '');
+    if (phone.length === 10) phone = '91' + phone;
+    else if (phone.startsWith('0')) phone = '91' + phone.slice(1);
+    const waUrl = 'https://wa.me/' + phone + '?text=' + encodeURIComponent(caption);
+
+    // ── On mobile: share PDF via Web Share API, then open the customer's WhatsApp chat ──
     if (navigator.canShare) {
       try {
         const pdfBlob = doc.output('blob');
         const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
         if (navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], title: 'Receipt - ' + sale.saleId, text: caption });
-          return; // Done — user picked WhatsApp (or any app) from the share sheet
+          // Open customer's WhatsApp chat directly first
+          window.open(waUrl, '_blank');
+          // Then trigger file share so owner can attach the PDF
+          setTimeout(async () => {
+            try { await navigator.share({ files: [file], title: 'Receipt - ' + sale.saleId }); }
+            catch(e) { if (e.name !== 'AbortError') doc.save(fileName); }
+          }, 500);
+          return;
         }
       } catch (err) {
-        if (err.name !== 'AbortError') console.warn('Share API failed:', err);
-        // Fall through to download + WhatsApp link
+        if (err.name !== 'AbortError') console.warn('Share API error:', err);
       }
     }
 
-    // ── Fallback: download PDF + open WhatsApp with message ──────────────
+    // ── Fallback (desktop): download PDF + open customer's WhatsApp chat directly ──
     doc.save(fileName);
-
-    let phone = (sale.phoneNumber || '').replace(/\D/g, '');
-    if (phone.length === 10) phone = '91' + phone;
-    else if (phone.startsWith('0')) phone = '91' + phone.slice(1);
-
-    setTimeout(() => {
-      window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(caption), '_blank');
-    }, 600);
+    setTimeout(() => { window.open(waUrl, '_blank'); }, 600);
   }
 
   printTrackingCard(qrId) {
