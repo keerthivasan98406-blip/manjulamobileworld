@@ -449,6 +449,50 @@ class OwnerPortalApp {
         }
       }
     })
+
+    // Global barcode scanner listener
+    // When scanner fires on tracking page with nothing focused, route to globalScanInput
+    this._scannerBuffer = '';
+    this._scannerLastKey = 0;
+    document.addEventListener('keydown', (e) => {
+      if (this.currentPage !== 'admin-tracking') return;
+
+      const activeId = document.activeElement?.id;
+      const tag = document.activeElement?.tagName;
+      const inInput = (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT');
+
+      // If already in globalScanInput, let the input's own onkeydown handle it
+      if (activeId === 'globalScanInput') return;
+
+      // If in any other input, don't interfere
+      if (inInput) return;
+
+      // Nothing focused — capture scanner chars and route to globalScanInput
+      const now = Date.now();
+      const gap = now - this._scannerLastKey;
+      this._scannerLastKey = now;
+
+      if (e.key === 'Enter') {
+        // Fire lookup with whatever is in the scan input
+        const scanInput = document.getElementById('globalScanInput');
+        const code = (scanInput?.value || this._scannerBuffer).trim();
+        this._scannerBuffer = '';
+        if (scanInput) scanInput.value = '';
+        if (code.length >= 3) {
+          this.lookupBarcode(code);
+        }
+      } else if (e.key.length === 1) {
+        if (gap > 600) this._scannerBuffer = '';
+        this._scannerBuffer += e.key;
+
+        // Route to scan input and focus it
+        const scanInput = document.getElementById('globalScanInput');
+        if (scanInput) {
+          scanInput.value = this._scannerBuffer;
+          scanInput.focus();
+        }
+      }
+    });
   }
 
   async handleAdminLogin() {
@@ -981,6 +1025,20 @@ class OwnerPortalApp {
           </div>
 
           ${this.renderTrackingForm()}
+
+          <!-- Permanent Barcode Scan Bar — always visible, works anytime -->
+          <div id="persistentScanBar" style="background:rgba(16,185,129,0.12); border:1.5px solid #10b981; border-radius:10px; padding:10px 16px; margin-bottom:20px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <span style="font-size:13px; font-weight:700; color:#10b981; white-space:nowrap;">📷 Scan Barcode:</span>
+            <input type="text" id="globalScanInput" placeholder="Scan barcode here to lookup any tracking record..."
+              style="flex:1; min-width:200px; padding:8px 12px; border:1px solid #10b981; border-radius:6px; background:rgba(30,41,59,0.9); color:#fff; font-size:13px; outline:none;"
+              autocomplete="off"
+              onkeydown="if(event.key==='Enter'){ event.preventDefault(); const v=this.value.trim(); this.value=''; app._scannerBuffer=''; if(v.length>=3){ app.lookupBarcode(v); } }">
+            <button onclick="const v=document.getElementById('globalScanInput').value.trim(); document.getElementById('globalScanInput').value=''; app._scannerBuffer=''; if(v.length>=3) app.lookupBarcode(v);"
+              style="background:#10b981; color:#fff; border:none; border-radius:6px; padding:8px 16px; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap;">
+              🔍 Lookup
+            </button>
+          </div>
+
           ${this.renderTrackingList()}
         </div>
       </div>
@@ -1144,11 +1202,37 @@ class OwnerPortalApp {
     return `
       <div id="trackingForm" style="display: none; background-color: rgba(30, 41, 59, 0.5); border: 1px solid #334155; border-radius: 12px; padding: 24px; margin-bottom: 32px;">
         <h3 style="margin-bottom: 24px;">Add New Tracking Record</h3>
-        
+
+        <!-- Barcode scan lookup -->
+        <div style="background:rgba(16,185,129,0.1); border:1px solid #10b981; border-radius:8px; padding:12px 16px; margin-bottom:20px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+          <span style="font-size:13px; font-weight:700; color:#10b981; white-space:nowrap;">📷 Scan Barcode:</span>
+          <input type="text" id="barcodeScanInput" placeholder="Scan or type barcode to lookup tracking..."
+            style="flex:1; min-width:200px; padding:8px 12px; border:1px solid #334155; border-radius:6px; background:rgba(30,41,59,0.8); color:#fff; font-size:13px;"
+            oninput="app.handleBarcodeScan(this.value)"
+            onkeydown="if(event.key==='Enter'){app.lookupBarcode(this.value);}">
+          <button onclick="app.lookupBarcode(document.getElementById('barcodeScanInput').value)"
+            style="background:#10b981; color:#fff; border:none; border-radius:6px; padding:8px 16px; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap;">
+            🔍 Lookup
+          </button>
+        </div>
+
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
           <div class="form-field">
-            <label class="form-label">QR ID *</label>
-            <input type="text" class="input" placeholder="Enter unique QR ID" id="newTrackingQRId">
+            <label class="form-label">QR ID * <span style="font-size:11px; color:#10b981;">(auto-generated)</span></label>
+            <input type="text" class="input" id="newTrackingQRId"
+              oninput="app._renderFormBarcode(this.value)"
+              placeholder="Auto-generated from 01518">
+            <!-- Barcode display -->
+            <div style="margin-top:10px; background:#fff; padding:8px; border-radius:6px; text-align:center; display:inline-block;">
+              <canvas id="formBarcodeCanvas" style="display:none; max-width:100%;"></canvas>
+            </div>
+            <!-- Print Label button -->
+            <div style="margin-top:8px;">
+              <button type="button" onclick="app.printTrackingLabel(document.getElementById('newTrackingQRId').value, document.getElementById('newTrackingCustomer')?.value, document.getElementById('newTrackingDevice')?.value)"
+                style="background:#1e293b; color:#fff; border:none; border-radius:6px; padding:7px 16px; font-size:12px; font-weight:700; cursor:pointer;">
+                🖨️ Print Label (Zenpert)
+              </button>
+            </div>
           </div>
           <div class="form-field">
             <label class="form-label">Password *</label>
@@ -1332,24 +1416,54 @@ class OwnerPortalApp {
       'Delivered':        '#2563eb'
     };
     const statusColor = statusColors[tracking.status] || '#10b981';
-    
+    const bcId = `bc_card_${tracking.qrId.replace(/[^a-zA-Z0-9]/g, '_')}`;
+
+    // Schedule barcode render after this HTML is injected into DOM
+    setTimeout(() => {
+      const el = document.getElementById(bcId);
+      if (el && typeof JsBarcode !== 'undefined') {
+        try {
+          JsBarcode(el, tracking.qrId, {
+            format: 'CODE128', width: 1.6, height: 32,
+            displayValue: true, fontSize: 11, margin: 3,
+            background: '#ffffff', lineColor: '#000000',
+            fontOptions: 'bold', font: 'monospace'
+          });
+          el.style.display = 'block';
+          el.style.margin = '0 auto';
+        } catch(e) {}
+      }
+    }, 50);
+
     return `
-      <div class="admin-tracking-card" style="background-color: rgba(30, 41, 59, 0.5); border: 1px solid #334155; border-radius: 8px; padding: 16px; max-width: 300px;">
-        <!-- Status Badge at Top -->
-        <div style="margin-bottom: 12px;">
+      <div class="admin-tracking-card" style="background-color: rgba(30, 41, 59, 0.5); border: 1px solid #334155; border-radius: 8px; padding: 12px; max-width: 300px;">
+
+        <!-- Barcode at top — scan this to lookup details -->
+        <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:6px; padding:6px 4px; margin-bottom:10px; text-align:center; width:100%; cursor:pointer; display:flex; flex-direction:column; align-items:center;"
+             onclick="app.showTrackingLookupResult(app.trackingData.find(t=>t.qrId==='${tracking.qrId}'))"
+             title="Click or scan to view full details">
+          <svg id="${bcId}" style="display:none; width:100%; max-width:260px;"></svg>
+          <div style="font-size:9px; color:#94a3b8; margin-top:2px;">📷 Click to view full details</div>
+        </div>
+
+        <!-- Status Badge -->
+        <div style="margin-bottom: 10px;">
           <span style="display: inline-block; font-size: 10px; padding: 4px 8px; border-radius: 4px; background: rgba(16, 185, 129, 0.2); color: ${statusColor}; border: 1px solid ${statusColor};">
             ${this.getStatusEmoji(tracking.status)} ${tracking.status}
           </span>
         </div>
         
-        <!-- QR ID (like product name) -->
+        <!-- QR ID -->
         <h3 style="margin-bottom: 6px; font-size: 14px; font-weight: 600; color: #f8fafc;">QR: ${tracking.qrId}</h3>
         
-        <!-- Customer & Device (like category) -->
+        <!-- Customer & Device -->
         <div style="color: #94a3b8; font-size: 11px; margin-bottom: 8px;">
           ${tracking.customerName} • ${tracking.productName}
         </div>
         
+        <!-- Contact -->
+        ${tracking.contact ? `<div style="color:#94a3b8; font-size:10px; margin-bottom:6px;">📞 ${tracking.contact}</div>` : ''}
+
         <!-- Dates -->
         <div style="color: #94a3b8; font-size: 10px; margin-bottom: 8px;">
           📅 ${tracking.createdAt}
@@ -1363,7 +1477,7 @@ class OwnerPortalApp {
           ↩️ DEVICE RETURNED TO CUSTOMER
         </div>` : ''}
         
-        <!-- Amount (like price) -->
+        <!-- Amount -->
         ${tracking.amount ? `
         <div style="margin-bottom: 8px;">
           <span style="font-weight: 700; color: #10b981; font-size: 14px;">₹${tracking.amount.toLocaleString()}</span>
@@ -1378,12 +1492,13 @@ class OwnerPortalApp {
           </div>
         </div>
         
-        <!-- Action Buttons (like product buttons) -->
+        <!-- Action Buttons -->
         <div style="display: flex; gap: 6px; flex-wrap: wrap;">
           <button onclick="app.showEditTrackingModal('${tracking.qrId}')" style="flex: 1; padding: 4px 8px; font-size: 11px; background:#f59e0b; color:#fff; border:none; border-radius:4px; cursor:pointer; font-weight:600;">✏️ Edit</button>
           <button class="btn btn-secondary" style="flex: 1; padding: 4px 8px; font-size: 11px;" data-action="edit-tracking" data-qr-id="${tracking.qrId}">🔄 Status</button>
           <button class="btn" style="flex: 1; padding: 4px 8px; font-size: 11px; background: rgba(244, 63, 94, 0.1); color: #f87171; border: 1px solid #f87171; border-radius: 4px;" data-action="delete-tracking" data-qr-id="${tracking.qrId}">Delete</button>
           <button onclick="app.printTrackingCard('${tracking.qrId}')" style="flex: 1; padding: 4px 8px; font-size: 11px; background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981; border-radius: 4px; cursor: pointer; font-weight: 600;">🖨️ Print</button>
+          <button onclick="app.printTrackingLabel('${tracking.qrId}','${(tracking.customerName||'').replace(/'/g,"\\'")}','${((tracking.productName||tracking.deviceModel||'')).replace(/'/g,"\\'")}');" style="flex: 1; padding: 4px 8px; font-size: 11px; background: rgba(30,41,59,0.8); color: #e2e8f0; border: 1px solid #475569; border-radius: 4px; cursor: pointer; font-weight: 600;">🏷️ Label</button>
         </div>
       </div>
     `
@@ -5041,11 +5156,347 @@ class OwnerPortalApp {
     }
   }
 
-  toggleTrackingForm() {
-    const form = document.getElementById("trackingForm")
-    if (form) {
-      form.style.display = form.style.display === "none" ? "block" : "none"
+  handleBarcodeScan(value) {
+    // Auto-lookup when scanner sends a complete code (ends with Enter key via scanner)
+    // Also update the barcode preview if it looks like a valid ID
+    clearTimeout(this._scanTimer);
+    this._scanTimer = setTimeout(() => {
+      if (value && value.trim().length >= 4) {
+        this.lookupBarcode(value.trim());
+      }
+    }, 400);
+  }
+
+  async lookupBarcode(value) {
+    const code = (value || '').trim();
+    if (!code) return;
+
+    // 1. Try local data first (instant)
+    let t = this.trackingData.find(tr => tr.qrId === code);
+
+    // 2. If not found locally, fetch fresh from server
+    if (!t) {
+      try {
+        const response = await fetch(`${this.API_URL}/tracking`);
+        if (response.ok) {
+          this.trackingData = await response.json();
+          t = this.trackingData.find(tr => tr.qrId === code);
+        }
+      } catch (err) {
+        console.warn('Fetch failed during barcode lookup:', err);
+      }
     }
+
+    if (t) {
+      this.showTrackingLookupResult(t);
+    } else {
+      // Flash the scan input red to indicate not found
+      const scanInput = document.getElementById('globalScanInput') || document.getElementById('barcodeScanInput');
+      if (scanInput) {
+        scanInput.style.border = '2px solid #dc2626';
+        scanInput.placeholder = `❌ Not found: "${code}" — check QR ID`;
+        setTimeout(() => {
+          if (scanInput) {
+            scanInput.style.border = '1px solid #10b981';
+            scanInput.placeholder = 'Scan barcode here to lookup any tracking record...';
+          }
+        }, 2000);
+      }
+    }
+  }
+
+  showTrackingLookupResult(t) {
+    if (!t) return;
+    const existing = document.getElementById('barcodeLookupModal');
+    if (existing) existing.remove();
+
+    const statusColors = {
+      'Received':'#3b82f6','Diagnostics':'#8b5cf6','Return':'#ef4444',
+      'In Progress':'#f59e0b','Parts Ordered':'#ec4899','Quality Check':'#06b6d4',
+      'Ready for Pickup':'#f59e0b','Completed':'#10b981','Delivered':'#2563eb'
+    };
+    const sc = statusColors[t.status] || '#10b981';
+    const bcModalId = `bc_modal_${t.qrId.replace(/[^a-zA-Z0-9]/g,'_')}`;
+
+    const modal = `
+      <div id="barcodeLookupModal" onclick="if(event.target===this)this.remove()"
+        style="position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto;">
+        <div style="background:#1e293b;border:2px solid #334155;border-radius:14px;padding:24px;max-width:500px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.5);max-height:90vh;overflow-y:auto;">
+
+          <!-- Header -->
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h2 style="font-size:18px;font-weight:800;color:#f8fafc;">📷 Tracking Details</h2>
+            <button onclick="document.getElementById('barcodeLookupModal').remove()"
+              style="background:rgba(244,63,94,0.15);color:#f87171;border:1px solid #f87171;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px;">✕ Close</button>
+          </div>
+
+          <!-- Barcode display -->
+          <div style="background:#fff;border-radius:8px;padding:8px;text-align:center;margin-bottom:16px;">
+            <svg id="${bcModalId}" style="max-width:100%;"></svg>
+          </div>
+
+          <!-- Status + QR -->
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+            <span style="font-size:20px;font-weight:900;color:#f8fafc;font-family:monospace;">${t.qrId}</span>
+            <span style="padding:5px 14px;border-radius:20px;font-size:13px;font-weight:700;background:rgba(16,185,129,0.15);color:${sc};border:1px solid ${sc}40;">${t.status}</span>
+            ${t.status === 'Return' ? `<span style="background:#fef2f2;color:#dc2626;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:700;border:1px solid #fca5a5;">↩️ RETURNED</span>` : ''}
+          </div>
+
+          <!-- All Details -->
+          <div style="display:grid;gap:0;font-size:13px;border:1px solid #334155;border-radius:8px;overflow:hidden;">
+            ${[
+              ['👤 Customer', t.customerName],
+              ['📞 Phone', t.contact || '—'],
+              ['📱 Device', t.productName || t.deviceModel || '—'],
+              ['🔑 Password', t.qrPassword || '—'],
+              ['⏱ Est. Days', t.estimatedDays ? t.estimatedDays + ' days' : '—'],
+              ['💰 Amount', t.amount ? '₹' + Number(t.amount).toLocaleString('en-IN') : '—'],
+              ['📅 Received', t.createdAt || '—'],
+              ['✅ Completed', t.completedAt || '—'],
+              ['🚀 Delivered', t.deliveredAt || '—'],
+              ['↩️ Returned', t.returnedAt  || '—'],
+              ['🕒 Last Update', t.lastUpdated || '—'],
+            ].filter(([,v]) => v !== '—' || ['👤 Customer','📱 Device','💰 Amount','📅 Received'].some(l => l === [].toString())).map(([label, value], i) => `
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:9px 14px;background:${i%2===0?'rgba(30,41,59,0.8)':'rgba(51,65,85,0.4)'};border-bottom:1px solid #334155;">
+                <span style="color:#94a3b8;font-size:12px;min-width:110px;">${label}</span>
+                <span style="font-weight:600;color:#f8fafc;text-align:right;max-width:55%;word-break:break-word;">${value}</span>
+              </div>`).join('')}
+            <!-- Issue — full display -->
+            <div style="padding:9px 14px;background:rgba(51,65,85,0.4);">
+              <div style="color:#94a3b8;font-size:12px;margin-bottom:4px;">🔧 Issue Description</div>
+              <div style="color:#e2e8f0;font-size:13px;line-height:1.5;">${t.issue || '—'}</div>
+            </div>
+          </div>
+
+          <!-- Action buttons -->
+          <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;">
+            <button onclick="app.printTrackingLabel('${t.qrId}','${(t.customerName||'').replace(/'/g,"\\'")}','${((t.productName||t.deviceModel||'')).replace(/'/g,"\\'")}');document.getElementById('barcodeLookupModal').remove();"
+              style="flex:1;min-width:100px;background:#1e293b;color:#fff;border:1px solid #475569;border-radius:8px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">
+              🏷️ Print Label
+            </button>
+            <button onclick="app.printTrackingCard('${t.qrId}');document.getElementById('barcodeLookupModal').remove();"
+              style="flex:1;min-width:100px;background:#1d4ed8;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">
+              🖨️ Full Receipt
+            </button>
+            <button onclick="app.showEditTrackingModal('${t.qrId}');document.getElementById('barcodeLookupModal').remove();"
+              style="flex:1;min-width:100px;background:#f59e0b;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">
+              ✏️ Edit
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modal);
+
+    // Render barcode inside modal
+    setTimeout(() => {
+      const el = document.getElementById(bcModalId);
+      if (el && typeof JsBarcode !== 'undefined') {
+        try {
+          JsBarcode(el, t.qrId, {
+            format:'CODE128', width:2.2, height:50,
+            displayValue:true, fontSize:14, margin:6,
+            background:'#ffffff', lineColor:'#000000', fontOptions:'bold'
+          });
+        } catch(e) {}
+      }
+    }, 50);
+
+    // Clear scan input
+    const scanInput = document.getElementById('barcodeScanInput');
+    if (scanInput) scanInput.value = '';
+  }
+
+  printTrackingLabel(qrId, customerName, deviceModel) {
+    // Look up full tracking record if available
+    const t = this.trackingData.find(tr => tr.qrId === qrId) || {
+      qrId, customerName: customerName || '', productName: deviceModel || '', contact: '', status: 'Received', amount: 0
+    };
+
+    const win = window.open('', '_blank', 'width=500,height=400');
+    win.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Label - ${t.qrId}</title>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    /* Zenpert 2-up: two 38mm×25mm stickers side by side on one 76mm×25mm strip */
+    @page {
+      size: 76mm 25mm;
+      margin: 0;
+    }
+    body {
+      width: 76mm;
+      height: 25mm;
+      display: flex;
+      background: #fff;
+      font-family: Arial, sans-serif;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .sticker {
+      width: 38mm;
+      height: 25mm;
+      border: 0.3mm solid #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1mm 1.5mm;
+      overflow: hidden;
+    }
+    .shop-name {
+      font-size: 6pt;
+      font-weight: bold;
+      text-align: center;
+      line-height: 1.2;
+      color: #000;
+    }
+    .customer {
+      font-size: 5.5pt;
+      text-align: center;
+      color: #000;
+      margin-top: 0.5mm;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 35mm;
+    }
+    .barcode-wrap { margin: 0.5mm 0; }
+    svg.barcode { width: 34mm; height: 10mm; }
+    .qr-num {
+      font-size: 7pt;
+      font-weight: bold;
+      color: #000;
+      letter-spacing: 1px;
+    }
+    @media print {
+      button { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Sticker 1 -->
+  <div class="sticker" id="s1">
+    <div class="shop-name">MANJULA MOBILE WORLD</div>
+    <div class="customer">${(t.customerName || '').substring(0,22)} | ${(t.productName || t.deviceModel || '').substring(0,16)}</div>
+    <div class="barcode-wrap"><svg class="barcode" id="bc1"></svg></div>
+    <div class="qr-num">${t.qrId}</div>
+  </div>
+  <!-- Sticker 2 (identical) -->
+  <div class="sticker" id="s2">
+    <div class="shop-name">MANJULA MOBILE WORLD</div>
+    <div class="customer">${(t.customerName || '').substring(0,22)} | ${(t.productName || t.deviceModel || '').substring(0,16)}</div>
+    <div class="barcode-wrap"><svg class="barcode" id="bc2"></svg></div>
+    <div class="qr-num">${t.qrId}</div>
+  </div>
+
+  <script>
+    window.onload = function() {
+      JsBarcode('#bc1', '${t.qrId}', { format:'CODE128', width:1.4, height:28, displayValue:false, margin:1, background:'#ffffff', lineColor:'#000000' });
+      JsBarcode('#bc2', '${t.qrId}', { format:'CODE128', width:1.4, height:28, displayValue:false, margin:1, background:'#ffffff', lineColor:'#000000' });
+      setTimeout(() => window.print(), 400);
+    };
+  <\/script>
+</body>
+</html>`);
+    win.document.close();
+  }
+
+  toggleTrackingForm() {
+    const form = document.getElementById("trackingForm");
+    if (!form) return;
+    const isHidden = form.style.display === 'none';
+    form.style.display = isHidden ? 'block' : 'none';
+    if (isHidden) {
+      // Auto-generate next QR ID starting from 01518
+      const nextId = this._generateNextQRId();
+      const qrInput = document.getElementById('newTrackingQRId');
+      if (qrInput) {
+        qrInput.value = nextId;
+        this._renderFormBarcode(nextId);
+      }
+
+      // Show "Don't Get the SIM" reminder popup
+      this._showSimReminder();
+    }
+  }
+
+  _showSimReminder() {
+    const existing = document.getElementById('simReminderPopup');
+    if (existing) existing.remove();
+
+    const popup = document.createElement('div');
+    popup.id = 'simReminderPopup';
+    popup.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 99999;
+      background: #fff;
+      border: 3px solid #dc2626;
+      border-radius: 16px;
+      padding: 32px 40px;
+      text-align: center;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+      min-width: 280px;
+      animation: popIn 0.25s ease;
+    `;
+    popup.innerHTML = `
+      <style>
+        @keyframes popIn {
+          from { transform: translate(-50%, -50%) scale(0.7); opacity: 0; }
+          to   { transform: translate(-50%, -50%) scale(1);   opacity: 1; }
+        }
+      </style>
+      <div style="font-size: 48px; margin-bottom: 12px;">⚠️</div>
+      <div style="font-size: 22px; font-weight: 900; color: #dc2626; margin-bottom: 8px; letter-spacing: 0.5px;">
+        DON'T GET THE SIM
+      </div>
+      <div style="font-size: 14px; color: #64748b; margin-bottom: 24px;">
+        Please remember to remove the SIM card<br>before accepting the device.
+      </div>
+      <button onclick="document.getElementById('simReminderPopup').remove()"
+        style="background: #dc2626; color: #fff; border: none; border-radius: 8px;
+               padding: 12px 32px; font-size: 15px; font-weight: 700; cursor: pointer; width: 100%;">
+        ✅ Got it
+      </button>
+    `;
+    document.body.appendChild(popup);
+  }
+
+  _generateNextQRId() {
+    const BASE = 1518;
+    // Find the highest numeric suffix among existing IDs
+    let max = BASE - 1;
+    (this.trackingData || []).forEach(t => {
+      const num = parseInt(t.qrId, 10);
+      if (!isNaN(num) && num > max) max = num;
+    });
+    const next = max + 1;
+    // Zero-pad to 5 digits minimum
+    return String(next).padStart(5, '0');
+  }
+
+  _renderFormBarcode(value) {
+    const canvas = document.getElementById('formBarcodeCanvas');
+    if (!canvas) return;
+    if (typeof JsBarcode === 'undefined') {
+      setTimeout(() => this._renderFormBarcode(value), 300);
+      return;
+    }
+    try {
+      JsBarcode(canvas, value, {
+        format: 'CODE128', width: 2, height: 40,
+        displayValue: true, fontSize: 13, margin: 4,
+        background: '#ffffff', lineColor: '#000000'
+      });
+      canvas.style.display = 'block';
+      canvas.style.margin = '0 auto';
+    } catch(e) { console.warn('Barcode render error:', e); }
   }
 
   handleTrackingSearch(value) {
