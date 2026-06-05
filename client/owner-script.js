@@ -192,6 +192,27 @@ class OwnerPortalApp {
       
       // Load data in background without blocking UI
       this.loadDataInBackground();
+
+      // Check for ?scan= URL parameter (from barcode scan on any device)
+      const urlParams = new URLSearchParams(window.location.search);
+      const scanId = urlParams.get('scan');
+      if (scanId) {
+        // Remove the param from URL without reload
+        window.history.replaceState({}, '', window.location.pathname);
+        // Wait for data to load then show the tracking record
+        const tryLookup = async (attempts = 0) => {
+          const t = this.trackingData.find(tr => tr.qrId === scanId);
+          if (t) {
+            // Navigate to tracking page and show the detail modal
+            this.currentPage = 'admin-tracking';
+            await this.renderPage('admin-tracking');
+            setTimeout(() => this.showTrackingLookupResult(t), 300);
+          } else if (attempts < 8) {
+            setTimeout(() => tryLookup(attempts + 1), 600);
+          }
+        };
+        setTimeout(() => tryLookup(), 800);
+      }
       
     } catch (error) {
       console.error('❌ Error during initialization:', error);
@@ -1424,13 +1445,15 @@ class OwnerPortalApp {
       if (el && typeof JsBarcode !== 'undefined') {
         try {
           JsBarcode(el, tracking.qrId, {
-            format: 'CODE128', width: 1.6, height: 32,
-            displayValue: true, fontSize: 11, margin: 3,
+            format: 'CODE128', width: 2, height: 80,
+            displayValue: true, fontSize: 12, margin: 4,
             background: '#ffffff', lineColor: '#000000',
-            fontOptions: 'bold', font: 'monospace'
+            font: 'monospace', fontOptions: 'bold'
           });
           el.style.display = 'block';
-          el.style.margin = '0 auto';
+          el.style.width = '100%';
+          el.style.height = '100px';
+          el.setAttribute('height', '100');
         } catch(e) {}
       }
     }, 50);
@@ -1439,11 +1462,11 @@ class OwnerPortalApp {
       <div class="admin-tracking-card" style="background-color: rgba(30, 41, 59, 0.5); border: 1px solid #334155; border-radius: 8px; padding: 12px; max-width: 300px;">
 
         <!-- Barcode at top — scan this to lookup details -->
-        <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:6px; padding:6px 4px; margin-bottom:10px; text-align:center; width:100%; cursor:pointer; display:flex; flex-direction:column; align-items:center;"
+        <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:6px; padding:6px 4px; margin-bottom:10px; text-align:center; width:100%; cursor:pointer; overflow:hidden; height:120px; display:flex; flex-direction:column; align-items:center; justify-content:center;"
              onclick="app.showTrackingLookupResult(app.trackingData.find(t=>t.qrId==='${tracking.qrId}'))"
              title="Click or scan to view full details">
-          <svg id="${bcId}" style="display:none; width:100%; max-width:260px;"></svg>
-          <div style="font-size:9px; color:#94a3b8; margin-top:2px;">📷 Click to view full details</div>
+          <svg id="${bcId}" style="display:none; width:100%; height:100px;"></svg>
+          <div style="font-size:9px; color:#94a3b8; margin-top:2px;">📷 Scan or click to view details</div>
         </div>
 
         <!-- Status Badge -->
@@ -5168,7 +5191,21 @@ class OwnerPortalApp {
   }
 
   async lookupBarcode(value) {
-    const code = (value || '').trim();
+    let code = (value || '').trim();
+    if (!code) return;
+
+    // If the scanner sends a full URL (e.g. https://...?scan=01518), extract the ID
+    if (code.includes('scan=')) {
+      try {
+        const url = new URL(code.startsWith('http') ? code : 'https://x.x/' + code);
+        code = url.searchParams.get('scan') || code;
+      } catch(e) {
+        const match = code.match(/[?&]scan=([^&\s]+)/);
+        if (match) code = match[1];
+      }
+    }
+
+    code = code.trim();
     if (!code) return;
 
     // 1. Try local data first (instant)
@@ -5190,7 +5227,6 @@ class OwnerPortalApp {
     if (t) {
       this.showTrackingLookupResult(t);
     } else {
-      // Flash the scan input red to indicate not found
       const scanInput = document.getElementById('globalScanInput') || document.getElementById('barcodeScanInput');
       if (scanInput) {
         scanInput.style.border = '2px solid #dc2626';
@@ -5322,19 +5358,18 @@ class OwnerPortalApp {
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
-    /* Zenpert 2-up: two 38mm×25mm stickers side by side on one 76mm×25mm strip */
-    @page {
-      size: 76mm 25mm;
-      margin: 0;
-    }
+    @page { size: 76mm 25mm; margin: 0; }
     body {
       width: 76mm;
-      height: 25mm;
-      display: flex;
       background: #fff;
       font-family: Arial, sans-serif;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
+    }
+    .label-row {
+      width: 76mm;
+      height: 25mm;
+      display: flex;
     }
     .sticker {
       width: 38mm;
@@ -5347,57 +5382,51 @@ class OwnerPortalApp {
       padding: 1mm 1.5mm;
       overflow: hidden;
     }
-    .shop-name {
-      font-size: 6pt;
-      font-weight: bold;
-      text-align: center;
-      line-height: 1.2;
-      color: #000;
+    .shop-name { font-size:6pt; font-weight:bold; text-align:center; line-height:1.2; color:#000; }
+    .customer  { font-size:5.5pt; text-align:center; color:#000; margin-top:0.5mm; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:35mm; }
+    .barcode-wrap { margin:0.5mm 0; }
+    svg.barcode { width:34mm; height:10mm; }
+    .qr-num { font-size:7pt; font-weight:bold; color:#000; letter-spacing:1px; }
+    .print-btn {
+      display: block;
+      margin: 12px auto;
+      padding: 10px 32px;
+      background: #1e293b;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: Arial, sans-serif;
     }
-    .customer {
-      font-size: 5.5pt;
-      text-align: center;
-      color: #000;
-      margin-top: 0.5mm;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 35mm;
-    }
-    .barcode-wrap { margin: 0.5mm 0; }
-    svg.barcode { width: 34mm; height: 10mm; }
-    .qr-num {
-      font-size: 7pt;
-      font-weight: bold;
-      color: #000;
-      letter-spacing: 1px;
-    }
-    @media print {
-      button { display: none !important; }
-    }
+    @media print { .print-btn { display:none !important; } }
   </style>
 </head>
 <body>
-  <!-- Sticker 1 -->
-  <div class="sticker" id="s1">
-    <div class="shop-name">MANJULA MOBILE WORLD</div>
-    <div class="customer">${(t.customerName || '').substring(0,22)} | ${(t.productName || t.deviceModel || '').substring(0,16)}</div>
-    <div class="barcode-wrap"><svg class="barcode" id="bc1"></svg></div>
-    <div class="qr-num">${t.qrId}</div>
+  <div class="label-row">
+    <div class="sticker">
+      <div class="shop-name">MANJULA MOBILE WORLD</div>
+      <div class="customer">${(t.customerName || '').substring(0,22)} | ${(t.productName || t.deviceModel || '').substring(0,16)}</div>
+      <div class="barcode-wrap"><svg class="barcode" id="bc1"></svg></div>
+      <div class="qr-num">${t.qrId}</div>
+    </div>
+    <div class="sticker">
+      <div class="shop-name">MANJULA MOBILE WORLD</div>
+      <div class="customer">${(t.customerName || '').substring(0,22)} | ${(t.productName || t.deviceModel || '').substring(0,16)}</div>
+      <div class="barcode-wrap"><svg class="barcode" id="bc2"></svg></div>
+      <div class="qr-num">${t.qrId}</div>
+    </div>
   </div>
-  <!-- Sticker 2 (identical) -->
-  <div class="sticker" id="s2">
-    <div class="shop-name">MANJULA MOBILE WORLD</div>
-    <div class="customer">${(t.customerName || '').substring(0,22)} | ${(t.productName || t.deviceModel || '').substring(0,16)}</div>
-    <div class="barcode-wrap"><svg class="barcode" id="bc2"></svg></div>
-    <div class="qr-num">${t.qrId}</div>
-  </div>
+
+  <button class="print-btn" onclick="window.print()">🖨️ Print Label</button>
 
   <script>
     window.onload = function() {
-      JsBarcode('#bc1', '${t.qrId}', { format:'CODE128', width:1.4, height:28, displayValue:false, margin:1, background:'#ffffff', lineColor:'#000000' });
-      JsBarcode('#bc2', '${t.qrId}', { format:'CODE128', width:1.4, height:28, displayValue:false, margin:1, background:'#ffffff', lineColor:'#000000' });
-      setTimeout(() => window.print(), 400);
+      try {
+        JsBarcode('#bc1', '${t.qrId}', { format:'CODE128', width:1.8, height:28, displayValue:false, margin:1, background:'#ffffff', lineColor:'#000000' });
+        JsBarcode('#bc2', '${t.qrId}', { format:'CODE128', width:1.8, height:28, displayValue:false, margin:1, background:'#ffffff', lineColor:'#000000' });
+      } catch(e) { console.error(e); }
     };
   <\/script>
 </body>
