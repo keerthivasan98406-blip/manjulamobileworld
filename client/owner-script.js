@@ -503,10 +503,10 @@ class OwnerPortalApp {
           this.lookupBarcode(code);
         }
       } else if (e.key.length === 1) {
-        if (gap > 600) this._scannerBuffer = '';
+        if (gap > 1200) this._scannerBuffer = ''; // generous reset for slow scanner guns
         this._scannerBuffer += e.key;
 
-        // Route to scan input and focus it
+        // Route to scan input and focus it so user can see what's being scanned
         const scanInput = document.getElementById('globalScanInput');
         if (scanInput) {
           scanInput.value = this._scannerBuffer;
@@ -5349,7 +5349,10 @@ class OwnerPortalApp {
       qrId, customerName: customerName || '', productName: deviceModel || '', contact: '', status: 'Received', amount: 0
     };
 
-    const win = window.open('', '_blank', 'width=500,height=400');
+    const cust = (t.customerName || '').substring(0, 20);
+    const dev  = (t.productName || t.deviceModel || '').substring(0, 18);
+
+    const win = window.open('', '_blank', 'width=700,height=500');
     win.document.write(`<!DOCTYPE html>
 <html>
 <head>
@@ -5358,39 +5361,75 @@ class OwnerPortalApp {
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
-    @page { size: 76mm 25mm; margin: 0; }
+    @page {
+      size: 75mm 45mm;
+      margin: 0;
+    }
     body {
-      width: 76mm;
+      width: 75mm;
+      height: 45mm;
+      display: flex;
+      flex-direction: row;
       background: #fff;
       font-family: Arial, sans-serif;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
-    .label-row {
-      width: 76mm;
-      height: 25mm;
-      display: flex;
-    }
     .sticker {
-      width: 38mm;
-      height: 25mm;
-      border: 0.3mm solid #000;
+      width: 25mm;
+      height: 45mm;
+      border-right: 0.3mm dashed #aaa;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      padding: 1mm 1.5mm;
+      justify-content: flex-start;
+      padding: 1.5mm 1mm;
       overflow: hidden;
     }
-    .shop-name { font-size:6pt; font-weight:bold; text-align:center; line-height:1.2; color:#000; }
-    .customer  { font-size:5.5pt; text-align:center; color:#000; margin-top:0.5mm; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:35mm; }
-    .barcode-wrap { margin:0.5mm 0; }
-    svg.barcode { width:34mm; height:10mm; }
-    .qr-num { font-size:7pt; font-weight:bold; color:#000; letter-spacing:1px; }
+    .sticker:last-child { border-right: none; }
+    .shop-name {
+      font-size: 5.5pt;
+      font-weight: 900;
+      text-align: center;
+      color: #000;
+      line-height: 1.1;
+      margin-bottom: 1mm;
+    }
+    svg.barcode { width: 23mm; }
+    .qr-num {
+      font-size: 7.5pt;
+      font-weight: bold;
+      color: #000;
+      letter-spacing: 0.5px;
+      margin-top: 0.5mm;
+    }
+    .cust-name {
+      font-size: 5.5pt;
+      color: #000;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 23mm;
+      font-weight: 700;
+      margin-top: 0.5mm;
+    }
+    .device {
+      font-size: 5pt;
+      color: #555;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 23mm;
+      margin-top: 0.3mm;
+    }
     .print-btn {
-      display: block;
-      margin: 12px auto;
-      padding: 10px 32px;
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 12px 40px;
       background: #1e293b;
       color: #fff;
       border: none;
@@ -5399,33 +5438,44 @@ class OwnerPortalApp {
       font-weight: 700;
       cursor: pointer;
       font-family: Arial, sans-serif;
+      z-index: 999;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     }
     @media print { .print-btn { display:none !important; } }
   </style>
 </head>
 <body>
-  <div class="label-row">
-    <div class="sticker">
-      <div class="shop-name">MANJULA MOBILE WORLD</div>
-      <div class="customer">${(t.customerName || '').substring(0,22)} | ${(t.productName || t.deviceModel || '').substring(0,16)}</div>
-      <div class="barcode-wrap"><svg class="barcode" id="bc1"></svg></div>
-      <div class="qr-num">${t.qrId}</div>
-    </div>
-    <div class="sticker">
-      <div class="shop-name">MANJULA MOBILE WORLD</div>
-      <div class="customer">${(t.customerName || '').substring(0,22)} | ${(t.productName || t.deviceModel || '').substring(0,16)}</div>
-      <div class="barcode-wrap"><svg class="barcode" id="bc2"></svg></div>
-      <div class="qr-num">${t.qrId}</div>
-    </div>
+  <div class="sticker">
+    <div class="shop-name">MANJULA MOBILE WORLD</div>
+    <svg class="barcode" id="bc1"></svg>
+    <div class="qr-num">${t.qrId}</div>
+    <div class="cust-name">${cust}</div>
+    <div class="device">${dev}</div>
+  </div>
+  <div class="sticker">
+    <div class="shop-name">MANJULA MOBILE WORLD</div>
+    <svg class="barcode" id="bc2"></svg>
+    <div class="qr-num">${t.qrId}</div>
+    <div class="cust-name">${cust}</div>
+    <div class="device">${dev}</div>
+  </div>
+  <div class="sticker">
+    <div class="shop-name">MANJULA MOBILE WORLD</div>
+    <svg class="barcode" id="bc3"></svg>
+    <div class="qr-num">${t.qrId}</div>
+    <div class="cust-name">${cust}</div>
+    <div class="device">${dev}</div>
   </div>
 
-  <button class="print-btn" onclick="window.print()">🖨️ Print Label</button>
+  <button class="print-btn" onclick="window.print()">🖨️ Print 3 Labels</button>
 
   <script>
     window.onload = function() {
       try {
-        JsBarcode('#bc1', '${t.qrId}', { format:'CODE128', width:1.8, height:28, displayValue:false, margin:1, background:'#ffffff', lineColor:'#000000' });
-        JsBarcode('#bc2', '${t.qrId}', { format:'CODE128', width:1.8, height:28, displayValue:false, margin:1, background:'#ffffff', lineColor:'#000000' });
+        var opts = { format:'CODE128', width:0.8, height:22, displayValue:false, margin:2, background:'#fff', lineColor:'#000' };
+        JsBarcode('#bc1', '${t.qrId}', opts);
+        JsBarcode('#bc2', '${t.qrId}', opts);
+        JsBarcode('#bc3', '${t.qrId}', opts);
       } catch(e) { console.error(e); }
     };
   <\/script>
