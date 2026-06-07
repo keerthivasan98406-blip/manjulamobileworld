@@ -1248,10 +1248,14 @@ class OwnerPortalApp {
               <canvas id="formBarcodeCanvas" style="display:none; max-width:100%;"></canvas>
             </div>
             <!-- Print Label button -->
-            <div style="margin-top:8px;">
+            <div style="margin-top:8px; display:flex; gap:8px;">
               <button type="button" onclick="app.printTrackingLabel(document.getElementById('newTrackingQRId').value, document.getElementById('newTrackingCustomer')?.value, document.getElementById('newTrackingDevice')?.value)"
                 style="background:#1e293b; color:#fff; border:none; border-radius:6px; padding:7px 16px; font-size:12px; font-weight:700; cursor:pointer;">
-                🖨️ Print Label (Zenpert)
+                🏷️ Print Label (Browser)
+              </button>
+              <button type="button" onclick="app.printTSCLabel(document.getElementById('newTrackingQRId').value, document.getElementById('newTrackingCustomer')?.value, document.getElementById('newTrackingDevice')?.value)"
+                style="background:#ea580c; color:#fff; border:none; border-radius:6px; padding:7px 16px; font-size:12px; font-weight:700; cursor:pointer;">
+                🖶 TSC Printer (.prn)
               </button>
             </div>
           </div>
@@ -1284,9 +1288,41 @@ class OwnerPortalApp {
         </div>
 
         <div class="form-field" style="margin-bottom: 16px;">
-          <label class="form-label">Payment Amount (₹) *</label>
-          <input type="number" class="input" placeholder="Enter repair/service amount" id="newTrackingAmount" min="0" step="1">
-          <small style="color: #94a3b8; font-size: 12px; margin-top: 4px; display: block;">Enter the amount customer needs to pay for this repair/service</small>
+          <label class="form-label">Address</label>
+          <input type="text" class="input" placeholder="Enter customer address" id="newTrackingAddress">
+        </div>
+
+        <!-- Amount Section -->
+        <div style="background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.3); border-radius:10px; padding:16px; margin-bottom:16px;">
+          <div style="font-size:13px; font-weight:700; color:#10b981; margin-bottom:12px;">💰 Payment Details</div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+            <div class="form-field">
+              <label class="form-label">Full Price (₹) *</label>
+              <input type="number" class="input" placeholder="0" id="newTrackingAmount" min="0" step="1"
+                oninput="
+                  var full = Number(document.getElementById('newTrackingAmount').value)||0;
+                  var adv  = Number(document.getElementById('newTrackingAdvance').value)||0;
+                  var bal  = full - adv;
+                  document.getElementById('newTrackingBalance').value = bal >= 0 ? bal : 0;
+                ">
+            </div>
+            <div class="form-field">
+              <label class="form-label">Advance Amount (₹)</label>
+              <input type="number" class="input" placeholder="0" id="newTrackingAdvance" min="0" step="1"
+                oninput="
+                  var full = Number(document.getElementById('newTrackingAmount').value)||0;
+                  var adv  = Number(this.value)||0;
+                  var bal  = full - adv;
+                  document.getElementById('newTrackingBalance').value = bal >= 0 ? bal : 0;
+                ">
+            </div>
+            <div class="form-field">
+              <label class="form-label">Balance Amount (₹)</label>
+              <input type="number" class="input" placeholder="0" id="newTrackingBalance" min="0" step="1" readonly
+                style="background:rgba(51,65,85,0.3); color:#94a3b8;">
+              <small style="color:#94a3b8; font-size:11px; margin-top:3px; display:block;">Auto = Full − Advance</small>
+            </div>
+          </div>
         </div>
 
         <div class="form-field" style="margin-bottom: 16px;">
@@ -1502,11 +1538,16 @@ class OwnerPortalApp {
         
         <!-- Amount -->
         ${tracking.amount ? `
-        <div style="margin-bottom: 8px;">
-          <span style="font-weight: 700; color: #10b981; font-size: 14px;">₹${tracking.amount.toLocaleString()}</span>
-          <span style="color: #94a3b8; font-size: 10px; margin-left: 6px;">Payment Amount</span>
+        <div style="margin-bottom: 8px; display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
+          <span style="font-weight: 700; color: #10b981; font-size: 14px;">₹${Number(tracking.amount).toLocaleString()}</span>
+          <span style="color: #94a3b8; font-size: 10px;">Full Price</span>
+          ${Number(tracking.advanceAmount) > 0 ? `
+            <span style="color:#f59e0b; font-size:11px; font-weight:700;">Adv: ₹${Number(tracking.advanceAmount).toLocaleString()}</span>
+            <span style="color:#f87171; font-size:11px; font-weight:700;">Bal: ₹${Number(tracking.balanceAmount || (tracking.amount - tracking.advanceAmount)).toLocaleString()}</span>
+          ` : ''}
         </div>
         ` : ''}
+        ${tracking.address ? `<div style="color:#94a3b8; font-size:10px; margin-bottom:6px;">📍 ${tracking.address}</div>` : ''}
         
         <!-- Issue Description -->
         <div style="margin-bottom: 10px; padding: 8px; background: rgba(51, 65, 85, 0.3); border-radius: 4px;">
@@ -1522,6 +1563,7 @@ class OwnerPortalApp {
           <button class="btn" style="flex: 1; padding: 4px 8px; font-size: 11px; background: rgba(244, 63, 94, 0.1); color: #f87171; border: 1px solid #f87171; border-radius: 4px;" data-action="delete-tracking" data-qr-id="${tracking.qrId}">Delete</button>
           <button onclick="app.printTrackingCard('${tracking.qrId}')" style="flex: 1; padding: 4px 8px; font-size: 11px; background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981; border-radius: 4px; cursor: pointer; font-weight: 600;">🖨️ Print</button>
           <button onclick="app.printTrackingLabel('${tracking.qrId}','${(tracking.customerName||'').replace(/'/g,"\\'")}','${((tracking.productName||tracking.deviceModel||'')).replace(/'/g,"\\'")}');" style="flex: 1; padding: 4px 8px; font-size: 11px; background: rgba(30,41,59,0.8); color: #e2e8f0; border: 1px solid #475569; border-radius: 4px; cursor: pointer; font-weight: 600;">🏷️ Label</button>
+          <button onclick="app.printTSCLabel('${tracking.qrId}','${(tracking.customerName||'').replace(/'/g,"\\'")}','${((tracking.productName||tracking.deviceModel||'')).replace(/'/g,"\\'")}');" style="flex: 1; padding: 4px 8px; font-size: 11px; background: rgba(234,88,12,0.15); color: #fb923c; border: 1px solid #fb923c; border-radius: 4px; cursor: pointer; font-weight: 600;">🖶 TSC</button>
         </div>
       </div>
     `
@@ -1902,18 +1944,15 @@ class OwnerPortalApp {
     `;
 
     // Open print window
-    const printWindow = window.open('', '_blank');
+    const printWindow = window.open('', '_blank', 'width=800,height=900');
     printWindow.document.write(printContent);
     printWindow.document.close();
     
-    // Wait for content to load then print
+    // Wait for content to load then show printer dialog
     printWindow.onload = function() {
       printWindow.focus();
       printWindow.print();
-      // Close window after printing (optional)
-      setTimeout(() => {
-        printWindow.close();
-      }, 1000);
+      // Do NOT auto-close — let the user finish with the printer dialog
     };
   }
 
@@ -2617,7 +2656,7 @@ class OwnerPortalApp {
     <button onclick="window.print()" style="padding:10px 24px;background:#1e293b;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer;">🖨️ Print / Save as PDF</button>
     </body></html>`);
     win.document.close();
-    setTimeout(() => { try { win.print(); } catch(e) {} }, 400);
+    setTimeout(() => { try { win.focus(); } catch(e) {} }, 200);
   }
 
   downloadLowStockPDF(stockItemId) {
@@ -2649,7 +2688,7 @@ class OwnerPortalApp {
     <button onclick="window.print()" style="padding:10px 24px;background:#1e293b;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer;">🖨️ Print / Save as PDF</button>
     </body></html>`);
     win.document.close();
-    setTimeout(() => { try { win.print(); } catch(e) {} }, 400);
+    setTimeout(() => { try { win.focus(); } catch(e) {} }, 200);
   }
 
   showEditStockModal(stockItemId) {
@@ -3057,8 +3096,9 @@ class OwnerPortalApp {
     const content = document.getElementById('serviceBillContent');
     if (!content) return;
     const printWindow = window.open('', '_blank', 'width=600,height=800');
-    printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Service Receipt - Manjula Mobile World</title><style>body{font-family:Arial,sans-serif;margin:0;padding:20px;color:#111;}@media print{button{display:none!important;}}</style></head><body>${content.innerHTML}<script>window.onload=function(){window.print();}<\/script></body></html>`);
+    printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Service Receipt - Manjula Mobile World</title><style>body{font-family:Arial,sans-serif;margin:0;padding:20px;color:#111;}@media print{button{display:none!important;}}.print-btn{display:block;margin:20px auto;padding:10px 28px;background:#000;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer;font-family:monospace;}</style></head><body>${content.innerHTML}<br><button class="print-btn" onclick="window.print()">🖨️ PRINT</button></body></html>`);
     printWindow.document.close();
+    setTimeout(() => { try { printWindow.focus(); } catch(e) {} }, 200);
   }
 
   // ── Helper: parse service/sale date to a Date object ──────────────────
@@ -3847,7 +3887,8 @@ class OwnerPortalApp {
     }
     body {
       font-family: 'Courier New', Courier, monospace;
-      font-size: 11px;
+      font-size: 13px;
+      font-weight: 700;
       width: 72mm;
       color: #000;
       background: #fff;
@@ -3855,18 +3896,18 @@ class OwnerPortalApp {
       print-color-adjust: exact;
     }
     .center { text-align: center; }
-    .bold { font-weight: bold; }
-    .large { font-size: 14px; }
-    .xlarge { font-size: 16px; }
-    .divider { border-top: 1px dashed #000; margin: 5px 0; }
-    .divider-solid { border-top: 2px solid #000; margin: 5px 0; }
-    .row { display: flex; justify-content: space-between; margin: 2px 0; }
-    .label { color: #000; font-weight: 600; }
-    .value { font-weight: bold; text-align: right; max-width: 55%; word-break: break-word; color: #000; }
-    .amount-row { font-size: 14px; font-weight: bold; margin: 4px 0; color: #000; }
-    .footer { font-size: 10px; text-align: center; margin-top: 6px; color: #000; }
+    .bold { font-weight: 900; }
+    .large { font-size: 15px; font-weight: 900; }
+    .xlarge { font-size: 17px; font-weight: 900; }
+    .divider { border-top: 1.5px dashed #000; margin: 5px 0; }
+    .divider-solid { border-top: 2.5px solid #000; margin: 5px 0; }
+    .row { display: flex; justify-content: space-between; margin: 3px 0; }
+    .label { color: #000; font-weight: 800; }
+    .value { font-weight: 900; text-align: right; max-width: 55%; word-break: break-word; color: #000; }
+    .amount-row { font-size: 15px; font-weight: 900; margin: 4px 0; color: #000; }
+    .footer { font-size: 11px; text-align: center; margin-top: 6px; color: #000; font-weight: 700; }
     @media print {
-      body { width: 72mm; color: #000 !important; }
+      body { width: 72mm; color: #000 !important; font-weight: 700 !important; }
       * { color: #000 !important; }
       button { display: none !important; }
     }
@@ -3943,7 +3984,8 @@ class OwnerPortalApp {
 </body>
 </html>`);
     win.document.close();
-    setTimeout(() => { try { win.print(); } catch(e) {} }, 500);
+    // Focus the window — user clicks the PRINT button inside to trigger printer dialog
+    setTimeout(() => { try { win.focus(); } catch(e) {} }, 200);
   }
 
   async deleteSaleRecord(saleId) {
@@ -4109,13 +4151,11 @@ class OwnerPortalApp {
   <title>Receipt - ${t.qrId}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    @page {
-      size: 80mm auto;
-      margin: 4mm 3mm;
-    }
+    @page { size: 80mm auto; margin: 4mm 3mm; }
     body {
       font-family: 'Courier New', Courier, monospace;
-      font-size: 11px;
+      font-size: 13px;
+      font-weight: 700;
       width: 72mm;
       color: #000;
       background: #fff;
@@ -4123,20 +4163,20 @@ class OwnerPortalApp {
       print-color-adjust: exact;
     }
     .center { text-align: center; }
-    .bold { font-weight: bold; }
-    .large { font-size: 14px; }
-    .xlarge { font-size: 16px; }
-    .divider { border-top: 1px dashed #000; margin: 5px 0; }
-    .divider-solid { border-top: 2px solid #000; margin: 5px 0; }
-    .row { display: flex; justify-content: space-between; margin: 2px 0; }
-    .label { color: #000; font-weight: 600; }
-    .value { font-weight: bold; text-align: right; max-width: 55%; word-break: break-word; color: #000; }
-    .amount-row { font-size: 14px; font-weight: bold; margin: 4px 0; color: #000; }
-    .footer { font-size: 10px; text-align: center; margin-top: 6px; color: #000; }
-    .issue-box { border: 1px solid #000; padding: 4px; margin: 4px 0; font-size: 11px; word-break: break-word; }
-    .status-badge { border: 1px solid #000; padding: 2px 6px; font-weight: bold; font-size: 11px; }
+    .bold { font-weight: 900; }
+    .large { font-size: 15px; font-weight: 900; }
+    .xlarge { font-size: 17px; font-weight: 900; }
+    .divider { border-top: 1.5px dashed #000; margin: 5px 0; }
+    .divider-solid { border-top: 2.5px solid #000; margin: 5px 0; }
+    .row { display: flex; justify-content: space-between; margin: 3px 0; }
+    .label { color: #000; font-weight: 800; }
+    .value { font-weight: 900; text-align: right; max-width: 55%; word-break: break-word; color: #000; }
+    .amount-row { font-size: 15px; font-weight: 900; margin: 4px 0; color: #000; }
+    .footer { font-size: 11px; text-align: center; margin-top: 6px; color: #000; font-weight: 700; }
+    .issue-box { border: 1.5px solid #000; padding: 4px; margin: 4px 0; font-size: 12px; word-break: break-word; font-weight: 700; }
+    .status-badge { border: 1.5px solid #000; padding: 2px 6px; font-weight: 900; font-size: 12px; }
     @media print {
-      body { width: 72mm; color: #000 !important; }
+      body { width: 72mm; color: #000 !important; font-weight: 700 !important; }
       * { color: #000 !important; }
       button { display: none !important; }
     }
@@ -4184,9 +4224,16 @@ class OwnerPortalApp {
   <div class="divider"></div>
 
   <!-- Amount -->
+  ${t.address ? `
+  <div class="row"><span class="label">Address</span><span class="value">${t.address}</span></div>
+  <div class="divider"></div>
+  ` : ''}
+  <div class="row"><span class="label">Full Price</span><span class="value">Rs.${(Number(t.amount) || 0).toLocaleString('en-IN')}</span></div>
+  ${(Number(t.advanceAmount) > 0) ? `<div class="row"><span class="label">Advance Paid</span><span class="value">Rs.${Number(t.advanceAmount).toLocaleString('en-IN')}</span></div>` : ''}
+  <div class="divider-solid"></div>
   <div class="row amount-row">
-    <span>AMOUNT PAYABLE</span>
-    <span>Rs.${(Number(t.amount) || 0).toLocaleString('en-IN')}</span>
+    <span>BALANCE DUE</span>
+    <span>Rs.${(Number(t.balanceAmount) || Number(t.amount) || 0).toLocaleString('en-IN')}</span>
   </div>
 
   <div class="divider-solid"></div>
@@ -4214,8 +4261,8 @@ class OwnerPortalApp {
 </body>
 </html>`);
     win.document.close();
-    // Auto-trigger print after a short delay
-    setTimeout(() => { try { win.print(); } catch(e) {} }, 500);
+    // Focus the window — user clicks the PRINT button inside to trigger printer dialog
+    setTimeout(() => { try { win.focus(); } catch(e) {} }, 200);
   }
 
   exportProductsPDF() {
@@ -4765,13 +4812,16 @@ class OwnerPortalApp {
     const customer = document.getElementById("newTrackingCustomer")?.value?.trim();
     const device = document.getElementById("newTrackingDevice")?.value?.trim();
     const contact = document.getElementById("newTrackingContact")?.value?.trim();
+    const address = document.getElementById("newTrackingAddress")?.value?.trim();
     const issue = document.getElementById("newTrackingIssue")?.value?.trim();
     const status = document.getElementById("newTrackingStatus")?.value;
     const days = document.getElementById("newTrackingDays")?.value;
-    const amount = document.getElementById("newTrackingAmount")?.value?.trim();
+    const amount  = document.getElementById("newTrackingAmount")?.value?.trim();
+    const advance = document.getElementById("newTrackingAdvance")?.value?.trim();
+    const balance = document.getElementById("newTrackingBalance")?.value?.trim();
 
     if (!qrId || !password || !customer || !device || !issue || !amount) {
-      alert("Please fill all required fields: QR ID, Password, Customer Name, Device Model, Issue Description, and Payment Amount");
+      alert("Please fill all required fields: QR ID, Password, Customer Name, Device Model, Issue Description, and Full Price");
       return;
     }
 
@@ -4800,10 +4850,13 @@ class OwnerPortalApp {
         productName: device,
         deviceModel: device,
         contact: contact,
+        address: address || '',
         status: status,
         issue: issue,
         estimatedDays: Number.parseInt(days) || 2,
         amount: Number.parseInt(amount) || 0,
+        advanceAmount: Number.parseInt(advance) || 0,
+        balanceAmount: Number.parseInt(balance) || Number.parseInt(amount) || 0,
         createdAt: currentDate,
         completedAt: null,
         lastUpdated: new Date().toLocaleDateString('en-IN', {
@@ -4827,9 +4880,12 @@ class OwnerPortalApp {
       document.getElementById("newTrackingCustomer").value = "";
       document.getElementById("newTrackingDevice").value = "";
       document.getElementById("newTrackingContact").value = "";
+      if (document.getElementById("newTrackingAddress")) document.getElementById("newTrackingAddress").value = "";
       document.getElementById("newTrackingIssue").value = "";
       document.getElementById("newTrackingDays").value = "2";
       document.getElementById("newTrackingAmount").value = "";
+      if (document.getElementById("newTrackingAdvance")) document.getElementById("newTrackingAdvance").value = "";
+      if (document.getElementById("newTrackingBalance")) document.getElementById("newTrackingBalance").value = "";
       
       this.toggleTrackingForm();
       this.renderPage("admin-tracking");
@@ -5310,6 +5366,10 @@ class OwnerPortalApp {
               style="flex:1;min-width:100px;background:#1e293b;color:#fff;border:1px solid #475569;border-radius:8px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">
               🏷️ Print Label
             </button>
+            <button onclick="app.printTSCLabel('${t.qrId}','${(t.customerName||'').replace(/'/g,"\\'")}','${((t.productName||t.deviceModel||'')).replace(/'/g,"\\'")}');document.getElementById('barcodeLookupModal').remove();"
+              style="flex:1;min-width:100px;background:#ea580c;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">
+              🖶 TSC Printer
+            </button>
             <button onclick="app.printTrackingCard('${t.qrId}');document.getElementById('barcodeLookupModal').remove();"
               style="flex:1;min-width:100px;background:#1d4ed8;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">
               🖨️ Full Receipt
@@ -5344,144 +5404,300 @@ class OwnerPortalApp {
   }
 
   printTrackingLabel(qrId, customerName, deviceModel) {
-    // Look up full tracking record if available
     const t = this.trackingData.find(tr => tr.qrId === qrId) || {
       qrId, customerName: customerName || '', productName: deviceModel || '', contact: '', status: 'Received', amount: 0
     };
 
-    const cust = (t.customerName || '').substring(0, 20);
-    const dev  = (t.productName || t.deviceModel || '').substring(0, 18);
+    const barVal = (t.qrId || '').trim();
+    const dev    = (t.productName || t.deviceModel || '').substring(0, 16);
 
-    const win = window.open('', '_blank', 'width=700,height=500');
+    const win = window.open('', '_blank', 'width=920,height=480');
     win.document.write(`<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Label - ${t.qrId}</title>
+  <title>TSC Label - ${barVal}</title>
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
-    @page {
-      size: 75mm 45mm;
-      margin: 0;
-    }
+
+    /* ── Screen layout ── */
     body {
-      width: 75mm;
-      height: 45mm;
-      display: flex;
-      flex-direction: row;
-      background: #fff;
-      font-family: Arial, sans-serif;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-    .sticker {
-      width: 25mm;
-      height: 45mm;
-      border-right: 0.3mm dashed #aaa;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f1f5f9;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: flex-start;
-      padding: 1.5mm 1mm;
+      padding: 24px 16px;
+      min-height: 100vh;
+    }
+    h2 { font-size: 17px; font-weight: 800; color: #1e293b; margin-bottom: 4px; }
+    .hint { font-size: 12px; color: #64748b; margin-bottom: 18px; text-align:center; line-height:1.5; }
+    .hint strong { color: #1e293b; }
+
+    /* ── Label strip container ── */
+    .scale-wrap {
+      zoom: 2;
+      margin-top: 12px;
+      margin-bottom: 16px;
+      flex-shrink: 0;
+      max-width: 100%;
       overflow: hidden;
     }
-    .sticker:last-child { border-right: none; }
-    .shop-name {
-      font-size: 5.5pt;
+    .strip {
+      display: flex;
+      flex-direction: row;
+      width: 101.5mm;
+      height: 25mm;
+      background: #fff;
+      border: 0.3mm solid #ccc;
+    }
+    .label {
+      width: 33.83mm;
+      height: 25mm;
+      border-right: 0.2mm dashed #bbb;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 0.5mm 0.4mm;
+      overflow: hidden;
+      gap: 0.2mm;
+    }
+    .label:last-child { border-right: none; }
+    .shop {
+      font-size: 5pt;
       font-weight: 900;
       text-align: center;
       color: #000;
       line-height: 1.1;
-      margin-bottom: 1mm;
     }
-    svg.barcode { width: 23mm; }
-    .qr-num {
-      font-size: 7.5pt;
-      font-weight: bold;
+    svg.bc { width: 30mm; height: 5.25mm; display: block; }
+    .barnum {
+      font-size: 6.5pt;
+      font-weight: 900;
       color: #000;
-      letter-spacing: 0.5px;
-      margin-top: 0.5mm;
-    }
-    .cust-name {
-      font-size: 5.5pt;
-      color: #000;
-      text-align: center;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 23mm;
-      font-weight: 700;
-      margin-top: 0.5mm;
+      letter-spacing: 0.3px;
     }
     .device {
-      font-size: 5pt;
-      color: #555;
+      font-size: 4.5pt;
+      font-weight: 700;
+      color: #000;
       text-align: center;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      max-width: 23mm;
-      margin-top: 0.3mm;
+      max-width: 30mm;
     }
+
+    /* ── Print button ── */
     .print-btn {
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      padding: 12px 40px;
+      padding: 12px 44px;
       background: #1e293b;
       color: #fff;
       border: none;
       border-radius: 8px;
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 700;
       cursor: pointer;
-      font-family: Arial, sans-serif;
-      z-index: 999;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+      margin-top: 8px;
     }
-    @media print { .print-btn { display:none !important; } }
+    .print-btn:hover { background: #0f172a; }
+    .steps {
+      margin-top: 12px;
+      font-size: 11px;
+      color: #64748b;
+      text-align: center;
+      line-height: 1.8;
+    }
+    .steps span { color: #1e293b; font-weight: 700; }
+
+    /* ── Print mode: only the strip, exact paper size ── */
+    @media print {
+      @page { size: 101.5mm 25mm landscape; margin: 0; }
+      body { background:#fff; padding:0; display:block; }
+      h2, .hint, .print-btn, .steps, .scale-wrap { display: none !important; }
+      .print-strip {
+        display: flex !important;
+        flex-direction: row;
+        width: 101.5mm;
+        height: 25mm;
+        position: fixed;
+        top: 0; left: 0;
+      }
+    }
   </style>
 </head>
 <body>
-  <div class="sticker">
-    <div class="shop-name">MANJULA MOBILE WORLD</div>
-    <svg class="barcode" id="bc1"></svg>
-    <div class="qr-num">${t.qrId}</div>
-    <div class="cust-name">${cust}</div>
-    <div class="device">${dev}</div>
-  </div>
-  <div class="sticker">
-    <div class="shop-name">MANJULA MOBILE WORLD</div>
-    <svg class="barcode" id="bc2"></svg>
-    <div class="qr-num">${t.qrId}</div>
-    <div class="cust-name">${cust}</div>
-    <div class="device">${dev}</div>
-  </div>
-  <div class="sticker">
-    <div class="shop-name">MANJULA MOBILE WORLD</div>
-    <svg class="barcode" id="bc3"></svg>
-    <div class="qr-num">${t.qrId}</div>
-    <div class="cust-name">${cust}</div>
-    <div class="device">${dev}</div>
+
+  <h2>🏷️ TSC Label Preview — ${barVal}</h2>
+  <div class="hint">
+    Paper: <strong>101.5 mm × 25 mm</strong> &nbsp;|&nbsp; 3 labels per strip<br>
+    Select your <strong>TSC / Zenpert</strong> printer in the print dialog
   </div>
 
-  <button class="print-btn" onclick="window.print()">🖨️ Print 3 Labels</button>
+  <!-- Screen preview (scaled up 3.5×) -->
+  <div class="scale-wrap">
+    <div class="strip">
+      <div class="label">
+        <div class="shop">MANJULA MOBILES</div>
+        <svg class="bc" id="bc1"></svg>
+        <div class="barnum">${barVal}</div>
+        <div class="device">${dev}</div>
+      </div>
+      <div class="label">
+        <div class="shop">MANJULA MOBILES</div>
+        <svg class="bc" id="bc2"></svg>
+        <div class="barnum">${barVal}</div>
+        <div class="device">${dev}</div>
+      </div>
+      <div class="label">
+        <div class="shop">MANJULA MOBILES</div>
+        <svg class="bc" id="bc3"></svg>
+        <div class="barnum">${barVal}</div>
+        <div class="device">${dev}</div>
+      </div>
+    </div>
+  </div>
+
+  <button class="print-btn" onclick="window.print()">🖨️ Print to TSC Printer</button>
+
+  <div class="steps">
+    In the print dialog: &nbsp;
+    ① Select <span>TSC / Zenpert</span> printer &nbsp;
+    ② Paper size → <span>101.5 × 25 mm</span> &nbsp;
+    ③ Margins → <span>None</span> &nbsp;
+    ④ Click <span>Print</span>
+  </div>
+
+  <!-- Hidden print-only strip (exact size, no transform) -->
+  <div class="print-strip" style="display:none;">
+    <div class="label">
+      <div class="shop">MANJULA MOBILES</div>
+      <svg class="bc" id="bcp1"></svg>
+      <div class="barnum">${barVal}</div>
+      <div class="device">${dev}</div>
+    </div>
+    <div class="label">
+      <div class="shop">MANJULA MOBILES</div>
+      <svg class="bc" id="bcp2"></svg>
+      <div class="barnum">${barVal}</div>
+      <div class="device">${dev}</div>
+    </div>
+    <div class="label">
+      <div class="shop">MANJULA MOBILES</div>
+      <svg class="bc" id="bcp3"></svg>
+      <div class="barnum">${barVal}</div>
+      <div class="device">${dev}</div>
+    </div>
+  </div>
 
   <script>
     window.onload = function() {
-      try {
-        var opts = { format:'CODE128', width:0.8, height:22, displayValue:false, margin:2, background:'#fff', lineColor:'#000' };
-        JsBarcode('#bc1', '${t.qrId}', opts);
-        JsBarcode('#bc2', '${t.qrId}', opts);
-        JsBarcode('#bc3', '${t.qrId}', opts);
-      } catch(e) { console.error(e); }
+      if (typeof JsBarcode === 'undefined') {
+        setTimeout(renderBarcodes, 800);
+      } else {
+        renderBarcodes();
+      }
     };
+    function renderBarcodes() {
+      try {
+        /* Exact TSPL spec conversion at 203 DPI (1 dot = 0.125mm):
+           narrow bar = 2 dots = 0.25mm → at 96dpi CSS px = 0.945px → use width:1
+           wide bar   = 4 dots = 0.5mm  → ratio 1:2 (JsBarcode default)
+           height     = 42 dots = 5.25mm → at 96dpi = ~20px
+           margin: 2px quiet zone each side so bars don't touch edges */
+        var opts = {
+          format: 'CODE128',
+          width: 1,
+          height: 20,
+          displayValue: false,
+          margin: 2,
+          background: '#ffffff',
+          lineColor: '#000000'
+        };
+        ['#bc1','#bc2','#bc3','#bcp1','#bcp2','#bcp3'].forEach(function(id){
+          JsBarcode(id, '${barVal}', opts);
+        });
+      } catch(e) { console.error('Barcode error:', e); }
+    }
   <\/script>
 </body>
 </html>`);
     win.document.close();
+    setTimeout(() => { try { win.focus(); } catch(e) {} }, 200);
+  }
+
+  // ── Send TSPL command to TSC/Zenpert thermal label printer ───────────────
+  // Generates the filled TSPL (.prn) file and downloads it.
+  // On Windows: drag the .prn file onto the printer in Devices & Printers,
+  // or set the TSC printer as default and double-click the file.
+  printTSCLabel(qrId, customerName, deviceModel) {
+    const t = this.trackingData.find(tr => tr.qrId === qrId) || {
+      qrId, customerName: customerName || '', productName: deviceModel || ''
+    };
+
+    const barVal  = (t.qrId || '').replace(/"/g, '');                          // @Bar@
+    const itemVal = (t.productName || t.deviceModel || deviceModel || '')
+                      .substring(0, 16)
+                      .replace(/"/g, '');                                       // @Item@
+
+    // TSPL command — 101.5 mm × 25 mm, 3 labels per strip (matches owner's template)
+    const tspl = [
+      'SIZE 101.5 mm, 25 mm',
+      'DIRECTION 0,0',
+      'REFERENCE 0,0',
+      'OFFSET 0 mm',
+      'SET PEEL OFF',
+      'SET CUTTER OFF',
+      'CLS',
+      // Label 1 (left)
+      `BARCODE 131,152,"128M",42,0,180,2,4,"!104${barVal}"`,
+      'CODEPAGE 1252',
+      `TEXT 176,105,"0",180,8,8,"${barVal}"`,
+      `TEXT 214,191,"0",180,6,12,"MANJULA MOBILES"`,
+      `TEXT 260,81,"0",180,6,12,"${itemVal}"`,
+      'BAR 131,22, 78, 2',
+      'BAR 134,21, 1, 2',
+      // Label 2 (middle)
+      `BARCODE 402,152,"128M",42,0,180,2,4,"!104${barVal}"`,
+      `TEXT 447,105,"0",180,8,8,"${barVal}"`,
+      `TEXT 485,191,"0",180,6,12,"MANJULA MOBILES"`,
+      `TEXT 531,81,"0",180,6,12,"${itemVal}"`,
+      'BAR 402,22, 78, 2',
+      'BAR 405,21, 1, 2',
+      // Label 3 (right)
+      `BARCODE 672,152,"128M",42,0,180,2,4,"!104${barVal}"`,
+      `TEXT 717,105,"0",180,8,8,"${barVal}"`,
+      `TEXT 755,191,"0",180,6,12,"MANJULA MOBILES"`,
+      `TEXT 801,81,"0",180,6,12,"${itemVal}"`,
+      'BAR 672,22, 78, 2',
+      'BAR 675,21, 1, 2',
+      'PRINT 1,1'
+    ].join('\r\n');
+
+    // Download as .prn — drag onto TSC printer or print via cmd: copy /b file.prn \\.\LPT1
+    const blob = new Blob([tspl], { type: 'application/octet-stream' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `label-${barVal}.prn`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    // Show usage tip
+    setTimeout(() => {
+      alert(
+        '✅ Label file downloaded: label-' + barVal + '.prn\n\n' +
+        'How to print on TSC/Zenpert printer:\n' +
+        '1. Open "Devices and Printers" (Win+R → control printers)\n' +
+        '2. Drag and drop the .prn file onto your TSC printer icon\n\n' +
+        'Or via Command Prompt:\n' +
+        'copy /b "label-' + barVal + '.prn" "\\\\\\\\.\\\\ [your printer name]"'
+      );
+    }, 300);
   }
 
   toggleTrackingForm() {
@@ -6278,7 +6494,7 @@ class OwnerPortalApp {
     <button onclick="window.print()" style="padding:10px 24px;background:#1e293b;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer;">🖨️ Print / Save as PDF</button>
     </body></html>`);
     win.document.close();
-    setTimeout(() => { try { win.print(); } catch(e) {} }, 400);
+    setTimeout(() => { try { win.focus(); } catch(e) {} }, 200);
   }
 
   downloadSparePartsLowStockPDF(partItemId) {
@@ -6310,7 +6526,7 @@ class OwnerPortalApp {
     <button onclick="window.print()" style="padding:10px 24px;background:#1e293b;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer;">🖨️ Print / Save as PDF</button>
     </body></html>`);
     win.document.close();
-    setTimeout(() => { try { win.print(); } catch(e) {} }, 400);
+    setTimeout(() => { try { win.focus(); } catch(e) {} }, 200);
   }
 
   showEditSparePartModal(partItemId) {
