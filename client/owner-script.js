@@ -1287,6 +1287,19 @@ class OwnerPortalApp {
           </div>
         </div>
 
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+          <div class="form-field">
+            <label class="form-label">📥 Date In <span style="font-size:11px; color:#10b981;">(item received)</span></label>
+            <input type="date" class="input" id="newTrackingDateIn"
+              style="background-color:rgba(51,65,85,0.5); color:#f8fafc;">
+          </div>
+          <div class="form-field">
+            <label class="form-label">📤 Date Out <span style="font-size:11px; color:#94a3b8;">(item returned)</span></label>
+            <input type="date" class="input" id="newTrackingDateOut"
+              style="background-color:rgba(51,65,85,0.5); color:#f8fafc;">
+          </div>
+        </div>
+
         <div class="form-field" style="margin-bottom: 16px;">
           <label class="form-label">Address</label>
           <input type="text" class="input" placeholder="Enter customer address" id="newTrackingAddress">
@@ -1548,6 +1561,11 @@ class OwnerPortalApp {
         </div>
         ` : ''}
         ${tracking.address ? `<div style="color:#94a3b8; font-size:10px; margin-bottom:6px;">📍 ${tracking.address}</div>` : ''}
+        ${(tracking.dateIn || tracking.dateOut) ? `
+        <div style="display:flex; gap:12px; margin-bottom:6px; font-size:10px;">
+          ${tracking.dateIn  ? `<span style="color:#10b981;">📥 In: <strong>${tracking.dateIn}</strong></span>`  : ''}
+          ${tracking.dateOut ? `<span style="color:#f59e0b;">📤 Out: <strong>${tracking.dateOut}</strong></span>` : ''}
+        </div>` : ''}
         
         <!-- Issue Description -->
         <div style="margin-bottom: 10px; padding: 8px; background: rgba(51, 65, 85, 0.3); border-radius: 4px;">
@@ -3777,7 +3795,7 @@ class OwnerPortalApp {
     const net      = amount - discount;
 
     const receiptStyle = `
-      font-family: 'Courier New', Courier, monospace;
+      font-family: Arial, 'Helvetica Neue', sans-serif;
       font-size: 12px;
       width: 300px;
       color: #000;
@@ -3883,13 +3901,13 @@ class OwnerPortalApp {
     * { margin: 0; padding: 0; box-sizing: border-box; }
     @page {
       size: 80mm auto;
-      margin: 4mm 3mm;
+      margin: 3mm 2mm;
     }
-    body {
-      font-family: 'Courier New', Courier, monospace;
+    html, body {
+      font-family: Arial, 'Helvetica Neue', sans-serif;
       font-size: 13px;
-      font-weight: 700;
-      width: 72mm;
+      font-weight: 800;
+      width: 76mm;
       color: #000;
       background: #fff;
       -webkit-print-color-adjust: exact;
@@ -3898,16 +3916,16 @@ class OwnerPortalApp {
     .center { text-align: center; }
     .bold { font-weight: 900; }
     .large { font-size: 15px; font-weight: 900; }
-    .xlarge { font-size: 17px; font-weight: 900; }
-    .divider { border-top: 1.5px dashed #000; margin: 5px 0; }
-    .divider-solid { border-top: 2.5px solid #000; margin: 5px 0; }
-    .row { display: flex; justify-content: space-between; margin: 3px 0; }
-    .label { color: #000; font-weight: 800; }
+    .xlarge { font-size: 19px; font-weight: 900; letter-spacing: 0.5px; }
+    .divider { border-top: 1.5px dashed #000; margin: 4px 0; }
+    .divider-solid { border-top: 2.5px solid #000; margin: 4px 0; }
+    .row { display: flex; justify-content: space-between; margin: 3px 0; font-size: 13px; }
+    .label { color: #000; font-weight: 700; }
     .value { font-weight: 900; text-align: right; max-width: 55%; word-break: break-word; color: #000; }
-    .amount-row { font-size: 15px; font-weight: 900; margin: 4px 0; color: #000; }
-    .footer { font-size: 11px; text-align: center; margin-top: 6px; color: #000; font-weight: 700; }
+    .amount-row { display: flex; justify-content: space-between; font-size: 16px; font-weight: 900; margin: 4px 0; color: #000; letter-spacing: 0.5px; }
+    .footer { font-size: 11px; text-align: center; margin-top: 6px; color: #000; font-weight: 700; line-height: 1.7; }
     @media print {
-      body { width: 72mm; color: #000 !important; font-weight: 700 !important; }
+      html, body { color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       * { color: #000 !important; }
       button { display: none !important; }
     }
@@ -3918,8 +3936,8 @@ class OwnerPortalApp {
   <!-- Shop Header -->
   <div class="center">
     <div class="xlarge bold">MANJULA MOBILE WORLD</div>
-    <div style="font-size:10px; margin-top:2px;">The Final World of Mobile Solution</div>
-    <div style="font-size:10px;">Ramapuram, Tamil Nadu - 603201</div>
+    <div style="font-size:10px; margin-top:2px; font-weight:700;">The Final World of Mobile Solution</div>
+    <div style="font-size:10px; font-weight:700;">Ramapuram, Tamil Nadu - 603201</div>
     <div style="font-size:10px;">Ph: +91 82484 54841</div>
     <div style="font-size:10px;">manjulamobiles125@gmail.com</div>
   </div>
@@ -3981,6 +3999,7 @@ class OwnerPortalApp {
     <button onclick="window.print()" style="padding:8px 20px; background:#000; color:#fff; border:none; border-radius:4px; font-size:13px; cursor:pointer; font-family:monospace;">🖨️ PRINT</button>
   </div>
 
+</div><!-- /.receipt -->
 </body>
 </html>`);
     win.document.close();
@@ -4151,52 +4170,60 @@ class OwnerPortalApp {
   <title>Receipt - ${t.qrId}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    @page { size: 80mm auto; margin: 4mm 3mm; }
-    body {
-      font-family: 'Courier New', Courier, monospace;
+    @page { size: 80mm auto; margin: 3mm 2mm; }
+    html, body {
+      font-family: Arial, 'Helvetica Neue', sans-serif;
       font-size: 13px;
-      font-weight: 700;
-      width: 72mm;
+      font-weight: 800;
+      width: 76mm;
       color: #000;
       background: #fff;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
+    .receipt {
+      width: 76mm;
+      page-break-inside: avoid;
+      break-inside: avoid;
+      overflow: hidden;
+    }
     .center { text-align: center; }
     .bold { font-weight: 900; }
-    .large { font-size: 15px; font-weight: 900; }
-    .xlarge { font-size: 17px; font-weight: 900; }
-    .divider { border-top: 1.5px dashed #000; margin: 5px 0; }
-    .divider-solid { border-top: 2.5px solid #000; margin: 5px 0; }
-    .row { display: flex; justify-content: space-between; margin: 3px 0; }
-    .label { color: #000; font-weight: 800; }
+    .xlarge { font-size: 19px; font-weight: 900; letter-spacing: 0.5px; }
+    .divider { border-top: 1.5px dashed #000; margin: 4px 0; }
+    .divider-solid { border-top: 2.5px solid #000; margin: 4px 0; }
+    .row { display: flex; justify-content: space-between; margin: 3px 0; font-size: 13px; }
+    .label { color: #000; font-weight: 700; }
     .value { font-weight: 900; text-align: right; max-width: 55%; word-break: break-word; color: #000; }
-    .amount-row { font-size: 15px; font-weight: 900; margin: 4px 0; color: #000; }
-    .footer { font-size: 11px; text-align: center; margin-top: 6px; color: #000; font-weight: 700; }
-    .issue-box { border: 1.5px solid #000; padding: 4px; margin: 4px 0; font-size: 12px; word-break: break-word; font-weight: 700; }
-    .status-badge { border: 1.5px solid #000; padding: 2px 6px; font-weight: 900; font-size: 12px; }
+    .amount-row { display: flex; justify-content: space-between; font-size: 16px; font-weight: 900; margin: 3px 0; color: #000; letter-spacing: 0.5px; }
+    .footer { font-size: 11px; text-align: center; margin-top: 5px; color: #000; font-weight: 700; line-height: 1.7; }
+    .issue-box { border: 2px solid #000; padding: 4px; margin: 4px 0; font-size: 12px; word-break: break-word; font-weight: 800; line-height: 1.5; }
+    .status-badge { border: 2px solid #000; padding: 2px 6px; font-weight: 900; font-size: 12px; letter-spacing: 0.5px; }
     @media print {
-      body { width: 72mm; color: #000 !important; font-weight: 700 !important; }
+      html, body { color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       * { color: #000 !important; }
       button { display: none !important; }
+      .receipt { page-break-after: avoid; break-after: avoid; }
     }
   </style>
 </head>
 <body>
+<div class="receipt">
 
   <!-- Shop Header -->
   <div class="center">
     <div class="xlarge bold">MANJULA MOBILE WORLD</div>
-    <div style="font-size:10px; margin-top:2px;">The Final World of Mobile Solution</div>
-    <div style="font-size:10px;">Ramapuram, Tamil Nadu - 603201</div>
-    <div style="font-size:10px;">Ph: +91 82484 54841</div>
-    <div style="font-size:10px;">manjulamobiles125@gmail.com</div>
+    <div style="font-size:10px; margin-top:2px; font-weight:700;">The Final World of Mobile Solution</div>
+    <div style="font-size:10px; font-weight:700;">Ramapuram, Tamil Nadu - 603201</div>
+    <div style="font-size:10px; font-weight:700;">Ph: +91 82484 54841</div>
+    <div style="font-size:10px; font-weight:700;">manjulamobiles125@gmail.com</div>
   </div>
 
   <div class="divider-solid"></div>
 
   <div class="center bold" style="font-size:12px; letter-spacing:1px;">** REPAIR RECEIPT **</div>
-  <div class="center" style="font-size:10px;">Date: ${t.createdAt || new Date().toLocaleDateString('en-IN')}</div>
+  <div class="center" style="font-size:10px;">Date In: ${t.dateIn || t.createdAt || new Date().toLocaleDateString('en-IN')}</div>
+  ${t.dateOut ? `<div class="center" style="font-size:10px;">Date Out: ${t.dateOut}</div>` : ''}
 
   <div class="divider"></div>
 
@@ -4258,6 +4285,7 @@ class OwnerPortalApp {
     <button onclick="window.print()" style="padding:8px 20px; background:#000; color:#fff; border:none; border-radius:4px; font-size:13px; cursor:pointer; font-family:monospace;">🖨️ PRINT</button>
   </div>
 
+</div><!-- /.receipt -->
 </body>
 </html>`);
     win.document.close();
@@ -4813,13 +4841,14 @@ class OwnerPortalApp {
     const device = document.getElementById("newTrackingDevice")?.value?.trim();
     const contact = document.getElementById("newTrackingContact")?.value?.trim();
     const address = document.getElementById("newTrackingAddress")?.value?.trim();
+    const dateIn  = document.getElementById("newTrackingDateIn")?.value?.trim();
+    const dateOut = document.getElementById("newTrackingDateOut")?.value?.trim();
     const issue = document.getElementById("newTrackingIssue")?.value?.trim();
     const status = document.getElementById("newTrackingStatus")?.value;
     const days = document.getElementById("newTrackingDays")?.value;
     const amount  = document.getElementById("newTrackingAmount")?.value?.trim();
     const advance = document.getElementById("newTrackingAdvance")?.value?.trim();
     const balance = document.getElementById("newTrackingBalance")?.value?.trim();
-
     if (!qrId || !password || !customer || !device || !issue || !amount) {
       alert("Please fill all required fields: QR ID, Password, Customer Name, Device Model, Issue Description, and Full Price");
       return;
@@ -4851,6 +4880,8 @@ class OwnerPortalApp {
         deviceModel: device,
         contact: contact,
         address: address || '',
+        dateIn:  dateIn  || currentDate,
+        dateOut: dateOut || '',
         status: status,
         issue: issue,
         estimatedDays: Number.parseInt(days) || 2,
@@ -4881,6 +4912,8 @@ class OwnerPortalApp {
       document.getElementById("newTrackingDevice").value = "";
       document.getElementById("newTrackingContact").value = "";
       if (document.getElementById("newTrackingAddress")) document.getElementById("newTrackingAddress").value = "";
+      if (document.getElementById("newTrackingDateIn"))  document.getElementById("newTrackingDateIn").value  = "";
+      if (document.getElementById("newTrackingDateOut")) document.getElementById("newTrackingDateOut").value = "";
       document.getElementById("newTrackingIssue").value = "";
       document.getElementById("newTrackingDays").value = "2";
       document.getElementById("newTrackingAmount").value = "";
@@ -5409,6 +5442,7 @@ class OwnerPortalApp {
     };
 
     const barVal = (t.qrId || '').trim();
+    const cust   = (t.customerName || '').substring(0, 14).toUpperCase();
     const dev    = (t.productName || t.deviceModel || '').substring(0, 16);
 
     const win = window.open('', '_blank', 'width=920,height=480');
@@ -5456,39 +5490,65 @@ class OwnerPortalApp {
     .label {
       width: 33.83mm;
       height: 25mm;
-      border-right: 0.2mm dashed #bbb;
+      border-right: 0.2mm dashed #ccc;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 0.5mm 0.4mm;
+      padding: 1mm 0.5mm;
       overflow: hidden;
-      gap: 0.2mm;
+      gap: 0;
     }
     .label:last-child { border-right: none; }
     .shop {
       font-size: 5pt;
-      font-weight: 900;
+      font-weight: 800;
       text-align: center;
       color: #000;
-      line-height: 1.1;
-    }
-    svg.bc { width: 30mm; height: 5.25mm; display: block; }
-    .barnum {
-      font-size: 6.5pt;
-      font-weight: 900;
-      color: #000;
+      line-height: 1.2;
       letter-spacing: 0.3px;
+      white-space: nowrap;
+      margin-bottom: 0.8mm;
+    }
+    svg.bc, canvas.bc {
+      display: block;
+      max-width: 31mm;
+      width: 31mm;
+      margin: 0 auto;
+    }
+    .barnum {
+      font-size: 6pt;
+      font-weight: 700;
+      color: #000;
+      letter-spacing: 1px;
+      text-align: center;
+      margin-top: 0.5mm;
+      margin-bottom: 0.4mm;
     }
     .device {
       font-size: 4.5pt;
-      font-weight: 700;
+      font-weight: 600;
       color: #000;
       text-align: center;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      max-width: 30mm;
+      max-width: 31mm;
+      text-transform: uppercase;
+      letter-spacing: 0.2px;
+    }
+    .custname {
+      font-size: 4pt;
+      font-weight: 600;
+      color: #333;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 31mm;
+      text-transform: uppercase;
+      letter-spacing: 0.2px;
+      margin-top: 0.2mm;
     }
 
     /* ── Print button ── */
@@ -5543,21 +5603,24 @@ class OwnerPortalApp {
     <div class="strip">
       <div class="label">
         <div class="shop">MANJULA MOBILES</div>
-        <svg class="bc" id="bc1"></svg>
+        <canvas class="bc" id="bc1"></canvas>
         <div class="barnum">${barVal}</div>
         <div class="device">${dev}</div>
+        ${cust ? `<div class="custname">${cust}</div>` : ''}
       </div>
       <div class="label">
         <div class="shop">MANJULA MOBILES</div>
-        <svg class="bc" id="bc2"></svg>
+        <canvas class="bc" id="bc2"></canvas>
         <div class="barnum">${barVal}</div>
         <div class="device">${dev}</div>
+        ${cust ? `<div class="custname">${cust}</div>` : ''}
       </div>
       <div class="label">
         <div class="shop">MANJULA MOBILES</div>
-        <svg class="bc" id="bc3"></svg>
+        <canvas class="bc" id="bc3"></canvas>
         <div class="barnum">${barVal}</div>
         <div class="device">${dev}</div>
+        ${cust ? `<div class="custname">${cust}</div>` : ''}
       </div>
     </div>
   </div>
@@ -5576,21 +5639,24 @@ class OwnerPortalApp {
   <div class="print-strip" style="display:none;">
     <div class="label">
       <div class="shop">MANJULA MOBILES</div>
-      <svg class="bc" id="bcp1"></svg>
+      <canvas class="bc" id="bcp1"></canvas>
       <div class="barnum">${barVal}</div>
       <div class="device">${dev}</div>
+      ${cust ? `<div class="custname">${cust}</div>` : ''}
     </div>
     <div class="label">
       <div class="shop">MANJULA MOBILES</div>
-      <svg class="bc" id="bcp2"></svg>
+      <canvas class="bc" id="bcp2"></canvas>
       <div class="barnum">${barVal}</div>
       <div class="device">${dev}</div>
+      ${cust ? `<div class="custname">${cust}</div>` : ''}
     </div>
     <div class="label">
       <div class="shop">MANJULA MOBILES</div>
-      <svg class="bc" id="bcp3"></svg>
+      <canvas class="bc" id="bcp3"></canvas>
       <div class="barnum">${barVal}</div>
       <div class="device">${dev}</div>
+      ${cust ? `<div class="custname">${cust}</div>` : ''}
     </div>
   </div>
 
@@ -5604,22 +5670,25 @@ class OwnerPortalApp {
     };
     function renderBarcodes() {
       try {
-        /* Exact TSPL spec conversion at 203 DPI (1 dot = 0.125mm):
-           narrow bar = 2 dots = 0.25mm → at 96dpi CSS px = 0.945px → use width:1
-           wide bar   = 4 dots = 0.5mm  → ratio 1:2 (JsBarcode default)
-           height     = 42 dots = 5.25mm → at 96dpi = ~20px
-           margin: 2px quiet zone each side so bars don't touch edges */
+        /* Render barcode at high resolution then stretch to fill label width.
+           width:2 gives thinner bars with clear gaps.
+           We then force the canvas CSS width to fill the full label (31mm ≈ 117px at 96dpi). */
         var opts = {
           format: 'CODE128',
-          width: 1,
-          height: 20,
+          width: 2,
+          height: 50,
           displayValue: false,
-          margin: 2,
+          margin: 8,
           background: '#ffffff',
           lineColor: '#000000'
         };
-        ['#bc1','#bc2','#bc3','#bcp1','#bcp2','#bcp3'].forEach(function(id){
-          JsBarcode(id, '${barVal}', opts);
+        ['bc1','bc2','bc3','bcp1','bcp2','bcp3'].forEach(function(id){
+          var canvas = document.getElementById(id);
+          if (!canvas) return;
+          JsBarcode(canvas, '${barVal}', opts);
+          // Force canvas to fill the label width — bars scale proportionally
+          canvas.style.width  = '31mm';
+          canvas.style.height = 'auto';
         });
       } catch(e) { console.error('Barcode error:', e); }
     }
@@ -5712,6 +5781,16 @@ class OwnerPortalApp {
       if (qrInput) {
         qrInput.value = nextId;
         this._renderFormBarcode(nextId);
+      }
+
+      // Auto-fill Date In with today's date
+      const dateInInput = document.getElementById('newTrackingDateIn');
+      if (dateInInput) {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm   = String(today.getMonth() + 1).padStart(2, '0');
+        const dd   = String(today.getDate()).padStart(2, '0');
+        dateInInput.value = `${yyyy}-${mm}-${dd}`;
       }
 
       // Show "Don't Get the SIM" reminder popup
