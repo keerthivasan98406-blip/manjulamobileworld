@@ -1118,18 +1118,30 @@ class OwnerPortalApp {
                     </tr>
                   </thead>
                   <tbody>
-                    ${recs.map((t, i) => `
+                    ${recs.map((t, i) => {
+                      // Show advance if entered, otherwise show full amount
+                      const adv = Number(t.advanceAmount) || 0;
+                      const full = Number(t.amount) || 0;
+                      const displayAmt = adv > 0 ? adv : full;
+                      const bal = adv > 0 ? (Number(t.balanceAmount) || (full - adv)) : 0;
+                      return `
                       <tr style="border-top:1px solid #e5e7eb; background:${i % 2 === 0 ? '#fff' : '#f9fafb'};">
                         <td style="padding:10px 14px; color:#1d4ed8; font-weight:600;">${t.qrId}</td>
                         <td style="padding:10px 14px; color:#111827;">${t.customerName}</td>
                         <td style="padding:10px 14px; color:#374151;">${t.productName || t.deviceModel || '-'}</td>
                         <td style="padding:10px 14px;"><span style="background:#dcfce7; color:#166534; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600;">${t.status}</span></td>
-                        <td style="padding:10px 14px; text-align:right; color:#059669; font-weight:700;">₹${(Number(t.amount) || 0).toLocaleString('en-IN')}</td>
+                        <td style="padding:10px 14px; text-align:right;">
+                          <div style="color:#059669; font-weight:700;">₹${displayAmt.toLocaleString('en-IN')}</div>
+                          ${bal > 0 ? `<div style="color:#f59e0b;font-size:10px;font-weight:600;">Bal: ₹${bal.toLocaleString('en-IN')}</div>` : ''}
+                        </td>
                       </tr>
-                    `).join('')}
+                    `}).join('')}
                     <tr style="border-top:2px solid #10b981; background:#f0fdf4;">
-                      <td colspan="4" style="padding:10px 14px; font-weight:700; color:#065f46;">Total</td>
-                      <td style="padding:10px 14px; text-align:right; font-weight:800; color:#065f46; font-size:15px;">₹${total.toLocaleString('en-IN')}</td>
+                      <td colspan="4" style="padding:10px 14px; font-weight:700; color:#065f46;">Total Received Today</td>
+                      <td style="padding:10px 14px; text-align:right; font-weight:800; color:#065f46; font-size:15px;">₹${recs.reduce((s,t) => {
+                        const adv = Number(t.advanceAmount)||0;
+                        return s + (adv > 0 ? adv : (Number(t.amount)||0));
+                      }, 0).toLocaleString('en-IN')}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -1320,7 +1332,7 @@ class OwnerPortalApp {
                 ">
             </div>
             <div class="form-field">
-              <label class="form-label">Advance Amount (₹)</label>
+              <label class="form-label">Advance Paid (₹)</label>
               <input type="number" class="input" placeholder="0" id="newTrackingAdvance" min="0" step="1"
                 oninput="
                   var full = Number(document.getElementById('newTrackingAmount').value)||0;
@@ -1328,9 +1340,10 @@ class OwnerPortalApp {
                   var bal  = full - adv;
                   document.getElementById('newTrackingBalance').value = bal >= 0 ? bal : 0;
                 ">
+              <small style="color:#94a3b8;font-size:10px;">Shows in Today's Sales</small>
             </div>
             <div class="form-field">
-              <label class="form-label">Balance Amount (₹)</label>
+              <label class="form-label">Balance Due (₹)</label>
               <input type="number" class="input" placeholder="0" id="newTrackingBalance" min="0" step="1" readonly
                 style="background:rgba(51,65,85,0.3); color:#94a3b8;">
               <small style="color:#94a3b8; font-size:11px; margin-top:3px; display:block;">Auto = Full − Advance</small>
@@ -4987,14 +5000,26 @@ class OwnerPortalApp {
               <input id="et_productName" class="input" value="${t.productName || ''}" style="width:100%;color:#111;background:#f8fafc;border:1px solid #d1d5db;">
             </div>
             <div>
-              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Payment Amount (₹)</label>
-              <input id="et_amount" class="input" type="number" value="${t.amount || ''}" style="width:100%;color:#111;background:#f8fafc;border:1px solid #d1d5db;">
+              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Full Price (₹)</label>
+              <input id="et_amount" class="input" type="number" value="${t.amount || ''}" style="width:100%;color:#111;background:#f8fafc;border:1px solid #d1d5db;"
+                oninput="var f=Number(this.value)||0;var a=Number(document.getElementById('et_advance').value)||0;document.getElementById('et_balance').value=Math.max(0,f-a);">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Advance Paid (₹)</label>
+              <input id="et_advance" class="input" type="number" value="${t.advanceAmount || ''}" style="width:100%;color:#111;background:#f8fafc;border:1px solid #d1d5db;"
+                oninput="var f=Number(document.getElementById('et_amount').value)||0;var a=Number(this.value)||0;document.getElementById('et_balance').value=Math.max(0,f-a);">
+              <small style="color:#6b7280;font-size:10px;">Shows in Today's Sales</small>
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Balance Due (₹)</label>
+              <input id="et_balance" class="input" type="number" value="${t.balanceAmount || (Number(t.amount||0) - Number(t.advanceAmount||0)) || ''}" style="width:100%;color:#059669;background:#f0fdf4;border:1px solid #d1d5db;font-weight:700;"
+                placeholder="Enter when customer pays balance">
+              <small style="color:#6b7280;font-size:10px;">Update when balance is received</small>
             </div>
             <div>
               <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Estimated Days</label>
               <input id="et_estimatedDays" class="input" type="number" value="${t.estimatedDays || ''}" style="width:100%;color:#111;background:#f8fafc;border:1px solid #d1d5db;">
-            </div>
-            <div>
+            </div>            <div>
               <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">QR Password</label>
               <input id="et_qrPassword" class="input" value="${t.qrPassword || ''}" style="width:100%;color:#111;background:#f8fafc;border:1px solid #d1d5db;">
             </div>
@@ -5032,10 +5057,12 @@ class OwnerPortalApp {
     const updatedData = {
       customerName,
       productName,
-      contact:       document.getElementById('et_contact')?.value?.trim(),
-      amount:        Number(document.getElementById('et_amount')?.value) || 0,
-      estimatedDays: Number(document.getElementById('et_estimatedDays')?.value) || 0,
-      qrPassword:    document.getElementById('et_qrPassword')?.value?.trim(),
+      contact:        document.getElementById('et_contact')?.value?.trim(),
+      amount:         Number(document.getElementById('et_amount')?.value) || 0,
+      advanceAmount:  Number(document.getElementById('et_advance')?.value) || 0,
+      balanceAmount:  Number(document.getElementById('et_balance')?.value) || 0,
+      estimatedDays:  Number(document.getElementById('et_estimatedDays')?.value) || 0,
+      qrPassword:     document.getElementById('et_qrPassword')?.value?.trim(),
       issue
     };
 
