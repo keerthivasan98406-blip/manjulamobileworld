@@ -107,7 +107,7 @@ class OwnerPortalApp {
         if (this.currentPage === 'admin' || this.currentPage === 'admin-products') {
           this.renderPage(this.currentPage);
         }
-      }
+      } 
     });
 
     this.socket.on('product-deleted', (data) => {
@@ -5494,8 +5494,8 @@ class OwnerPortalApp {
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      padding: 1mm 0.5mm;
+      justify-content: flex-start;
+      padding: 0.8mm 0.5mm 0 0.5mm;
       overflow: hidden;
       gap: 0;
     }
