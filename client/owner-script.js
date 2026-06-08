@@ -5633,7 +5633,7 @@ class OwnerPortalApp {
       flex-direction: column;
       align-items: center;
       justify-content: flex-start;
-      padding: 0.8mm 0.5mm 0 0.5mm;
+      padding: 0.3mm 0.5mm 0 0.5mm;
       overflow: hidden;
       gap: 0;
     }
@@ -5717,6 +5717,7 @@ class OwnerPortalApp {
       @page {
         size: 101.5mm 25mm landscape;
         margin: 0;
+        margin-top: -1mm;
       }
       * { box-sizing: border-box; }
       html, body {
@@ -5850,56 +5851,42 @@ class OwnerPortalApp {
     setTimeout(() => { try { win.focus(); } catch(e) {} }, 200);
   }
 
-  // ── Send TSPL command to TSC/Zenpert thermal label printer ───────────────
-  // Generates the filled TSPL (.prn) file and downloads it.
-  // On Windows: drag the .prn file onto the printer in Devices & Printers,
-  // or set the TSC printer as default and double-click the file.
+  // ── Send ZPL command to Zebra-compatible thermal label printer ───────────
   printTSCLabel(qrId, customerName, deviceModel) {
     const t = this.trackingData.find(tr => tr.qrId === qrId) || {
       qrId, customerName: customerName || '', productName: deviceModel || ''
     };
 
-    const barVal  = (t.qrId || '').replace(/"/g, '');                          // @Bar@
-    const itemVal = (t.productName || t.deviceModel || deviceModel || '')
-                      .substring(0, 16)
-                      .replace(/"/g, '');                                       // @Item@
+    const barVal = (t.qrId || '').replace(/[^A-Za-z0-9]/g, '');
 
-    // TSPL command — 101.5 mm × 25 mm, 3 labels per strip (matches owner's template)
-    const tspl = [
-      'SIZE 101.5 mm, 25 mm',
-      'DIRECTION 0,0',
-      'REFERENCE 0,0',
-      'OFFSET 0 mm',
-      'SET PEEL OFF',
-      'SET CUTTER OFF',
-      'CLS',
-      // Label 1 (left)
-      `BARCODE 131,152,"128M",42,0,180,2,4,"!104${barVal}"`,
-      'CODEPAGE 1252',
-      `TEXT 176,105,"0",180,8,8,"${barVal}"`,
-      `TEXT 214,191,"0",180,6,12,"MANJULA MOBILES"`,
-      `TEXT 260,81,"0",180,6,12,"${itemVal}"`,
-      'BAR 131,22, 78, 2',
-      'BAR 134,21, 1, 2',
-      // Label 2 (middle)
-      `BARCODE 402,152,"128M",42,0,180,2,4,"!104${barVal}"`,
-      `TEXT 447,105,"0",180,8,8,"${barVal}"`,
-      `TEXT 485,191,"0",180,6,12,"MANJULA MOBILES"`,
-      `TEXT 531,81,"0",180,6,12,"${itemVal}"`,
-      'BAR 402,22, 78, 2',
-      'BAR 405,21, 1, 2',
-      // Label 3 (right)
-      `BARCODE 672,152,"128M",42,0,180,2,4,"!104${barVal}"`,
-      `TEXT 717,105,"0",180,8,8,"${barVal}"`,
-      `TEXT 755,191,"0",180,6,12,"MANJULA MOBILES"`,
-      `TEXT 801,81,"0",180,6,12,"${itemVal}"`,
-      'BAR 672,22, 78, 2',
-      'BAR 675,21, 1, 2',
-      'PRINT 1,1'
-    ].join('\r\n');
+    // ZPL command — 3 labels per strip, Zebra-compatible (Godex/Argox/Zebra)
+    const zpl = [
+      'CT~~CD,~CC^~CT~',
+      '^XA',
+      '~TA000~JSN^LT0^MNW^MTT^PON^PMN^LH0,0^JMA^PR6,6~SD15^JUS^LRN^CI27^PA0,1,1,0',
+      '^XZ',
+      '^XA',
+      '^MMT^PW1200^LL200^LS0',
+      // Label 1
+      `^BY2,3,40^FT112,158^BCN,,N,N^FH\\^FD>:${barVal}^FS`,
+      `^FT61,60^A0N,34,33^FH\\^CI28^FDMANJULA MOBILES^FS^CI27`,
+      `^FT82,100^A0N,34,33^FH\\^CI28^FDSALES & SERVICE^FS^CI27`,
+      `^FT159,192^A0N,34,33^FH\\^CI28^FD${barVal}^FS^CI27`,
+      // Label 2
+      `^BY2,3,40^FT522,158^BCN,,N,N^FH\\^FD>:${barVal}^FS`,
+      `^FT461,60^A0N,34,33^FH\\^CI28^FDMANJULA MOBILES^FS^CI27`,
+      `^FT472,100^A0N,34,33^FH\\^CI28^FDSALES & SERVICE^FS^CI27`,
+      `^FT559,192^A0N,34,33^FH\\^CI28^FD${barVal}^FS^CI27`,
+      // Label 3
+      `^BY2,3,40^FT932,158^BCN,,N,N^FH\\^FD>:${barVal}^FS`,
+      `^FT871,60^A0N,34,33^FH\\^CI28^FDMANJULA MOBILES^FS^CI27`,
+      `^FT882,100^A0N,34,33^FH\\^CI28^FDSALES & SERVICE^FS^CI27`,
+      `^FT969,192^A0N,34,33^FH\\^CI28^FD${barVal}^FS^CI27`,
+      '^PQ1,0,1,Y',
+      '^XZ'
+    ].join('\n');
 
-    // Download as .prn — drag onto TSC printer or print via cmd: copy /b file.prn \\.\LPT1
-    const blob = new Blob([tspl], { type: 'application/octet-stream' });
+    const blob = new Blob([zpl], { type: 'application/octet-stream' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
     a.href     = url;
@@ -5907,16 +5894,8 @@ class OwnerPortalApp {
     a.click();
     URL.revokeObjectURL(url);
 
-    // Show usage tip
     setTimeout(() => {
-      alert(
-        '✅ Label file downloaded: label-' + barVal + '.prn\n\n' +
-        'How to print on TSC/Zenpert printer:\n' +
-        '1. Open "Devices and Printers" (Win+R → control printers)\n' +
-        '2. Drag and drop the .prn file onto your TSC printer icon\n\n' +
-        'Or via Command Prompt:\n' +
-        'copy /b "label-' + barVal + '.prn" "\\\\\\\\.\\\\ [your printer name]"'
-      );
+      alert('✅ Label file downloaded: label-' + barVal + '.prn\n\nDrag & drop onto your Zebra printer in Devices and Printers to print.');
     }, 300);
   }
 
