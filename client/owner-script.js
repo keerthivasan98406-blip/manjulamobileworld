@@ -995,10 +995,19 @@ class OwnerPortalApp {
   }
 
   renderAdminTracking() {
+    // Helper: for old records use amount, for new records (has advanceAmount/paidAmount) use advance+paid only
+    const calcReceived = (t) => {
+      const hasNewFields = t.advanceAmount !== undefined || t.paidAmount !== undefined;
+      if (hasNewFields) {
+        return (Number(t.advanceAmount) || 0) + (Number(t.paidAmount) || 0);
+      }
+      return Number(t.amount) || 0;
+    };
+
     // Calculate today's income
     const today = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
     const todayRecords = this.trackingData.filter(t => t.createdAt === today);
-    const todayIncome = todayRecords.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    const todayIncome = todayRecords.reduce((sum, t) => sum + calcReceived(t), 0);
 
     // Calculate this month's income
     const now = new Date();
@@ -1011,7 +1020,7 @@ class OwnerPortalApp {
       const d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
       return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
     });
-    const monthIncome = monthRecords.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    const monthIncome = monthRecords.reduce((sum, t) => sum + calcReceived(t), 0);
     const monthLabel = now.toLocaleString('en-IN', { month: 'long', year: 'numeric' });
 
     return `
@@ -1097,51 +1106,82 @@ class OwnerPortalApp {
             <div style="text-align:center; padding:60px; color:#fff; font-size:16px;">No tracking records found</div>
           ` : sortedKeys.map(dateKey => {
             const recs = groups[dateKey];
-            const total = recs.reduce((s, t) => s + (Number(t.amount) || 0), 0);
+            // Today's sales = Advance + Paid Amount ONLY — never balance, never full service cost
+            const totalReceived = recs.reduce((s, t) => {
+              const hasNewFields = t.advanceAmount !== undefined || t.paidAmount !== undefined;
+              if (hasNewFields) return s + (Number(t.advanceAmount)||0) + (Number(t.paidAmount)||0);
+              return s + (Number(t.amount) || 0);
+            }, 0);
+            const totalBalance = recs.reduce((s, t) => s + (Number(t.balanceAmount) || 0), 0);
             return `
               <div style="background:rgba(255,255,255,0.95); border-radius:12px; margin-bottom:20px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
                 <div style="background:linear-gradient(135deg,#065f46,#047857); padding:14px 20px; display:flex; justify-content:space-between; align-items:center;">
                   <div style="color:#fff; font-weight:700; font-size:16px;">📅 ${dateKey}</div>
                   <div style="text-align:right;">
                     <div style="color:#6ee7b7; font-size:12px;">${recs.length} record${recs.length !== 1 ? 's' : ''}</div>
-                    <div style="color:#fff; font-weight:800; font-size:20px;">₹${total.toLocaleString('en-IN')}</div>
+                    <div style="color:#fff; font-weight:800; font-size:20px;">₹${totalReceived.toLocaleString('en-IN')} received</div>
+                    ${totalBalance > 0 ? `<div style="color:#fcd34d; font-size:12px; font-weight:700;">Balance pending: ₹${totalBalance.toLocaleString('en-IN')}</div>` : ''}
                   </div>
                 </div>
                 <table style="width:100%; border-collapse:collapse; font-size:13px;">
                   <thead>
                     <tr style="background:#f1f5f9;">
-                      <th style="padding:10px 14px; text-align:left; color:#374151; font-weight:600;">QR ID</th>
-                      <th style="padding:10px 14px; text-align:left; color:#374151; font-weight:600;">Customer</th>
-                      <th style="padding:10px 14px; text-align:left; color:#374151; font-weight:600;">Device</th>
-                      <th style="padding:10px 14px; text-align:left; color:#374151; font-weight:600;">Status</th>
-                      <th style="padding:10px 14px; text-align:right; color:#374151; font-weight:600;">Amount</th>
+                      <th style="padding:10px 14px; text-align:left; color:#374151; font-weight:700;">Service Code</th>
+                      <th style="padding:10px 14px; text-align:left; color:#374151; font-weight:700;">Customer</th>
+                      <th style="padding:10px 14px; text-align:right; color:#374151; font-weight:700;">Advance Received</th>
+                      <th style="padding:10px 14px; text-align:right; color:#374151; font-weight:700;">Paid Amount</th>
+                      <th style="padding:10px 14px; text-align:right; color:#374151; font-weight:700;">Total Received</th>
+                      <th style="padding:10px 14px; text-align:right; color:#374151; font-weight:700;">Balance Amount</th>
                     </tr>
                   </thead>
                   <tbody>
                     ${recs.map((t, i) => {
-                      // Show advance if entered, otherwise show full amount
-                      const adv = Number(t.advanceAmount) || 0;
-                      const full = Number(t.amount) || 0;
-                      const displayAmt = adv > 0 ? adv : full;
-                      const bal = adv > 0 ? (Number(t.balanceAmount) || (full - adv)) : 0;
+                      const hasNew = t.advanceAmount !== undefined || t.paidAmount !== undefined;
+                      const adv  = Number(t.advanceAmount) || 0;
+                      const paid = Number(t.paidAmount)    || 0;
+                      const bal  = Number(t.balanceAmount) || 0;
+                      const full = Number(t.amount)        || 0;
+                      // Old records: show full amount in Total Received, — in Advance/Paid
+                      // New records: show advance+paid in Total Received
+                      const tot  = hasNew ? (adv + paid) : full;
+                      const displayBal = bal > 0 ? bal : 0;
                       return `
                       <tr style="border-top:1px solid #e5e7eb; background:${i % 2 === 0 ? '#fff' : '#f9fafb'};">
-                        <td style="padding:10px 14px; color:#1d4ed8; font-weight:600;">${t.qrId}</td>
-                        <td style="padding:10px 14px; color:#111827;">${t.customerName}</td>
-                        <td style="padding:10px 14px; color:#374151;">${t.productName || t.deviceModel || '-'}</td>
-                        <td style="padding:10px 14px;"><span style="background:#dcfce7; color:#166534; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600;">${t.status}</span></td>
-                        <td style="padding:10px 14px; text-align:right;">
-                          <div style="color:#059669; font-weight:700;">₹${displayAmt.toLocaleString('en-IN')}</div>
-                          ${bal > 0 ? `<div style="color:#f59e0b;font-size:10px;font-weight:600;">Bal: ₹${bal.toLocaleString('en-IN')}</div>` : ''}
+                        <td style="padding:10px 14px; color:#1d4ed8; font-weight:700;">${t.qrId}</td>
+                        <td style="padding:10px 14px; color:#111827; font-size:12px;">
+                          <div style="font-weight:600;">${t.customerName}</div>
+                          <div style="color:#6b7280; font-size:11px;">${t.productName || t.deviceModel || ''}</div>
+                        </td>
+                        <td style="padding:10px 14px; text-align:right; color:#f59e0b; font-weight:700;">
+                          ${hasNew ? (adv > 0 ? `₹${adv.toLocaleString('en-IN')}` : '<span style="color:#d1d5db;">—</span>') : '<span style="color:#94a3b8;font-size:11px;">—</span>'}
+                        </td>
+                        <td style="padding:10px 14px; text-align:right; color:#059669; font-weight:700;">
+                          ${hasNew ? (paid > 0 ? `₹${paid.toLocaleString('en-IN')}` : '<span style="color:#d1d5db;">—</span>') : '<span style="color:#94a3b8;font-size:11px;">—</span>'}
+                        </td>
+                        <td style="padding:10px 14px; text-align:right; color:#1d4ed8; font-weight:800;">
+                          ${tot > 0 ? `₹${tot.toLocaleString('en-IN')}` : '<span style="color:#d1d5db;">—</span>'}
+                        </td>
+                        <td style="padding:10px 14px; text-align:right; font-weight:700;">
+                          ${hasNew ? (displayBal > 0
+                            ? `<span style="color:#dc2626; font-weight:800;">₹${displayBal.toLocaleString('en-IN')}</span>`
+                            : `<span style="color:#10b981;">✓ Cleared</span>`)
+                            : '<span style="color:#94a3b8;font-size:11px;">—</span>'}
                         </td>
                       </tr>
                     `}).join('')}
-                    <tr style="border-top:2px solid #10b981; background:#f0fdf4;">
-                      <td colspan="4" style="padding:10px 14px; font-weight:700; color:#065f46;">Total Received Today</td>
-                      <td style="padding:10px 14px; text-align:right; font-weight:800; color:#065f46; font-size:15px;">₹${recs.reduce((s,t) => {
-                        const adv = Number(t.advanceAmount)||0;
-                        return s + (adv > 0 ? adv : (Number(t.amount)||0));
-                      }, 0).toLocaleString('en-IN')}</td>
+                    <tr style="border-top:2px solid #10b981; background:#f0fdf4; font-weight:800; font-size:13px;">
+                      <td colspan="2" style="padding:10px 14px; color:#065f46;">📊 Total</td>
+                      <td style="padding:10px 14px; text-align:right; color:#f59e0b;">
+                        ₹${recs.reduce((s,t)=>s+(Number(t.advanceAmount)||0),0).toLocaleString('en-IN')}
+                      </td>
+                      <td style="padding:10px 14px; text-align:right; color:#059669;">
+                        ₹${recs.reduce((s,t)=>s+(Number(t.paidAmount)||0),0).toLocaleString('en-IN')}
+                      </td>                      <td style="padding:10px 14px; text-align:right; color:#1d4ed8; font-size:15px;">
+                        ₹${totalReceived.toLocaleString('en-IN')}
+                      </td>
+                      <td style="padding:10px 14px; text-align:right; color:#dc2626;">
+                        ${totalBalance > 0 ? `₹${totalBalance.toLocaleString('en-IN')}` : '✓'}
+                      </td>
                     </tr>
                   </tbody>
                 </table>
@@ -1294,8 +1334,19 @@ class OwnerPortalApp {
             <input type="tel" class="input" placeholder="Enter contact number" id="newTrackingContact">
           </div>
           <div class="form-field">
-            <label class="form-label">Estimated Days</label>
-            <input type="number" class="input" placeholder="2" value="2" id="newTrackingDays">
+            <label class="form-label">Estimated Completion</label>
+            <select class="input" id="newTrackingDays" style="background-color:rgba(51,65,85,0.5); color:#f8fafc;">
+              <option value="0">📅 Same Day</option>
+              <option value="1">1 Day</option>
+              <option value="2">2 Days</option>
+              <option value="3">3 Days</option>
+              <option value="4">4 Days</option>
+              <option value="5">5 Days</option>
+              <option value="7">1 Week</option>
+              <option value="10">10 Days</option>
+              <option value="14">2 Weeks</option>
+              <option value="30">1 Month</option>
+            </select>
           </div>
         </div>
 
@@ -1320,33 +1371,59 @@ class OwnerPortalApp {
         <!-- Amount Section -->
         <div style="background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.3); border-radius:10px; padding:16px; margin-bottom:16px;">
           <div style="font-size:13px; font-weight:700; color:#10b981; margin-bottom:12px;">💰 Payment Details</div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom:12px;">
             <div class="form-field">
               <label class="form-label">Full Price (₹) *</label>
               <input type="number" class="input" placeholder="0" id="newTrackingAmount" min="0" step="1"
                 oninput="
-                  var full = Number(document.getElementById('newTrackingAmount').value)||0;
+                  var full = Number(this.value)||0;
                   var adv  = Number(document.getElementById('newTrackingAdvance').value)||0;
-                  var bal  = full - adv;
-                  document.getElementById('newTrackingBalance').value = bal >= 0 ? bal : 0;
+                  var paid = Number(document.getElementById('newTrackingPaid').value)||0;
+                  var tot  = adv + paid;
+                  document.getElementById('newTrackingTotalReceived').value = tot;
+                  document.getElementById('newTrackingBalance').value = Math.max(0, full - tot);
                 ">
+              <small style="color:#94a3b8;font-size:10px;">Owner reference only — not shown in sales</small>
             </div>
             <div class="form-field">
-              <label class="form-label">Advance Paid (₹)</label>
+              <label class="form-label">Advance Received (₹)</label>
               <input type="number" class="input" placeholder="0" id="newTrackingAdvance" min="0" step="1"
                 oninput="
                   var full = Number(document.getElementById('newTrackingAmount').value)||0;
                   var adv  = Number(this.value)||0;
-                  var bal  = full - adv;
-                  document.getElementById('newTrackingBalance').value = bal >= 0 ? bal : 0;
+                  var paid = Number(document.getElementById('newTrackingPaid').value)||0;
+                  var tot  = adv + paid;
+                  document.getElementById('newTrackingTotalReceived').value = tot;
+                  document.getElementById('newTrackingBalance').value = Math.max(0, full - tot);
                 ">
-              <small style="color:#94a3b8;font-size:10px;">Shows in Today's Sales</small>
+              <small style="color:#10b981;font-size:10px;">Shows in Today's Sales</small>
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+            <div class="form-field">
+              <label class="form-label">Paid Amount (₹)</label>
+              <input type="number" class="input" placeholder="0" id="newTrackingPaid" min="0" step="1"
+                oninput="
+                  var full = Number(document.getElementById('newTrackingAmount').value)||0;
+                  var adv  = Number(document.getElementById('newTrackingAdvance').value)||0;
+                  var paid = Number(this.value)||0;
+                  var tot  = adv + paid;
+                  document.getElementById('newTrackingTotalReceived').value = tot;
+                  document.getElementById('newTrackingBalance').value = Math.max(0, full - tot);
+                ">
+              <small style="color:#94a3b8;font-size:10px;">Additional payment received</small>
             </div>
             <div class="form-field">
-              <label class="form-label">Balance Due (₹)</label>
+              <label class="form-label">Total Received (₹)</label>
+              <input type="number" class="input" placeholder="0" id="newTrackingTotalReceived" min="0" step="1" readonly
+                style="background:rgba(16,185,129,0.1); color:#10b981; font-weight:700;">
+              <small style="color:#94a3b8;font-size:10px;">Advance + Paid</small>
+            </div>
+            <div class="form-field">
+              <label class="form-label">Balance Amount (₹)</label>
               <input type="number" class="input" placeholder="0" id="newTrackingBalance" min="0" step="1" readonly
-                style="background:rgba(51,65,85,0.3); color:#94a3b8;">
-              <small style="color:#94a3b8; font-size:11px; margin-top:3px; display:block;">Auto = Full − Advance</small>
+                style="background:rgba(239,68,68,0.1); color:#f87171; font-weight:700;">
+              <small style="color:#94a3b8;font-size:10px;">Full − Total Received</small>
             </div>
           </div>
         </div>
@@ -4253,7 +4330,7 @@ class OwnerPortalApp {
   <div class="row"><span class="label">QR ID</span><span class="value bold">${t.qrId}</span></div>
   <div class="row"><span class="label">Password</span><span class="value bold">${t.qrPassword || '-'}</span></div>
   <div class="row"><span class="label">Status</span><span class="value"><span class="status-badge">${t.status}</span></span></div>
-  <div class="row"><span class="label">Est. Days</span><span class="value">${t.estimatedDays || 2} days</span></div>
+  <div class="row"><span class="label">Est. Days</span><span class="value">${t.estimatedDays == 0 ? 'Same Day' : ((t.estimatedDays || 2) + ' days')}</span></div>
 
   <div class="divider"></div>
 
@@ -4852,17 +4929,18 @@ class OwnerPortalApp {
     const password = document.getElementById("newTrackingPassword")?.value?.trim();
     const customer = document.getElementById("newTrackingCustomer")?.value?.trim();
     const device = document.getElementById("newTrackingDevice")?.value?.trim();
-    const contact = document.getElementById("newTrackingContact")?.value?.trim();
-    const address = document.getElementById("newTrackingAddress")?.value?.trim();
-    const dateIn  = document.getElementById("newTrackingDateIn")?.value?.trim();
-    const dateOut = document.getElementById("newTrackingDateOut")?.value?.trim();
-    const issue = document.getElementById("newTrackingIssue")?.value?.trim();
-    const status = document.getElementById("newTrackingStatus")?.value;
-    const days = document.getElementById("newTrackingDays")?.value;
-    const amount  = document.getElementById("newTrackingAmount")?.value?.trim();
-    const advance = document.getElementById("newTrackingAdvance")?.value?.trim();
-    const balance = document.getElementById("newTrackingBalance")?.value?.trim();
-    if (!qrId || !password || !customer || !device || !issue || !amount) {
+    const contact       = document.getElementById("newTrackingContact")?.value?.trim();
+    const address       = document.getElementById("newTrackingAddress")?.value?.trim();
+    const dateIn        = document.getElementById("newTrackingDateIn")?.value?.trim();
+    const dateOut       = document.getElementById("newTrackingDateOut")?.value?.trim();
+    const issue         = document.getElementById("newTrackingIssue")?.value?.trim();
+    const status        = document.getElementById("newTrackingStatus")?.value;
+    const days          = document.getElementById("newTrackingDays")?.value;
+    const amount        = document.getElementById("newTrackingAmount")?.value?.trim();
+    const advance       = document.getElementById("newTrackingAdvance")?.value?.trim();
+    const paidAmount    = document.getElementById("newTrackingPaid")?.value?.trim();
+    const totalReceived = document.getElementById("newTrackingTotalReceived")?.value?.trim();
+    const balance       = document.getElementById("newTrackingBalance")?.value?.trim();    if (!qrId || !password || !customer || !device || !issue || !amount) {
       alert("Please fill all required fields: QR ID, Password, Customer Name, Device Model, Issue Description, and Full Price");
       return;
     }
@@ -4897,11 +4975,12 @@ class OwnerPortalApp {
         dateOut: dateOut || '',
         status: status,
         issue: issue,
-        estimatedDays: Number.parseInt(days) || 2,
-        amount: Number.parseInt(amount) || 0,
-        advanceAmount: Number.parseInt(advance) || 0,
-        balanceAmount: Number.parseInt(balance) || Number.parseInt(amount) || 0,
-        createdAt: currentDate,
+        estimatedDays: Number.parseInt(days) || 0,
+        amount:         Number.parseInt(amount) || 0,
+        advanceAmount:  Number.parseInt(advance) || 0,
+        paidAmount:     Number.parseInt(paidAmount) || 0,
+        totalReceived:  Number.parseInt(totalReceived) || 0,
+        balanceAmount:  Number.parseInt(balance) || Number.parseInt(amount) || 0,        createdAt: currentDate,
         completedAt: null,
         lastUpdated: new Date().toLocaleDateString('en-IN', {
           day: '2-digit',
@@ -4928,10 +5007,12 @@ class OwnerPortalApp {
       if (document.getElementById("newTrackingDateIn"))  document.getElementById("newTrackingDateIn").value  = "";
       if (document.getElementById("newTrackingDateOut")) document.getElementById("newTrackingDateOut").value = "";
       document.getElementById("newTrackingIssue").value = "";
-      document.getElementById("newTrackingDays").value = "2";
+      document.getElementById("newTrackingDays").value = "0";
       document.getElementById("newTrackingAmount").value = "";
-      if (document.getElementById("newTrackingAdvance")) document.getElementById("newTrackingAdvance").value = "";
-      if (document.getElementById("newTrackingBalance")) document.getElementById("newTrackingBalance").value = "";
+      if (document.getElementById("newTrackingAdvance"))       document.getElementById("newTrackingAdvance").value = "";
+      if (document.getElementById("newTrackingPaid"))          document.getElementById("newTrackingPaid").value = "";
+      if (document.getElementById("newTrackingTotalReceived")) document.getElementById("newTrackingTotalReceived").value = "";
+      if (document.getElementById("newTrackingBalance"))       document.getElementById("newTrackingBalance").value = "";
       
       this.toggleTrackingForm();
       this.renderPage("admin-tracking");
@@ -4996,29 +5077,56 @@ class OwnerPortalApp {
               <input id="et_contact" class="input" value="${t.contact || ''}" style="width:100%;color:#111;background:#f8fafc;border:1px solid #d1d5db;">
             </div>
             <div>
+              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Address</label>
+              <input id="et_address" class="input" value="${t.address || ''}" placeholder="Enter customer address" style="width:100%;color:#111;background:#f8fafc;border:1px solid #d1d5db;">
+            </div>
+            <div>
               <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Device / Product Name *</label>
               <input id="et_productName" class="input" value="${t.productName || ''}" style="width:100%;color:#111;background:#f8fafc;border:1px solid #d1d5db;">
             </div>
             <div>
               <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Full Price (₹)</label>
               <input id="et_amount" class="input" type="number" value="${t.amount || ''}" style="width:100%;color:#111;background:#f8fafc;border:1px solid #d1d5db;"
-                oninput="var f=Number(this.value)||0;var a=Number(document.getElementById('et_advance').value)||0;document.getElementById('et_balance').value=Math.max(0,f-a);">
+                oninput="var f=Number(this.value)||0;var a=Number(document.getElementById('et_advance').value)||0;var p=Number(document.getElementById('et_paid').value)||0;var tot=a+p;document.getElementById('et_total').value=tot;document.getElementById('et_balance').value=Math.max(0,f-tot);">
+              <small style="color:#6b7280;font-size:10px;">Owner reference — not in daily sales</small>
             </div>
             <div>
-              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Advance Paid (₹)</label>
+              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Advance Received (₹)</label>
               <input id="et_advance" class="input" type="number" value="${t.advanceAmount || ''}" style="width:100%;color:#111;background:#f8fafc;border:1px solid #d1d5db;"
-                oninput="var f=Number(document.getElementById('et_amount').value)||0;var a=Number(this.value)||0;document.getElementById('et_balance').value=Math.max(0,f-a);">
-              <small style="color:#6b7280;font-size:10px;">Shows in Today's Sales</small>
+                oninput="var f=Number(document.getElementById('et_amount').value)||0;var a=Number(this.value)||0;var p=Number(document.getElementById('et_paid').value)||0;var tot=a+p;document.getElementById('et_total').value=tot;document.getElementById('et_balance').value=Math.max(0,f-tot);">
+              <small style="color:#10b981;font-size:10px;">Shows in Today's Sales</small>
             </div>
             <div>
-              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Balance Due (₹)</label>
-              <input id="et_balance" class="input" type="number" value="${t.balanceAmount || (Number(t.amount||0) - Number(t.advanceAmount||0)) || ''}" style="width:100%;color:#059669;background:#f0fdf4;border:1px solid #d1d5db;font-weight:700;"
-                placeholder="Enter when customer pays balance">
-              <small style="color:#6b7280;font-size:10px;">Update when balance is received</small>
+              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Paid Amount (₹)</label>
+              <input id="et_paid" class="input" type="number" value="${t.paidAmount || ''}" style="width:100%;color:#111;background:#f8fafc;border:1px solid #d1d5db;"
+                oninput="var f=Number(document.getElementById('et_amount').value)||0;var a=Number(document.getElementById('et_advance').value)||0;var p=Number(this.value)||0;var tot=a+p;document.getElementById('et_total').value=tot;document.getElementById('et_balance').value=Math.max(0,f-tot);">
+              <small style="color:#6b7280;font-size:10px;">Balance received later</small>
             </div>
             <div>
-              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Estimated Days</label>
-              <input id="et_estimatedDays" class="input" type="number" value="${t.estimatedDays || ''}" style="width:100%;color:#111;background:#f8fafc;border:1px solid #d1d5db;">
+              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Total Received (₹)</label>
+              <input id="et_total" class="input" type="number" value="${t.totalReceived || (Number(t.advanceAmount||0) + Number(t.paidAmount||0)) || ''}" readonly style="width:100%;color:#059669;background:#f0fdf4;border:1px solid #d1d5db;font-weight:700;">
+              <small style="color:#6b7280;font-size:10px;">Advance + Paid</small>
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Balance Amount (₹)</label>
+              <input id="et_balance" class="input" type="number" value="${t.balanceAmount || ''}" style="width:100%;color:#dc2626;background:#fef2f2;border:1px solid #d1d5db;font-weight:700;"
+                placeholder="Enter when balance is received">
+              <small style="color:#6b7280;font-size:10px;">Update when customer pays</small>
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Estimated Completion</label>
+              <select id="et_estimatedDays" class="input" style="width:100%;color:#111;background:#f8fafc;border:1px solid #d1d5db;">
+                <option value="0" ${(t.estimatedDays||0)==0?'selected':''}>📅 Same Day</option>
+                <option value="1" ${(t.estimatedDays||0)==1?'selected':''}>1 Day</option>
+                <option value="2" ${(t.estimatedDays||0)==2?'selected':''}>2 Days</option>
+                <option value="3" ${(t.estimatedDays||0)==3?'selected':''}>3 Days</option>
+                <option value="4" ${(t.estimatedDays||0)==4?'selected':''}>4 Days</option>
+                <option value="5" ${(t.estimatedDays||0)==5?'selected':''}>5 Days</option>
+                <option value="7" ${(t.estimatedDays||0)==7?'selected':''}>1 Week</option>
+                <option value="10" ${(t.estimatedDays||0)==10?'selected':''}>10 Days</option>
+                <option value="14" ${(t.estimatedDays||0)==14?'selected':''}>2 Weeks</option>
+                <option value="30" ${(t.estimatedDays||0)==30?'selected':''}>1 Month</option>
+              </select>
             </div>            <div>
               <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">QR Password</label>
               <input id="et_qrPassword" class="input" value="${t.qrPassword || ''}" style="width:100%;color:#111;background:#f8fafc;border:1px solid #d1d5db;">
@@ -5058,8 +5166,11 @@ class OwnerPortalApp {
       customerName,
       productName,
       contact:        document.getElementById('et_contact')?.value?.trim(),
+      address:        document.getElementById('et_address')?.value?.trim(),
       amount:         Number(document.getElementById('et_amount')?.value) || 0,
       advanceAmount:  Number(document.getElementById('et_advance')?.value) || 0,
+      paidAmount:     Number(document.getElementById('et_paid')?.value) || 0,
+      totalReceived:  Number(document.getElementById('et_total')?.value) || 0,
       balanceAmount:  Number(document.getElementById('et_balance')?.value) || 0,
       estimatedDays:  Number(document.getElementById('et_estimatedDays')?.value) || 0,
       qrPassword:     document.getElementById('et_qrPassword')?.value?.trim(),
@@ -5401,7 +5512,7 @@ class OwnerPortalApp {
               ['📞 Phone', t.contact || '—'],
               ['📱 Device', t.productName || t.deviceModel || '—'],
               ['🔑 Password', t.qrPassword || '—'],
-              ['⏱ Est. Days', t.estimatedDays ? t.estimatedDays + ' days' : '—'],
+              ['⏱ Est. Days', t.estimatedDays == 0 ? 'Same Day' : (t.estimatedDays ? t.estimatedDays + ' days' : '—')],
               ['💰 Amount', t.amount ? '₹' + Number(t.amount).toLocaleString('en-IN') : '—'],
               ['📅 Received', t.createdAt || '—'],
               ['✅ Completed', t.completedAt || '—'],
