@@ -5576,16 +5576,29 @@ class OwnerPortalApp {
 
     /* ── Print mode: only the strip, exact paper size ── */
     @media print {
-      @page { size: 101.5mm 25mm landscape; margin: 0; }
-      body { background:#fff; padding:0; display:block; }
+      @page {
+        size: 101.5mm 25mm landscape;
+        margin: 0;
+      }
+      * { box-sizing: border-box; }
+      html, body {
+        width: 101.5mm;
+        height: 25mm;
+        margin: 0;
+        padding: 0;
+        background: #fff;
+        overflow: hidden;
+      }
+      body { display: block; }
       h2, .hint, .print-btn, .steps, .scale-wrap { display: none !important; }
       .print-strip {
         display: flex !important;
         flex-direction: row;
         width: 101.5mm;
         height: 25mm;
-        position: fixed;
-        top: 0; left: 0;
+        margin: 0;
+        padding: 0;
+        /* NO position:fixed — let it flow naturally from top-left */
       }
     }
   </style>
