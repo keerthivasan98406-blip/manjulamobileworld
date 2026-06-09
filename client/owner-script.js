@@ -995,12 +995,14 @@ class OwnerPortalApp {
   }
 
   renderAdminTracking() {
-    // Helper: for old records use amount, for new records (has advanceAmount/paidAmount) use advance+paid only
+    // Helper: only use advance+paid if they were actually entered (> 0)
+    // Old records or records with no advance/paid use the full amount field
     const calcReceived = (t) => {
-      const hasNewFields = t.advanceAmount !== undefined || t.paidAmount !== undefined;
-      if (hasNewFields) {
-        return (Number(t.advanceAmount) || 0) + (Number(t.paidAmount) || 0);
-      }
+      const adv  = Number(t.advanceAmount) || 0;
+      const paid = Number(t.paidAmount)    || 0;
+      // If any advance or paid was explicitly entered, use those (never the full amount)
+      if (adv > 0 || paid > 0) return adv + paid;
+      // Otherwise use the stored amount (old records or fully-paid-at-once records)
       return Number(t.amount) || 0;
     };
 
@@ -1108,8 +1110,9 @@ class OwnerPortalApp {
             const recs = groups[dateKey];
             // Today's sales = Advance + Paid Amount ONLY — never balance, never full service cost
             const totalReceived = recs.reduce((s, t) => {
-              const hasNewFields = t.advanceAmount !== undefined || t.paidAmount !== undefined;
-              if (hasNewFields) return s + (Number(t.advanceAmount)||0) + (Number(t.paidAmount)||0);
+              const adv  = Number(t.advanceAmount) || 0;
+              const paid = Number(t.paidAmount)    || 0;
+              if (adv > 0 || paid > 0) return s + adv + paid;
               return s + (Number(t.amount) || 0);
             }, 0);
             const totalBalance = recs.reduce((s, t) => s + (Number(t.balanceAmount) || 0), 0);
@@ -1141,9 +1144,9 @@ class OwnerPortalApp {
                       const paid = Number(t.paidAmount)    || 0;
                       const bal  = Number(t.balanceAmount) || 0;
                       const full = Number(t.amount)        || 0;
-                      // Old records: show full amount in Total Received, — in Advance/Paid
-                      // New records: show advance+paid in Total Received
-                      const tot  = hasNew ? (adv + paid) : full;
+                      // New record = someone actually entered advance or paid > 0
+                      const isNewRecord = adv > 0 || paid > 0;
+                      const tot  = isNewRecord ? (adv + paid) : full;
                       const displayBal = bal > 0 ? bal : 0;
                       return `
                       <tr style="border-top:1px solid #e5e7eb; background:${i % 2 === 0 ? '#fff' : '#f9fafb'};">
@@ -1153,16 +1156,16 @@ class OwnerPortalApp {
                           <div style="color:#6b7280; font-size:11px;">${t.productName || t.deviceModel || ''}</div>
                         </td>
                         <td style="padding:10px 14px; text-align:right; color:#f59e0b; font-weight:700;">
-                          ${hasNew ? (adv > 0 ? `₹${adv.toLocaleString('en-IN')}` : '<span style="color:#d1d5db;">—</span>') : '<span style="color:#94a3b8;font-size:11px;">—</span>'}
+                          ${isNewRecord ? (adv > 0 ? `₹${adv.toLocaleString('en-IN')}` : '<span style="color:#d1d5db;">—</span>') : '<span style="color:#94a3b8;font-size:11px;">—</span>'}
                         </td>
                         <td style="padding:10px 14px; text-align:right; color:#059669; font-weight:700;">
-                          ${hasNew ? (paid > 0 ? `₹${paid.toLocaleString('en-IN')}` : '<span style="color:#d1d5db;">—</span>') : '<span style="color:#94a3b8;font-size:11px;">—</span>'}
+                          ${isNewRecord ? (paid > 0 ? `₹${paid.toLocaleString('en-IN')}` : '<span style="color:#d1d5db;">—</span>') : '<span style="color:#94a3b8;font-size:11px;">—</span>'}
                         </td>
                         <td style="padding:10px 14px; text-align:right; color:#1d4ed8; font-weight:800;">
                           ${tot > 0 ? `₹${tot.toLocaleString('en-IN')}` : '<span style="color:#d1d5db;">—</span>'}
                         </td>
                         <td style="padding:10px 14px; text-align:right; font-weight:700;">
-                          ${hasNew ? (displayBal > 0
+                          ${isNewRecord ? (displayBal > 0
                             ? `<span style="color:#dc2626; font-weight:800;">₹${displayBal.toLocaleString('en-IN')}</span>`
                             : `<span style="color:#10b981;">✓ Cleared</span>`)
                             : '<span style="color:#94a3b8;font-size:11px;">—</span>'}
