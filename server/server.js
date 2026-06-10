@@ -118,14 +118,21 @@ const trackingSchema = new mongoose.Schema({
   productName: String,
   deviceModel: String,
   contact: String,
+  address: String,
+  dateIn: String,
+  dateOut: String,
   status: String,
   issue: String,
   estimatedDays: Number,
-  amount: Number,
+  amount: { type: Number, default: 0 },
+  advanceAmount: { type: Number, default: 0 },
+  paidAmount:    { type: Number, default: 0 },
+  totalReceived: { type: Number, default: 0 },
+  balanceAmount: { type: Number, default: 0 },
   createdAt: String,
   completedAt: String,
   lastUpdated: String
-}, { timestamps: true });
+}, { timestamps: true, strict: false });
 
 const Tracking = mongoose.model('Tracking', trackingSchema);
 
