@@ -1483,6 +1483,20 @@ class OwnerPortalApp {
         t.contact?.toLowerCase().includes(searchTerm)
       );
     }
+
+    // Sort newest first — by numeric QR ID descending, fallback to createdAt
+    filteredTracking = [...filteredTracking].sort((a, b) => {
+      const numA = parseInt(a.qrId, 10);
+      const numB = parseInt(b.qrId, 10);
+      if (!isNaN(numA) && !isNaN(numB)) return numB - numA;
+      // Fallback: sort by createdAt date string (DD/MM/YYYY)
+      const parseDate = s => {
+        if (!s) return 0;
+        const p = s.split('/');
+        return p.length === 3 ? new Date(`${p[2]}-${p[1]}-${p[0]}`).getTime() : 0;
+      };
+      return parseDate(b.createdAt) - parseDate(a.createdAt);
+    });
     
     return `
       <div class="tracking-list">
