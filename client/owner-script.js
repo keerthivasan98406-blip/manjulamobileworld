@@ -5872,51 +5872,84 @@ class OwnerPortalApp {
   }
 
   // ── Send ZPL command to Zebra-compatible thermal label printer ───────────
-  printTSCLabel(qrId, customerName, deviceModel) {
+  async printTSCLabel(qrId, customerName, deviceModel) {
     const t = this.trackingData.find(tr => tr.qrId === qrId) || {
       qrId, customerName: customerName || '', productName: deviceModel || ''
     };
 
     const barVal = (t.qrId || '').replace(/[^A-Za-z0-9]/g, '');
+    const cust   = (t.customerName || customerName || '').substring(0, 14).toUpperCase().replace(/"/g, '');
+    const dev    = (t.productName || t.deviceModel || deviceModel || '').substring(0, 14).toUpperCase().replace(/"/g, '');
 
-    // ZPL command — 3 labels per strip, Zebra-compatible (Godex/Argox/Zebra)
-    const zpl = [
-      'CT~~CD,~CC^~CT~',
-      '^XA',
-      '~TA000~JSN^LT0^MNW^MTT^PON^PMN^LH0,0^JMA^PR6,6~SD15^JUS^LRN^CI27^PA0,1,1,0',
-      '^XZ',
-      '^XA',
-      '^MMT^PW1200^LL200^LS0',
-      // Label 1
-      `^BY2,3,40^FT112,158^BCN,,N,N^FH\\^FD>:${barVal}^FS`,
-      `^FT61,60^A0N,34,33^FH\\^CI28^FDMANJULA MOBILES^FS^CI27`,
-      `^FT82,100^A0N,34,33^FH\\^CI28^FDSALES & SERVICE^FS^CI27`,
-      `^FT159,192^A0N,34,33^FH\\^CI28^FD${barVal}^FS^CI27`,
-      // Label 2
-      `^BY2,3,40^FT522,158^BCN,,N,N^FH\\^FD>:${barVal}^FS`,
-      `^FT461,60^A0N,34,33^FH\\^CI28^FDMANJULA MOBILES^FS^CI27`,
-      `^FT472,100^A0N,34,33^FH\\^CI28^FDSALES & SERVICE^FS^CI27`,
-      `^FT559,192^A0N,34,33^FH\\^CI28^FD${barVal}^FS^CI27`,
-      // Label 3
-      `^BY2,3,40^FT932,158^BCN,,N,N^FH\\^FD>:${barVal}^FS`,
-      `^FT871,60^A0N,34,33^FH\\^CI28^FDMANJULA MOBILES^FS^CI27`,
-      `^FT882,100^A0N,34,33^FH\\^CI28^FDSALES & SERVICE^FS^CI27`,
-      `^FT969,192^A0N,34,33^FH\\^CI28^FD${barVal}^FS^CI27`,
-      '^PQ1,0,1,Y',
-      '^XZ'
-    ].join('\n');
+    // TSPL command for Zenpert 4T520 / TSC-compatible printer
+    const tspl = [
+      'SIZE 101.5 mm, 25 mm',
+      'GAP 2 mm, 0 mm',
+      'DIRECTION 0,0',
+      'REFERENCE 0,0',
+      'OFFSET 0 mm',
+      'SET PEEL OFF',
+      'SET CUTTER OFF',
+      'SET PARTIAL_CUTTER OFF',
+      'SET TEAR OFF',
+      'CLS',
+      `BARCODE 131,152,"128M",42,0,180,2,4,"!104${barVal}"`,
+      'CODEPAGE 1252',
+      `TEXT 176,105,"0",180,8,8,"${barVal}"`,
+      `TEXT 214,191,"0",180,6,12,"MANJULA MOBILES"`,
+      `TEXT 260,81,"0",180,6,12,"${dev}"`,
+      'BAR 131,22, 78, 2',
+      'BAR 134,21, 1, 2',
+      `BARCODE 402,152,"128M",42,0,180,2,4,"!104${barVal}"`,
+      `TEXT 447,105,"0",180,8,8,"${barVal}"`,
+      `TEXT 485,191,"0",180,6,12,"MANJULA MOBILES"`,
+      `TEXT 531,81,"0",180,6,12,"${dev}"`,
+      'BAR 402,22, 78, 2',
+      'BAR 405,21, 1, 2',
+      `BARCODE 672,152,"128M",42,0,180,2,4,"!104${barVal}"`,
+      `TEXT 717,105,"0",180,8,8,"${barVal}"`,
+      `TEXT 755,191,"0",180,6,12,"MANJULA MOBILES"`,
+      `TEXT 801,81,"0",180,6,12,"${dev}"`,
+      'BAR 672,22, 78, 2',
+      'BAR 675,21, 1, 2',
+      'PRINT 1,1'
+    ].join('\r\n');
 
-    const blob = new Blob([zpl], { type: 'application/octet-stream' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href     = url;
-    a.download = `label-${barVal}.prn`;
-    a.click();
-    URL.revokeObjectURL(url);
-
-    setTimeout(() => {
-      alert('✅ Label file downloaded: label-' + barVal + '.prn\n\nDrag & drop onto your Zebra printer in Devices and Printers to print.');
-    }, 300);
+    // Try to print directly via server (no Windows dialog, no drag-drop)
+    try {
+      const response = await fetch(`${this.API_URL}/print-label`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tspl })
+      });
+      const result = await response.json();
+      if (result.success) {
+        // Show brief success — no alert needed for quick workflow
+        const btn = document.activeElement;
+        if (btn) {
+          const orig = btn.textContent;
+          btn.textContent = '✅ Printed!';
+          btn.style.background = '#10b981';
+          setTimeout(() => {
+            btn.textContent = orig;
+            btn.style.background = '';
+          }, 2000);
+        }
+        return;
+      }
+      throw new Error(result.error || 'Print failed');
+    } catch (serverErr) {
+      console.warn('Server print failed, falling back to download:', serverErr.message);
+      // Fallback: download .prn file
+      const blob = new Blob([tspl], { type: 'application/octet-stream' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `label-${barVal}.prn`;
+      a.click();
+      URL.revokeObjectURL(url);
+      alert('Server print unavailable. File downloaded: label-' + barVal + '.prn\nDrag onto your Zenpert printer to print.');
+    }
   }
 
   toggleTrackingForm() {

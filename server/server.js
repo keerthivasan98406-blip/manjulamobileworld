@@ -701,6 +701,43 @@ app.delete('/api/products/:id', async (req, res) => {
   }
 });
 
+// Direct TSPL print endpoint — sends raw TSPL data directly to the printer
+// The printer name must be configured in the server environment
+app.post('/api/print-label', async (req, res) => {
+  try {
+    const { tspl } = req.body;
+    if (!tspl) return res.status(400).json({ error: 'No TSPL data provided' });
+
+    const os = require('os');
+    const fs = require('fs');
+    const { exec } = require('child_process');
+    const path = require('path');
+
+    // Write TSPL to a temp file
+    const tmpFile = path.join(os.tmpdir(), `label-${Date.now()}.prn`);
+    fs.writeFileSync(tmpFile, tspl, 'binary');
+
+    // Get printer name from env or use default
+    const printerName = process.env.LABEL_PRINTER_NAME || 'Zenpert 4T520';
+
+    // Send to printer using Windows copy command
+    const cmd = `copy /b "${tmpFile}" "\\\\.\\${printerName}"`;
+    exec(cmd, (error, stdout, stderr) => {
+      // Clean up temp file
+      try { fs.unlinkSync(tmpFile); } catch(e) {}
+
+      if (error) {
+        console.error('❌ Print error:', error.message);
+        return res.status(500).json({ error: 'Print failed: ' + error.message, cmd });
+      }
+      console.log('✅ Label printed to:', printerName);
+      res.json({ success: true, printer: printerName });
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Tracking Routes
 app.get('/api/tracking', async (req, res) => {
   try {
