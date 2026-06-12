@@ -5892,9 +5892,6 @@ class OwnerPortalApp {
       'SET CUTTER OFF',
       'SET PARTIAL_CUTTER OFF',
       'SET TEAR OFF',
-      // HOME resets paper to the start of the next label gap before printing
-      // This prevents 5 empty rows on first print (paper was at tear bar position)
-      'HOME',
       'CLS',
       `BARCODE 131,152,"128M",42,0,180,2,4,"!104${barVal}"`,
       'CODEPAGE 1252',
