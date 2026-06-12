@@ -5915,40 +5915,45 @@ class OwnerPortalApp {
       'PRINT 1,1'
     ].join('\r\n');
 
-    // Try to print directly via server (no Windows dialog, no drag-drop)
+    // Try local print agent first (port 9101), then fall back to download
     try {
-      const response = await fetch(`${this.API_URL}/print-label`, {
+      const response = await fetch('http://localhost:9101/print', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tspl })
       });
       const result = await response.json();
       if (result.success) {
-        // Show brief success — no alert needed for quick workflow
         const btn = document.activeElement;
-        if (btn) {
+        if (btn && btn.textContent) {
           const orig = btn.textContent;
           btn.textContent = '✅ Printed!';
           btn.style.background = '#10b981';
-          setTimeout(() => {
-            btn.textContent = orig;
-            btn.style.background = '';
-          }, 2000);
+          setTimeout(() => { btn.textContent = orig; btn.style.background = ''; }, 2000);
         }
         return;
       }
-      throw new Error(result.error || 'Print failed');
-    } catch (serverErr) {
-      console.warn('Server print failed, falling back to download:', serverErr.message);
-      // Fallback: download .prn file
-      const blob = new Blob([tspl], { type: 'application/octet-stream' });
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-      a.href     = url;
-      a.download = `label-${barVal}.prn`;
-      a.click();
-      URL.revokeObjectURL(url);
-      alert('Server print unavailable. File downloaded: label-' + barVal + '.prn\nDrag onto your Zenpert printer to print.');
+      throw new Error(result.error || 'Agent print failed');
+    } catch (agentErr) {
+      // Agent not running — try cloud server
+      try {
+        const response = await fetch(`${this.API_URL}/print-label`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tspl })
+        });
+        const result = await response.json();
+        if (result.success) return;
+        throw new Error(result.error);
+      } catch (serverErr) {
+        // Both failed — download as fallback
+        const blob = new Blob([tspl], { type: 'application/octet-stream' });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href = url; a.download = `label-${barVal}.prn`; a.click();
+        URL.revokeObjectURL(url);
+        alert('⚠️ Print agent not running.\n\nFile downloaded: label-' + barVal + '.prn\n\nTo enable one-click printing:\n1. Run print-agent/start-agent.bat on this PC\n2. Keep it running in the background');
+      }
     }
   }
 
