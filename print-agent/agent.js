@@ -17,7 +17,8 @@ const fs = require('fs');
 const path = require('path');
 
 const PORT = 9101;
-const PRINTER_NAME = 'Zenpert 4T520'; // Change to your exact printer name
+const PRINTER_NAME = 'Zenpert 4T520'; // Display name (for info only)
+const PRINTER_PORT = 'USB001';         // Windows port name — run: wmic printer get name,portname
 
 const server = http.createServer((req, res) => {
   // Allow cross-origin requests from the website
@@ -43,12 +44,16 @@ const server = http.createServer((req, res) => {
           return;
         }
 
-        // Write to temp file
-        const tmpFile = path.join(os.tmpdir(), `label-${Date.now()}.prn`);
+        // Write to temp file — use project folder to avoid short-path issues
+        const tmpFile = path.join(__dirname, `label-${Date.now()}.prn`);
         fs.writeFileSync(tmpFile, tspl, 'binary');
 
-        // Send directly to printer — bypasses Windows dialog entirely
-        const cmd = `copy /b "${tmpFile}" "\\\\.\\${PRINTER_NAME}"`;
+        console.log('Temp file:', tmpFile);
+        console.log('Exists:', fs.existsSync(tmpFile));
+
+        // Send directly to printer port — bypasses Windows dialog entirely
+        // Using port name (USB001) is more reliable than printer display name
+        const cmd = `copy /b "${tmpFile}" ${PRINTER_PORT}`;
         exec(cmd, (error) => {
           try { fs.unlinkSync(tmpFile); } catch(e) {}
           if (error) {
@@ -56,7 +61,7 @@ const server = http.createServer((req, res) => {
             res.writeHead(500);
             res.end(JSON.stringify({ error: error.message }));
           } else {
-            console.log('✅ Printed label to:', PRINTER_NAME);
+            console.log('✅ Printed label to:', PRINTER_NAME, '(port:', PRINTER_PORT + ')');
             res.writeHead(200);
             res.end(JSON.stringify({ success: true }));
           }
