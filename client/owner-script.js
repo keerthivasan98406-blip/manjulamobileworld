@@ -5735,29 +5735,36 @@ class OwnerPortalApp {
     /* ── Print mode: only the strip, exact paper size ── */
     @media print {
       @page {
-        size: 101.5mm 25mm landscape;
+        size: 101.5mm 25mm;
         margin: 0;
-        margin-top: -1mm;
       }
-      * { box-sizing: border-box; }
-      html, body {
+      html,
+      body {
         width: 101.5mm;
         height: 25mm;
         margin: 0;
         padding: 0;
-        background: #fff;
         overflow: hidden;
+        background: #fff;
       }
-      body { display: block; }
-      h2, .hint, .print-btn, .steps, .scale-wrap { display: none !important; }
+      body * {
+        visibility: hidden;
+      }
+      .print-strip,
+      .print-strip * {
+        visibility: visible;
+      }
       .print-strip {
         display: flex !important;
         flex-direction: row;
         width: 101.5mm;
         height: 25mm;
-        margin: 0;
-        padding: 0;
-        /* NO position:fixed — let it flow naturally from top-left */
+        position: absolute;
+        top: 0;
+        left: 0;
+      }
+      h2, .hint, .print-btn, .steps, .scale-wrap {
+        display: none !important;
       }
     }
   </style>
