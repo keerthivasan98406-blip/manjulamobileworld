@@ -47,6 +47,8 @@ class OwnerPortalApp {
     this.sparePartsStock = [];
     this.sparePartsSearch = "";
     this.customCategories = JSON.parse(localStorage.getItem('manjula_custom_categories') || '[]');
+    this.stockTotalValueUnlocked = false;
+    this.spareTotalValueUnlocked = false;
     
     this.init()
   }
@@ -646,6 +648,11 @@ class OwnerPortalApp {
       const response = await fetch(`${this.API_URL}/display-stock`);
       if (response.ok) {
         this.displayStock = await response.json();
+        this.displayStock.sort((a, b) => {
+          const nameA = (a.displayName || '').trim().toLowerCase();
+          const nameB = (b.displayName || '').trim().toLowerCase();
+          return nameA.localeCompare(nameB);
+        });
         console.log('✅ Loaded display stock from database:', this.displayStock.length);
       } else {
         this.displayStock = [];
@@ -2349,9 +2356,10 @@ class OwnerPortalApp {
                 </div>
 
                 <!-- Column headers -->
-                <div style="display:grid; grid-template-columns:2fr 1.2fr 1fr 1fr 32px; gap:6px; margin-bottom:4px; padding:0 2px;">
+                <div style="display:grid; grid-template-columns:2fr 1.2fr 0.8fr 1fr 1fr 32px; gap:6px; margin-bottom:4px; padding:0 2px;">
                   <span style="font-size:11px; font-weight:700; color:#6b7280;">Product Name</span>
                   <span style="font-size:11px; font-weight:700; color:#6b7280;">Category</span>
+                  <span style="font-size:11px; font-weight:700; color:#6b7280;">Qty</span>
                   <span style="font-size:11px; font-weight:700; color:#6b7280;">Amount (₹)</span>
                   <span style="font-size:11px; font-weight:700; color:#6b7280;">Discount (₹)</span>
                   <span></span>
@@ -2539,7 +2547,16 @@ class OwnerPortalApp {
                       <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:180px;">Display Name</th>
                       <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:90px; text-align:center;">Price (₹)</th>
                       <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:100px; text-align:center;">Stock</th>
-                      <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:120px; text-align:center;">Total Value (₹)</th>
+                      <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:170px; text-align:center;">
+                        <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+                          <span>Total Value (₹) + Password</span>
+                          <input type="password" id="stockTotalValuePassword" placeholder="Enter password"
+                            value="${this.stockTotalValueUnlocked ? 'admin123' : ''}"
+                            oninput="app.checkStockTotalValuePassword(this.value)"
+                            onkeydown="if(event.key === 'Enter') app.checkStockTotalValuePassword(this.value, true)"
+                            style="width:105px; padding:3px 6px; border:1px solid #cbd5e1; border-radius:4px; font-size:11px; text-align:center; color:#000; outline:none; font-weight:normal;">
+                        </div>
+                      </th>
                       <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:200px; text-align:center;">Adjust Stock</th>
                       <th style="padding:12px 14px; font-weight:700; text-align:center; min-width:70px;">Action</th>
                     </tr>
@@ -2570,7 +2587,10 @@ class OwnerPortalApp {
                             </span>
                           </td>
                           <td style="padding:10px 14px; text-align:center; font-weight:700; color:#1d4ed8; border-right:1px solid #e2e8f0;">
-                            ${price && stock ? `₹${totalValue.toLocaleString('en-IN')}` : '<span style="color:#9ca3af;">—</span>'}
+                            ${this.stockTotalValueUnlocked ? 
+                              (price && stock ? `₹${totalValue.toLocaleString('en-IN')}` : '<span style="color:#9ca3af;">—</span>') :
+                              '<span style="color:#94a3b8; font-family:monospace; font-size:14px;">••••</span>'
+                            }
                           </td>
                           <td style="padding:8px 14px; border-right:1px solid #e2e8f0;">
                             <div style="display:flex; gap:6px; align-items:center; justify-content:center;">
@@ -2611,7 +2631,10 @@ class OwnerPortalApp {
                         ${filtered.reduce((sum, d) => sum + (Number(d.stock) || 0), 0)} units
                       </td>
                       <td style="padding:12px 14px; text-align:center; font-size:15px; font-weight:900; color:#86efac; border-right:1px solid #334155;">
-                        ₹${filtered.reduce((sum, d) => sum + ((Number(d.price) || 0) * (Number(d.stock) || 0)), 0).toLocaleString('en-IN')}
+                        ${this.stockTotalValueUnlocked ? 
+                          `₹${filtered.reduce((sum, d) => sum + ((Number(d.price) || 0) * (Number(d.stock) || 0)), 0).toLocaleString('en-IN')}` :
+                          '<span style="color:#94a3b8; font-family:monospace; font-size:14px;">••••</span>'
+                        }
                       </td>
                       <td colspan="2" style="padding:12px 14px; text-align:center; font-size:12px; color:#94a3b8;">
                         ${filtered.length} item${filtered.length !== 1 ? 's' : ''}
@@ -2634,6 +2657,24 @@ class OwnerPortalApp {
   toggleStockHistory(stockItemId) {
     const el = document.getElementById(`hist_${stockItemId}`);
     if (el) el.style.display = el.style.display === 'none' ? 'table-row' : 'none';
+  }
+
+  checkStockTotalValuePassword(val, isSubmit = false) {
+    const isCorrect = (val === 'admin123');
+    if (isCorrect !== this.stockTotalValueUnlocked) {
+      this.stockTotalValueUnlocked = isCorrect;
+      this.renderPage('admin-display-stock');
+      setTimeout(() => {
+        const input = document.getElementById('stockTotalValuePassword');
+        if (input) {
+          input.focus();
+          input.value = val;
+          input.setSelectionRange(val.length, val.length);
+        }
+      }, 50);
+    } else if (isSubmit && !isCorrect) {
+      alert('❌ Invalid password');
+    }
   }
 
   async saveDisplayStock() {
@@ -2664,6 +2705,11 @@ class OwnerPortalApp {
       if (response.ok) {
         const saved = await response.json();
         this.displayStock.unshift(saved);
+        this.displayStock.sort((a, b) => {
+          const nameA = (a.displayName || '').trim().toLowerCase();
+          const nameB = (b.displayName || '').trim().toLowerCase();
+          return nameA.localeCompare(nameB);
+        });
         alert('✅ Display stock saved!');
         this.renderPage('admin-display-stock');
       } else {
@@ -2892,6 +2938,11 @@ class OwnerPortalApp {
         const updated = await response.json();
         const idx = this.displayStock.findIndex(d => d.stockItemId === stockItemId);
         if (idx !== -1) this.displayStock[idx] = updated;
+        this.displayStock.sort((a, b) => {
+          const nameA = (a.displayName || '').trim().toLowerCase();
+          const nameB = (b.displayName || '').trim().toLowerCase();
+          return nameA.localeCompare(nameB);
+        });
         document.getElementById('editStockModal')?.remove();
         this.renderPage('admin-display-stock');
       } else {
@@ -3619,7 +3670,7 @@ class OwnerPortalApp {
     if (!container) return;
     const rowId = this._saleRowId();
     const rowHtml = `
-      <div id="${rowId}" style="display:grid; grid-template-columns:2fr 1.2fr 1fr 1fr 32px; gap:6px; margin-bottom:6px; align-items:start;">
+      <div id="${rowId}" style="display:grid; grid-template-columns:2fr 1.2fr 0.8fr 1fr 1fr 32px; gap:6px; margin-bottom:6px; align-items:start;">
         <div style="position:relative;">
           <input class="input sp_name" data-row="${rowId}" placeholder="Type to search products..."
             style="width:100%; font-size:13px; color:#111; background:#fff; border:1px solid #d1d5db;"
@@ -3630,6 +3681,9 @@ class OwnerPortalApp {
         </div>
         <input class="input sp_cat" data-row="${rowId}" placeholder="Category" readonly
           style="width:100%; font-size:13px; background:#f9fafb; color:#6b7280; border:1px solid #e5e7eb;">
+        <input class="input sp_qty" data-row="${rowId}" type="number" placeholder="1" min="1" value="1"
+          style="width:100%; font-size:13px; color:#111; border:1px solid #d1d5db;"
+          oninput="app.updateBillPreview()">
         <input class="input sp_amount" data-row="${rowId}" type="number" placeholder="Amount" min="0"
           style="width:100%; font-size:13px; color:#111; border:1px solid #d1d5db;"
           oninput="app.updateBillPreview()">
@@ -3717,6 +3771,7 @@ class OwnerPortalApp {
     const items = rows.map(row => ({
       name:     (row.querySelector('.sp_name')?.value || '').trim(),
       category: (row.querySelector('.sp_cat')?.value  || '').trim(),
+      quantity: Number(row.querySelector('.sp_qty')?.value)      || 1,
       amount:   Number(row.querySelector('.sp_amount')?.value)   || 0,
       discount: Number(row.querySelector('.sp_discount')?.value) || 0
     })).filter(i => i.name);
@@ -3727,9 +3782,9 @@ class OwnerPortalApp {
     }
 
     // Build combined fields for backward-compat storage
-    const productName = items.map(i => i.name).join(', ');
-    const totalAmount = items.reduce((s, i) => s + i.amount, 0);
-    const totalDiscount = items.reduce((s, i) => s + i.discount, 0);
+    const productName = items.map(i => i.quantity > 1 ? `${i.name} (x${i.quantity})` : i.name).join(', ');
+    const totalAmount = items.reduce((s, i) => s + (i.amount * i.quantity), 0);
+    const totalDiscount = items.reduce((s, i) => s + (i.discount * i.quantity), 0);
 
     const saleData = {
       customerName,
@@ -3769,9 +3824,10 @@ class OwnerPortalApp {
     let total = 0;
     if (container) {
       Array.from(container.children).forEach(row => {
+        const qty      = Number(row.querySelector('.sp_qty')?.value)      || 1;
         const amount   = Number(row.querySelector('.sp_amount')?.value)   || 0;
         const discount = Number(row.querySelector('.sp_discount')?.value) || 0;
-        total += Math.max(0, amount - discount);
+        total += Math.max(0, (amount - discount) * qty);
       });
     }
     const el = document.getElementById('bill_preview_total');
@@ -3945,7 +4001,20 @@ class OwnerPortalApp {
 
             <!-- Product -->
             <div style="font-weight:bold;margin-bottom:3px;">PRODUCT DETAILS</div>
-            <div style="display:flex;justify-content:space-between;"><span>Product</span><span style="font-weight:bold;text-align:right;max-width:55%;word-break:break-word;">${sale.productName}</span></div>
+            ${
+              sale.productItems && sale.productItems.length > 0
+                ? sale.productItems.map((it, idx) => {
+                    const qty = Number(it.quantity) || 1;
+                    const qtyStr = qty > 1 ? ` (x${qty})` : '';
+                    return `
+                      <div style="display:flex;justify-content:space-between;margin-bottom:2px;">
+                        <span style="max-width:65%;word-break:break-word;">${it.name}${qtyStr}</span>
+                        <span style="font-weight:bold;">Rs.${(it.amount * qty).toLocaleString('en-IN')}</span>
+                      </div>
+                    `;
+                  }).join('')
+                : `<div style="display:flex;justify-content:space-between;"><span>Product</span><span style="font-weight:bold;text-align:right;max-width:55%;word-break:break-word;">${sale.productName}</span></div>`
+            }
             ${sale.productModel ? `<div style="display:flex;justify-content:space-between;"><span>Model</span><span style="font-weight:bold;">${sale.productModel}</span></div>` : ''}
             ${sale.warrantyPeriod ? `<div style="display:flex;justify-content:space-between;"><span>Warranty</span><span style="font-weight:bold;">${sale.warrantyPeriod}</span></div>` : ''}
 
@@ -4193,8 +4262,10 @@ class OwnerPortalApp {
     doc.text('PRODUCT DETAILS', 4, y); y += 5;
     items.forEach((it, i) => {
       const itAmt = Number(it.amount || 0), itDisc = Number(it.discount || 0);
-      rowText(`${i + 1}. ${it.name || '—'}`, 'Rs.' + itAmt.toLocaleString('en-IN'));
-      if (itDisc > 0) rowText('   Discount', '- Rs.' + itDisc.toLocaleString('en-IN'));
+      const qty = Number(it.quantity) || 1;
+      const qtyStr = qty > 1 ? ` (x${qty})` : '';
+      rowText(`${i + 1}. ${it.name || '—'}${qtyStr}`, 'Rs.' + (itAmt * qty).toLocaleString('en-IN'));
+      if (itDisc > 0) rowText('   Discount', '- Rs.' + (itDisc * qty).toLocaleString('en-IN'));
     });
     if (sale.warrantyPeriod) rowText('Warranty', sale.warrantyPeriod);
     dashed();
@@ -4577,7 +4648,7 @@ class OwnerPortalApp {
       <p style="color:#6b7280;font-size:12px;">Generated: ${new Date().toLocaleString('en-IN')} | Total Items: ${data.length}</p>
       <table><thead><tr><th>#</th><th>Display Name</th><th>Display ID</th><th>Price</th><th>Stock Qty</th><th>Status</th></tr></thead>
       <tbody>${rows}</tbody></table>
-      <div class="total">Total Stock Value: ₹${totalValue.toLocaleString('en-IN')}</div>
+      <div class="total">Total Stock Value: ${this.stockTotalValueUnlocked ? '₹' + totalValue.toLocaleString('en-IN') : '••••'}</div>
       <br><button onclick="window.print()" style="padding:10px 24px;background:#1e293b;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer;">🖨️ Print / Save as PDF</button>
       </body></html>
     `);
@@ -5735,7 +5806,7 @@ class OwnerPortalApp {
     /* ── Print mode: only the strip, exact paper size ── */
     @media print {
       @page {
-        size: 101.5mm 25mm;
+        size: 101.5mm 25mm portrait;
         margin: 0;
       }
       html,
@@ -6269,6 +6340,11 @@ class OwnerPortalApp {
         d.displayName?.toLowerCase().includes(term) ||
         d.displayId?.toLowerCase().includes(term)
       );
+      matched.sort((a, b) => {
+        const nameA = (a.displayName || '').trim().toLowerCase();
+        const nameB = (b.displayName || '').trim().toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
 
       if (matched.length === 0) {
         dropdown.innerHTML = `<div style="padding:12px; text-align:center; color:#9ca3af; font-size:12px;">No items found</div>`;
@@ -6513,7 +6589,16 @@ class OwnerPortalApp {
                       <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:100px; text-align:center;">Owner Price (₹)</th>
                       <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:110px; text-align:center;">Customer Price (₹)</th>
                       <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:100px; text-align:center;">Stock</th>
-                      <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:120px; text-align:center;">Total Value (₹)</th>
+                      <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:170px; text-align:center;">
+                        <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+                          <span>Total Value (₹) + Password</span>
+                          <input type="password" id="spareTotalValuePassword" placeholder="Enter password"
+                            value="${this.spareTotalValueUnlocked ? 'admin123' : ''}"
+                            oninput="app.checkSpareTotalValuePassword(this.value)"
+                            onkeydown="if(event.key === 'Enter') app.checkSpareTotalValuePassword(this.value, true)"
+                            style="width:105px; padding:3px 6px; border:1px solid #cbd5e1; border-radius:4px; font-size:11px; text-align:center; color:#000; outline:none; font-weight:normal;">
+                        </div>
+                      </th>
                       <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:200px; text-align:center;">Adjust Stock</th>
                       <th style="padding:12px 14px; font-weight:700; text-align:center; min-width:70px;">Action</th>
                     </tr>
@@ -6548,7 +6633,10 @@ class OwnerPortalApp {
                             </span>
                           </td>
                           <td style="padding:10px 14px; text-align:center; font-weight:700; color:#1d4ed8; border-right:1px solid #e2e8f0;">
-                            ${customerPrice && stock ? `₹${totalValue.toLocaleString('en-IN')}` : '<span style="color:#9ca3af;">—</span>'}
+                            ${this.spareTotalValueUnlocked ? 
+                              (customerPrice && stock ? `₹${totalValue.toLocaleString('en-IN')}` : '<span style="color:#9ca3af;">—</span>') :
+                              '<span style="color:#94a3b8; font-family:monospace; font-size:14px;">••••</span>'
+                            }
                           </td>
                           <td style="padding:8px 14px; border-right:1px solid #e2e8f0;">
                             <div style="display:flex; gap:6px; align-items:center; justify-content:center;">
@@ -6589,7 +6677,10 @@ class OwnerPortalApp {
                         ${filtered.reduce((sum, d) => sum + (Number(d.stock) || 0), 0)} units
                       </td>
                       <td style="padding:12px 14px; text-align:center; font-size:15px; font-weight:900; color:#86efac; border-right:1px solid #334155;">
-                        ₹${filtered.reduce((sum, d) => sum + ((Number(d.customerPrice) || 0) * (Number(d.stock) || 0)), 0).toLocaleString('en-IN')}
+                        ${this.spareTotalValueUnlocked ? 
+                          `₹${filtered.reduce((sum, d) => sum + ((Number(d.customerPrice) || 0) * (Number(d.stock) || 0)), 0).toLocaleString('en-IN')}` :
+                          '<span style="color:#94a3b8; font-family:monospace; font-size:14px;">••••</span>'
+                        }
                       </td>
                       <td colspan="2" style="padding:12px 14px; text-align:center; font-size:12px; color:#94a3b8;">
                         ${filtered.length} item${filtered.length !== 1 ? 's' : ''}
@@ -6607,6 +6698,24 @@ class OwnerPortalApp {
   toggleSparePartsForm() {
     const f = document.getElementById('sparePartsForm');
     if (f) f.style.display = f.style.display === 'none' ? 'block' : 'none';
+  }
+
+  checkSpareTotalValuePassword(val, isSubmit = false) {
+    const isCorrect = (val === 'admin123');
+    if (isCorrect !== this.spareTotalValueUnlocked) {
+      this.spareTotalValueUnlocked = isCorrect;
+      this.renderPage('admin-spare-parts');
+      setTimeout(() => {
+        const input = document.getElementById('spareTotalValuePassword');
+        if (input) {
+          input.focus();
+          input.value = val;
+          input.setSelectionRange(val.length, val.length);
+        }
+      }, 50);
+    } else if (isSubmit && !isCorrect) {
+      alert('❌ Invalid password');
+    }
   }
 
   searchSpareParts(value) {
@@ -6926,7 +7035,7 @@ class OwnerPortalApp {
           <td style="padding:8px 10px; border:1px solid #e2e8f0; text-align:center; color:#d97706; font-weight:700;">${ownerPrice ? '₹' + ownerPrice.toLocaleString('en-IN') : '—'}</td>
           <td style="padding:8px 10px; border:1px solid #e2e8f0; text-align:center; color:#16a34a; font-weight:700;">${customerPrice ? '₹' + customerPrice.toLocaleString('en-IN') : '—'}</td>
           <td style="padding:8px 10px; border:1px solid #e2e8f0; text-align:center; font-weight:900; color:${stockColor};">${stock}</td>
-          <td style="padding:8px 10px; border:1px solid #e2e8f0; text-align:center; font-weight:700; color:#1d4ed8;">${customerPrice && stock ? '₹' + (customerPrice * stock).toLocaleString('en-IN') : '—'}</td>
+          <td style="padding:8px 10px; border:1px solid #e2e8f0; text-align:center; font-weight:700; color:#1d4ed8;">${this.spareTotalValueUnlocked ? (customerPrice && stock ? '₹' + (customerPrice * stock).toLocaleString('en-IN') : '—') : '••••'}</td>
         </tr>`;
     }).join('');
     const totalUnits = data.reduce((s, p) => s + (Number(p.stock) || 0), 0);
@@ -6940,7 +7049,7 @@ class OwnerPortalApp {
       <table>
         <thead><tr><th>#</th><th>Part Name</th><th>Part ID</th><th>Owner Price</th><th>Customer Price</th><th>Stock</th><th>Total Value</th></tr></thead>
         <tbody>${rows}</tbody>
-        <tfoot><tr><td colspan="5" style="text-align:right;">GRAND TOTAL</td><td style="text-align:center;">${totalUnits} units</td><td style="text-align:center;">₹${totalValue.toLocaleString('en-IN')}</td></tr></tfoot>
+        <tfoot><tr><td colspan="5" style="text-align:right;">GRAND TOTAL</td><td style="text-align:center;">${totalUnits} units</td><td style="text-align:center;">${this.spareTotalValueUnlocked ? '₹' + totalValue.toLocaleString('en-IN') : '••••'}</td></tr></tfoot>
       </table>
       <script>window.print();<\/script>
       </body></html>`);
@@ -6957,11 +7066,11 @@ class OwnerPortalApp {
       Number(p.ownerPrice) || 0,
       Number(p.customerPrice) || 0,
       Number(p.stock) || 0,
-      (Number(p.customerPrice) || 0) * (Number(p.stock) || 0)
+      this.spareTotalValueUnlocked ? ((Number(p.customerPrice) || 0) * (Number(p.stock) || 0)) : '••••'
     ]);
     const totalUnits = data.reduce((s, p) => s + (Number(p.stock) || 0), 0);
     const totalValue = data.reduce((s, p) => s + ((Number(p.customerPrice) || 0) * (Number(p.stock) || 0)), 0);
-    rows.push(['', 'GRAND TOTAL', '', '', '', totalUnits, totalValue]);
+    rows.push(['', 'GRAND TOTAL', '', '', '', totalUnits, this.spareTotalValueUnlocked ? totalValue : '••••']);
 
     const csvContent = [headers, ...rows]
       .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
