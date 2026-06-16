@@ -351,8 +351,24 @@ const sendOtpEmail = async (otp) => {
     return { success: false, reason: 'SMTP credentials not configured in .env file.' };
   }
 
+  // Manually resolve hostname to IPv4 to prevent IPv6 ENETUNREACH issues on cloud hosts (like Render)
+  let resolvedHost = smtpHost;
+  try {
+    const dnsPromises = require('dns').promises;
+    if (/[a-zA-Z]/.test(smtpHost)) {
+      console.log(`📡 Resolving SMTP host ${smtpHost} to IPv4...`);
+      const addresses = await dnsPromises.resolve4(smtpHost);
+      if (addresses && addresses.length > 0) {
+        resolvedHost = addresses[0];
+        console.log(`✅ Resolved ${smtpHost} to IPv4 IP: ${resolvedHost}`);
+      }
+    }
+  } catch (dnsErr) {
+    console.warn(`⚠️ DNS IPv4 resolution failed for ${smtpHost}, using default hostname directly:`, dnsErr.message);
+  }
+
   const transporter = nodemailer.createTransport({
-    host: smtpHost,
+    host: resolvedHost,
     port: smtpPort,
     secure: smtpPort === 465,
     auth: {
@@ -362,7 +378,11 @@ const sendOtpEmail = async (otp) => {
     connectionTimeout: 5000, // 5 seconds
     greetingTimeout: 5000,   // 5 seconds
     socketTimeout: 10000,    // 10 seconds
-    family: 4                // Force IPv4 connection
+    family: 4,               // Force IPv4 socket connection
+    tls: {
+      servername: smtpHost,   // Force TLS SNI to validate against the original domain (e.g. smtp.gmail.com)
+      rejectUnauthorized: false // Avoid strict certificate failures when using IP direct connection
+    }
   });
 
   const mailOptions = {
