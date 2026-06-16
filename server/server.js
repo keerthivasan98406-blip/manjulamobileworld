@@ -361,7 +361,8 @@ const sendOtpEmail = async (otp) => {
     },
     connectionTimeout: 5000, // 5 seconds
     greetingTimeout: 5000,   // 5 seconds
-    socketTimeout: 10000     // 10 seconds
+    socketTimeout: 10000,    // 10 seconds
+    family: 4                // Force IPv4 connection
   });
 
   const mailOptions = {
