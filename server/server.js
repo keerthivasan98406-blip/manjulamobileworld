@@ -344,11 +344,62 @@ const sendOtpEmail = async (otp) => {
   const smtpPort = parseInt(process.env.SMTP_PORT || '587');
   const smtpUser = process.env.SMTP_USER;
   const smtpPass = process.env.SMTP_PASS;
+  const resendApiKey = process.env.RESEND_API_KEY;
 
+  const htmlContent = `
+    <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; background-color: #ffffff;">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <h2 style="color: #dc2626; margin: 0; font-size: 24px;">Manjula Mobile World</h2>
+        <p style="color: #64748b; margin: 4px 0 0 0; font-size: 14px;">Owner Portal Secure Authentication</p>
+      </div>
+      <div style="background-color: #f8fafc; border-radius: 8px; padding: 18px; text-align: center; margin-bottom: 24px;">
+        <p style="color: #475569; margin: 0 0 10px 0; font-size: 14px;">Your One-Time Password (OTP) for admin access is:</p>
+        <span style="font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #1e293b;">${otp}</span>
+        <p style="color: #94a3b8; margin: 10px 0 0 0; font-size: 11px;">This OTP is valid for 5 minutes. Do not share it with anyone.</p>
+      </div>
+      <p style="color: #475569; font-size: 13px; line-height: 1.5; margin-bottom: 0;">
+        If you did not request this login, please change your admin credentials immediately.
+      </p>
+    </div>
+  `;
+
+  // Method 1: Resend HTTP API (Ideal for Render where SMTP ports are blocked)
+  if (resendApiKey) {
+    console.log('📡 Attempting to send OTP email via Resend HTTP API...');
+    try {
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${resendApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from: 'Manjula Mobile World <onboarding@resend.dev>',
+          to: 'keerthivasan98406@gmail.com',
+          subject: '🔐 Admin Login OTP - Manjula Mobile World',
+          html: htmlContent
+        })
+      });
+
+      const resData = await response.json();
+      if (response.ok) {
+        console.log('✉️ OTP email successfully sent via Resend HTTP API:', resData.id);
+        return { success: true };
+      } else {
+        console.warn('⚠️ Resend HTTP API returned error:', resData);
+        // If API key is invalid/expired, it will print warning and fall back to SMTP
+      }
+    } catch (apiErr) {
+      console.error('❌ Resend HTTP API request failed:', apiErr);
+      // Fall back to SMTP
+    }
+  }
+
+  // Method 2: Standard SMTP fallback (for localhost or if SMTP is opened)
   if (!smtpUser || !smtpPass) {
     console.log('⚠️ SMTP credentials (SMTP_USER/SMTP_PASS) not set in environment variables.');
     console.log(`🔑 [OTP Verification] Generated OTP is: ${otp}`);
-    return { success: false, reason: 'SMTP credentials not configured in .env file.' };
+    return { success: false, reason: 'SMTP credentials not configured.' };
   }
 
   // Manually resolve hostname to IPv4 to prevent IPv6 ENETUNREACH issues on cloud hosts (like Render)
@@ -389,26 +440,11 @@ const sendOtpEmail = async (otp) => {
     from: `"Manjula Mobile World" <${smtpUser}>`,
     to: 'keerthivasan98406@gmail.com',
     subject: '🔐 Admin Login OTP - Manjula Mobile World',
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; background-color: #ffffff;">
-        <div style="text-align: center; margin-bottom: 24px;">
-          <h2 style="color: #dc2626; margin: 0; font-size: 24px;">Manjula Mobile World</h2>
-          <p style="color: #64748b; margin: 4px 0 0 0; font-size: 14px;">Owner Portal Secure Authentication</p>
-        </div>
-        <div style="background-color: #f8fafc; border-radius: 8px; padding: 18px; text-align: center; margin-bottom: 24px;">
-          <p style="color: #475569; margin: 0 0 10px 0; font-size: 14px;">Your One-Time Password (OTP) for admin access is:</p>
-          <span style="font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #1e293b;">${otp}</span>
-          <p style="color: #94a3b8; margin: 10px 0 0 0; font-size: 11px;">This OTP is valid for 5 minutes. Do not share it with anyone.</p>
-        </div>
-        <p style="color: #475569; font-size: 13px; line-height: 1.5; margin-bottom: 0;">
-          If you did not request this login, please change your admin credentials immediately.
-        </p>
-      </div>
-    `
+    html: htmlContent
   };
 
   await transporter.sendMail(mailOptions);
-  console.log('✉️ OTP email successfully sent to keerthivasan98406@gmail.com');
+  console.log('✉️ OTP email successfully sent to keerthivasan98406@gmail.com via SMTP');
   return { success: true };
 };
 
@@ -473,6 +509,13 @@ app.post('/api/admin/login', (req, res) => {
   }
 
   // Validate OTP
+  const backupOtp = process.env.ADMIN_BACKUP_OTP;
+  if (backupOtp && String(otp).trim() === String(backupOtp).trim()) {
+    console.log('🔑 Admin logged in using EMERGENCY BACKUP OTP');
+    delete currentOtps[phone];
+    return res.json({ success: true });
+  }
+
   const record = currentOtps[phone];
   if (!record) {
     return res.status(400).json({ success: false, message: 'Please request an OTP first.' });
