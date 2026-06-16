@@ -5,6 +5,9 @@ class OwnerPortalApp {
     this.isAdminLoggedIn = localStorage.getItem('manjula_admin_logged_in') === 'true'
     this.editingProductId = null
     this.previousPage = "admin-products"
+    this.otpSent = false
+    this.loginPhoneSaved = ""
+    this.loginPasswordSaved = ""
     this.adminSearch = ""
     this.trackingFilter = "all"
     this.trackingSearch = ""
@@ -412,6 +415,9 @@ class OwnerPortalApp {
       if (actionElement && actionElement.dataset.action === "admin-login") {
         this.handleAdminLogin()
       }
+      if (actionElement && actionElement.dataset.action === "admin-request-otp") {
+        this.requestAdminOtp()
+      }
       if (actionElement && actionElement.dataset.action === "admin-logout") {
         this.handleAdminLogout()
       }
@@ -518,12 +524,17 @@ class OwnerPortalApp {
     });
   }
 
-  async handleAdminLogin() {
+  async requestAdminOtp() {
     const phone    = document.getElementById("adminPhone")?.value || ""
     const password = document.getElementById("adminPassword")?.value || ""
 
+    if (!phone || !password) {
+      alert("Please enter both Phone Number and Password.");
+      return;
+    }
+
     try {
-      const response = await fetch(`${this.API_URL}/admin/login`, {
+      const response = await fetch(`${this.API_URL}/admin/send-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone, password })
@@ -532,16 +543,65 @@ class OwnerPortalApp {
       const result = await response.json();
 
       if (response.ok && result.success) {
-        this.isAdminLoggedIn = true
-        localStorage.setItem('manjula_admin_logged_in', 'true')
-        console.log('✅ Admin logged in via server auth')
-        await this.renderPage("admin")
+        this.otpSent = true;
+        this.loginPhoneSaved = phone;
+        this.loginPasswordSaved = password;
+        if (result.warning) {
+          alert(`⚠️ OTP Generated!\n\n${result.message}`);
+        } else {
+          alert("✅ OTP sent to your registered email address (keerthivasan98406@gmail.com)");
+        }
+        await this.renderPage("admin-login");
       } else {
-        alert("Invalid credentials. Please check your phone number and password.")
+        alert(result.message || "Invalid phone number or password. Please try again.");
+      }
+    } catch (error) {
+      console.error('❌ OTP request failed:', error);
+      alert("Request failed. Please check your connection and try again.");
+    }
+  }
+
+  resetLoginFlow(e) {
+    if (e) e.preventDefault();
+    this.otpSent = false;
+    this.loginPhoneSaved = "";
+    this.loginPasswordSaved = "";
+    this.renderPage("admin-login");
+  }
+
+  async handleAdminLogin() {
+    const phone    = this.loginPhoneSaved || document.getElementById("adminPhone")?.value || ""
+    const password = this.loginPasswordSaved || document.getElementById("adminPassword")?.value || ""
+    const otp      = document.getElementById("adminOtp")?.value || ""
+
+    if (!otp) {
+      alert("Please enter the 6-digit OTP code.");
+      return;
+    }
+
+    try {
+      const response = await fetch(`${this.API_URL}/admin/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, password, otp })
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        this.isAdminLoggedIn = true;
+        localStorage.setItem('manjula_admin_logged_in', 'true');
+        this.otpSent = false;
+        this.loginPhoneSaved = "";
+        this.loginPasswordSaved = "";
+        console.log('✅ Admin logged in via server auth with OTP');
+        await this.renderPage("admin");
+      } else {
+        alert(result.message || "Invalid OTP code. Please check and try again.");
       }
     } catch (error) {
       console.error('❌ Login request failed:', error);
-      alert("Login failed. Please check your connection and try again.")
+      alert("Login failed. Please check your connection and try again.");
     }
   }
 
@@ -792,15 +852,36 @@ class OwnerPortalApp {
           
           <div class="form-field">
             <label class="form-label">Phone Number</label>
-            <input type="tel" class="input" placeholder="Enter phone number" id="adminPhone">
+            <input type="tel" class="input" placeholder="Enter phone number" id="adminPhone" 
+              value="${this.loginPhoneSaved || ''}" 
+              ${this.otpSent ? 'disabled style="background: rgba(255,255,255,0.05); color: #64748b;"' : ''}
+              onkeydown="if(event.key === 'Enter') app.requestAdminOtp()">
           </div>
           
           <div class="form-field">
             <label class="form-label">Password</label>
-            <input type="password" class="input" placeholder="Enter password" id="adminPassword">
+            <input type="password" class="input" placeholder="Enter password" id="adminPassword" 
+              value="${this.loginPasswordSaved || ''}" 
+              ${this.otpSent ? 'disabled style="background: rgba(255,255,255,0.05); color: #64748b;"' : ''}
+              onkeydown="if(event.key === 'Enter') app.requestAdminOtp()">
           </div>
-          
-          <button class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 16px;" data-action="admin-login">Login</button>
+
+          ${this.otpSent ? `
+            <div class="form-field">
+              <label class="form-label" style="color: #f43f5e; font-weight: 700;">Enter OTP (Sent to Email)</label>
+              <input type="text" class="input" placeholder="Enter 6-digit OTP" id="adminOtp" maxlength="6" 
+                style="border-color: #f43f5e; text-align: center; font-size: 20px; letter-spacing: 6px; font-weight: 900; background: #fff; color: #000;"
+                onkeydown="if(event.key === 'Enter') app.handleAdminLogin()"
+                autofocus>
+            </div>
+            
+            <button class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 16px; background-color: #f43f5e; border-color: #f43f5e;" data-action="admin-login">Verify &amp; Login</button>
+            <div style="margin-top: 16px; text-align: center;">
+              <a href="#" onclick="app.resetLoginFlow(event)" style="color: #94a3b8; text-decoration: none; font-size: 13px; font-weight: 600;">← Change Credentials</a>
+            </div>
+          ` : `
+            <button class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 16px;" data-action="admin-request-otp">Get OTP</button>
+          `}
           
           <div style="margin-top: 24px; text-align: center;">
             <a href="index.html" style="color: #94a3b8; text-decoration: none; font-size: 14px;">← Back to Main Site</a>
@@ -2579,7 +2660,10 @@ class OwnerPortalApp {
                             ${stock === 0 ? `<span style="margin-left:6px; background:#fef2f2; color:#dc2626; font-size:10px; font-weight:800; padding:2px 7px; border-radius:4px; border:1px solid #fca5a5;">❌ OUT</span>` : ''}
                           </td>
                           <td style="padding:10px 14px; text-align:center; color:#374151; font-weight:600; border-right:1px solid #e2e8f0;">
-                            ${price ? `₹${price.toLocaleString('en-IN')}` : '<span style="color:#9ca3af;">—</span>'}
+                            ${this.stockTotalValueUnlocked ? 
+                              (price ? `₹${price.toLocaleString('en-IN')}` : '<span style="color:#9ca3af;">—</span>') :
+                              '<span style="color:#94a3b8; font-family:monospace; font-size:14px;">••••</span>'
+                            }
                           </td>
                           <td style="padding:10px 14px; text-align:center; border-right:1px solid #e2e8f0;">
                             <span style="display:inline-block; background:${stockBg}; color:${stockColor}; font-weight:900; font-size:18px; min-width:48px; padding:4px 10px; border-radius:6px; border:1px solid ${stockColor}40;">
@@ -2776,7 +2860,7 @@ class OwnerPortalApp {
           <h2 style="font-size:20px;font-weight:800;color:#dc2626;margin-bottom:8px;">Low Stock Alert!</h2>
           <p style="font-size:15px;font-weight:700;color:#111;margin-bottom:6px;">${item.displayName}</p>
           <p style="font-size:13px;color:#6b7280;margin-bottom:16px;">Only <strong style="color:#dc2626;">1 unit</strong> remaining in stock. Please reorder soon.</p>
-          ${item.price ? `<p style="font-size:13px;color:#374151;margin-bottom:20px;">Unit Price: <strong>₹${Number(item.price).toLocaleString('en-IN')}</strong></p>` : ''}
+          ${item.price ? `<p style="font-size:13px;color:#374151;margin-bottom:20px;">Unit Price: <strong>${this.stockTotalValueUnlocked ? '₹' + Number(item.price).toLocaleString('en-IN') : '••••'}</strong></p>` : ''}
           <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
             <button onclick="app.downloadLowStockPDF('${item.stockItemId}')" 
               style="background:#1e293b;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;">
@@ -2804,7 +2888,7 @@ class OwnerPortalApp {
         <td style="font-weight:700;">${d.displayName}</td>
         <td>${d.displayId}</td>
         <td style="color:#dc2626;font-weight:900;">1 unit</td>
-        <td>${d.price ? '₹' + Number(d.price).toLocaleString('en-IN') : '—'}</td>
+        <td>${this.stockTotalValueUnlocked ? (d.price ? '₹' + Number(d.price).toLocaleString('en-IN') : '—') : '••••'}</td>
       </tr>`).join('');
 
     win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Low Stock Alert Report</title>
@@ -2853,8 +2937,8 @@ class OwnerPortalApp {
       <div class="row"><span class="label">Display Name</span><span class="value">${item.displayName}</span></div>
       <div class="row"><span class="label">Display ID</span><span class="value">${item.displayId}</span></div>
       <div class="row"><span class="label">Remaining Stock</span><span class="value" style="color:#dc2626;">1 unit</span></div>
-      <div class="row"><span class="label">Unit Price</span><span class="value">${item.price ? '₹' + Number(item.price).toLocaleString('en-IN') : '—'}</span></div>
-      <div class="row"><span class="label">Total Value</span><span class="value">${item.price ? '₹' + Number(item.price).toLocaleString('en-IN') : '—'}</span></div>
+      <div class="row"><span class="label">Unit Price</span><span class="value">${this.stockTotalValueUnlocked ? (item.price ? '₹' + Number(item.price).toLocaleString('en-IN') : '—') : '••••'}</span></div>
+      <div class="row"><span class="label">Total Value</span><span class="value">${this.stockTotalValueUnlocked ? (item.price ? '₹' + Number(item.price).toLocaleString('en-IN') : '—') : '••••'}</span></div>
     </div>
     <p style="margin-top:20px;font-size:13px;color:#dc2626;font-weight:700;">⚠️ Please reorder this display immediately!</p>
     <br>
@@ -2889,8 +2973,9 @@ class OwnerPortalApp {
             </div>
             <div>
               <label style="font-size:13px; font-weight:600; color:#374151; display:block; margin-bottom:4px;">Price (₹)</label>
-              <input id="edit_price" class="input" type="number" min="0" value="${item.price || ''}"
-                placeholder="Leave blank if no price"
+              <input id="edit_price" class="input" type="${this.stockTotalValueUnlocked ? 'number' : 'password'}" min="0" value="${item.price || ''}"
+                placeholder="${this.stockTotalValueUnlocked ? 'Leave blank if no price' : '••••'}"
+                ${this.stockTotalValueUnlocked ? '' : 'readonly'}
                 style="width:100%; background:#f8fafc; color:#111; border:1px solid #d1d5db;">
             </div>
           </div>
@@ -4627,7 +4712,7 @@ class OwnerPortalApp {
         <td>${i+1}</td>
         <td>${d.displayName}</td>
         <td>${d.displayId}</td>
-        <td>${d.price ? '₹' + Number(d.price).toLocaleString('en-IN') : '—'}</td>
+        <td>${this.stockTotalValueUnlocked ? (d.price ? '₹' + Number(d.price).toLocaleString('en-IN') : '—') : '••••'}</td>
         <td style="font-weight:900; color:${stockColor};">${stock}</td>
         <td style="color:${stockColor}; font-weight:700;">${statusLabel}</td>
       </tr>`;
@@ -4661,7 +4746,7 @@ class OwnerPortalApp {
     const rows = data.map((d, i) => {
       const stock = Number(d.stock) || 0;
       const status = stock === 0 ? 'Out of Stock' : stock <= 1 ? 'Last 1 - Reorder!' : 'In Stock';
-      return [i+1, d.displayName, d.displayId, Number(d.price)||0, stock, status];
+      return [i+1, d.displayName, d.displayId, this.stockTotalValueUnlocked ? (Number(d.price)||0) : '••••', stock, status];
     });
     this._downloadCSV('display_stock', headers, rows);
   }
@@ -6622,10 +6707,16 @@ class OwnerPortalApp {
                             ${stock === 0 ? `<span style="margin-left:6px; background:#fef2f2; color:#dc2626; font-size:10px; font-weight:800; padding:2px 7px; border-radius:4px; border:1px solid #fca5a5;">❌ OUT</span>` : ''}
                           </td>
                           <td style="padding:10px 14px; text-align:center; color:#d97706; font-weight:700; border-right:1px solid #e2e8f0;">
-                            ${ownerPrice ? `₹${ownerPrice.toLocaleString('en-IN')}` : '<span style="color:#9ca3af;">—</span>'}
+                            ${this.spareTotalValueUnlocked ? 
+                              (ownerPrice ? `₹${ownerPrice.toLocaleString('en-IN')}` : '<span style="color:#9ca3af;">—</span>') :
+                              '<span style="color:#94a3b8; font-family:monospace; font-size:14px;">••••</span>'
+                            }
                           </td>
                           <td style="padding:10px 14px; text-align:center; color:#16a34a; font-weight:700; border-right:1px solid #e2e8f0;">
-                            ${customerPrice ? `₹${customerPrice.toLocaleString('en-IN')}` : '<span style="color:#9ca3af;">—</span>'}
+                            ${this.spareTotalValueUnlocked ? 
+                              (customerPrice ? `₹${customerPrice.toLocaleString('en-IN')}` : '<span style="color:#9ca3af;">—</span>') :
+                              '<span style="color:#94a3b8; font-family:monospace; font-size:14px;">••••</span>'
+                            }
                           </td>
                           <td style="padding:10px 14px; text-align:center; border-right:1px solid #e2e8f0;">
                             <span style="display:inline-block; background:${stockBg}; color:${stockColor}; font-weight:900; font-size:18px; min-width:48px; padding:4px 10px; border-radius:6px; border:1px solid ${stockColor}40;">
@@ -6822,8 +6913,8 @@ class OwnerPortalApp {
           <h2 style="font-size:20px;font-weight:800;color:#dc2626;margin-bottom:8px;">Low Stock Alert!</h2>
           <p style="font-size:15px;font-weight:700;color:#111;margin-bottom:6px;">${item.partName}</p>
           <p style="font-size:13px;color:#6b7280;margin-bottom:16px;">Only <strong style="color:#dc2626;">1 unit</strong> remaining in stock. Please reorder soon.</p>
-          ${item.customerPrice ? `<p style="font-size:13px;color:#374151;margin-bottom:4px;">Customer Price: <strong>₹${Number(item.customerPrice).toLocaleString('en-IN')}</strong></p>` : ''}
-          ${item.ownerPrice ? `<p style="font-size:13px;color:#374151;margin-bottom:20px;">Owner Price: <strong>₹${Number(item.ownerPrice).toLocaleString('en-IN')}</strong></p>` : ''}
+          ${item.customerPrice ? `<p style="font-size:13px;color:#374151;margin-bottom:4px;">Customer Price: <strong>${this.spareTotalValueUnlocked ? '₹' + Number(item.customerPrice).toLocaleString('en-IN') : '••••'}</strong></p>` : ''}
+          ${item.ownerPrice ? `<p style="font-size:13px;color:#374151;margin-bottom:20px;">Owner Price: <strong>${this.spareTotalValueUnlocked ? '₹' + Number(item.ownerPrice).toLocaleString('en-IN') : '••••'}</strong></p>` : ''}
           <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
             <button onclick="app.downloadSparePartsLowStockPDF('${item.partItemId}')"
               style="background:#1e293b;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;">
@@ -6851,8 +6942,8 @@ class OwnerPortalApp {
         <td style="font-weight:700;">${d.partName}</td>
         <td>${d.partId}</td>
         <td style="color:#dc2626;font-weight:900;">1 unit</td>
-        <td style="color:#d97706;font-weight:700;">${d.ownerPrice ? '₹' + Number(d.ownerPrice).toLocaleString('en-IN') : '—'}</td>
-        <td style="color:#16a34a;font-weight:700;">${d.customerPrice ? '₹' + Number(d.customerPrice).toLocaleString('en-IN') : '—'}</td>
+        <td style="color:#d97706;font-weight:700;">${this.spareTotalValueUnlocked ? (d.ownerPrice ? '₹' + Number(d.ownerPrice).toLocaleString('en-IN') : '—') : '••••'}</td>
+        <td style="color:#16a34a;font-weight:700;">${this.spareTotalValueUnlocked ? (d.customerPrice ? '₹' + Number(d.customerPrice).toLocaleString('en-IN') : '—') : '••••'}</td>
       </tr>`).join('');
 
     win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Low Stock Alert — Spare Parts</title>
@@ -6901,8 +6992,8 @@ class OwnerPortalApp {
       <div class="row"><span class="label">Part Name</span><span class="value">${item.partName}</span></div>
       <div class="row"><span class="label">Part ID</span><span class="value">${item.partId}</span></div>
       <div class="row"><span class="label">Remaining Stock</span><span class="value" style="color:#dc2626;">1 unit</span></div>
-      <div class="row"><span class="label">Owner Price</span><span class="value" style="color:#d97706;">${item.ownerPrice ? '₹' + Number(item.ownerPrice).toLocaleString('en-IN') : '—'}</span></div>
-      <div class="row"><span class="label">Customer Price</span><span class="value" style="color:#16a34a;">${item.customerPrice ? '₹' + Number(item.customerPrice).toLocaleString('en-IN') : '—'}</span></div>
+      <div class="row"><span class="label">Owner Price</span><span class="value" style="color:#d97706;">${this.spareTotalValueUnlocked ? (item.ownerPrice ? '₹' + Number(item.ownerPrice).toLocaleString('en-IN') : '—') : '••••'}</span></div>
+      <div class="row"><span class="label">Customer Price</span><span class="value" style="color:#16a34a;">${this.spareTotalValueUnlocked ? (item.customerPrice ? '₹' + Number(item.customerPrice).toLocaleString('en-IN') : '—') : '••••'}</span></div>
     </div>
     <p style="margin-top:20px;font-size:13px;color:#dc2626;font-weight:700;">⚠️ Please reorder this part immediately!</p>
     <br>
@@ -6936,11 +7027,11 @@ class OwnerPortalApp {
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
               <div>
                 <label style="font-size:13px;font-weight:600;color:#d97706;display:block;margin-bottom:4px;">Owner Price (₹)</label>
-                <input class="input" type="number" id="edit_sp_ownerPrice" value="${item.ownerPrice || ''}" placeholder="Cost price" min="0" style="width:100%;background:#f8fafc;color:#111;border:1px solid #d1d5db;">
+                <input class="input" type="${this.spareTotalValueUnlocked ? 'number' : 'password'}" id="edit_sp_ownerPrice" value="${item.ownerPrice || ''}" placeholder="${this.spareTotalValueUnlocked ? 'Cost price' : '••••'}" ${this.spareTotalValueUnlocked ? '' : 'readonly'} min="0" style="width:100%;background:#f8fafc;color:#111;border:1px solid #d1d5db;">
               </div>
               <div>
                 <label style="font-size:13px;font-weight:600;color:#16a34a;display:block;margin-bottom:4px;">Customer Price (₹)</label>
-                <input class="input" type="number" id="edit_sp_customerPrice" value="${item.customerPrice || ''}" placeholder="Selling price" min="0" style="width:100%;background:#f8fafc;color:#111;border:1px solid #d1d5db;">
+                <input class="input" type="${this.spareTotalValueUnlocked ? 'number' : 'password'}" id="edit_sp_customerPrice" value="${item.customerPrice || ''}" placeholder="${this.spareTotalValueUnlocked ? 'Selling price' : '••••'}" ${this.spareTotalValueUnlocked ? '' : 'readonly'} min="0" style="width:100%;background:#f8fafc;color:#111;border:1px solid #d1d5db;">
               </div>
               <div>
                 <label style="font-size:13px;font-weight:600;color:#1d4ed8;display:block;margin-bottom:4px;">Stock Qty</label>
@@ -7032,8 +7123,8 @@ class OwnerPortalApp {
           <td style="padding:8px 10px; border:1px solid #e2e8f0; text-align:center; color:#9ca3af;">${i + 1}</td>
           <td style="padding:8px 10px; border:1px solid #e2e8f0; font-weight:700;">${p.partName || '—'}</td>
           <td style="padding:8px 10px; border:1px solid #e2e8f0;">${p.partId || '—'}</td>
-          <td style="padding:8px 10px; border:1px solid #e2e8f0; text-align:center; color:#d97706; font-weight:700;">${ownerPrice ? '₹' + ownerPrice.toLocaleString('en-IN') : '—'}</td>
-          <td style="padding:8px 10px; border:1px solid #e2e8f0; text-align:center; color:#16a34a; font-weight:700;">${customerPrice ? '₹' + customerPrice.toLocaleString('en-IN') : '—'}</td>
+          <td style="padding:8px 10px; border:1px solid #e2e8f0; text-align:center; color:#d97706; font-weight:700;">${this.spareTotalValueUnlocked ? (ownerPrice ? '₹' + ownerPrice.toLocaleString('en-IN') : '—') : '••••'}</td>
+          <td style="padding:8px 10px; border:1px solid #e2e8f0; text-align:center; color:#16a34a; font-weight:700;">${this.spareTotalValueUnlocked ? (customerPrice ? '₹' + customerPrice.toLocaleString('en-IN') : '—') : '••••'}</td>
           <td style="padding:8px 10px; border:1px solid #e2e8f0; text-align:center; font-weight:900; color:${stockColor};">${stock}</td>
           <td style="padding:8px 10px; border:1px solid #e2e8f0; text-align:center; font-weight:700; color:#1d4ed8;">${this.spareTotalValueUnlocked ? (customerPrice && stock ? '₹' + (customerPrice * stock).toLocaleString('en-IN') : '—') : '••••'}</td>
         </tr>`;
@@ -7063,8 +7154,8 @@ class OwnerPortalApp {
       i + 1,
       p.partName || '',
       p.partId || '',
-      Number(p.ownerPrice) || 0,
-      Number(p.customerPrice) || 0,
+      this.spareTotalValueUnlocked ? (Number(p.ownerPrice) || 0) : '••••',
+      this.spareTotalValueUnlocked ? (Number(p.customerPrice) || 0) : '••••',
       Number(p.stock) || 0,
       this.spareTotalValueUnlocked ? ((Number(p.customerPrice) || 0) * (Number(p.stock) || 0)) : '••••'
     ]);

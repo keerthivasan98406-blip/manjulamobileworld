@@ -330,25 +330,141 @@ app.get('/ping', (req, res) => {
 
 // Admin Login endpoint — verifies credentials server-side using HMAC-SHA256
 const crypto = require('crypto');
-app.post('/api/admin/login', (req, res) => {
+const nodemailer = require('nodemailer');
+
+// In-memory store for active OTPs (phone -> { otp, expiresAt })
+const currentOtps = {};
+
+// Send OTP email helper function
+const sendOtpEmail = async (otp) => {
+  const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const smtpPort = parseInt(process.env.SMTP_PORT || '587');
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+
+  if (!smtpUser || !smtpPass) {
+    console.log('⚠️ SMTP credentials (SMTP_USER/SMTP_PASS) not set in environment variables.');
+    console.log(`🔑 [OTP Verification] Generated OTP is: ${otp}`);
+    return { success: false, reason: 'SMTP credentials not configured in .env file.' };
+  }
+
+  const transporter = nodemailer.createTransport({
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpPort === 465,
+    auth: {
+      user: smtpUser,
+      pass: smtpPass
+    }
+  });
+
+  const mailOptions = {
+    from: `"Manjula Mobile World" <${smtpUser}>`,
+    to: 'keerthivasan98406@gmail.com',
+    subject: '🔐 Admin Login OTP - Manjula Mobile World',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; background-color: #ffffff;">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <h2 style="color: #dc2626; margin: 0; font-size: 24px;">Manjula Mobile World</h2>
+          <p style="color: #64748b; margin: 4px 0 0 0; font-size: 14px;">Owner Portal Secure Authentication</p>
+        </div>
+        <div style="background-color: #f8fafc; border-radius: 8px; padding: 18px; text-align: center; margin-bottom: 24px;">
+          <p style="color: #475569; margin: 0 0 10px 0; font-size: 14px;">Your One-Time Password (OTP) for admin access is:</p>
+          <span style="font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #1e293b;">${otp}</span>
+          <p style="color: #94a3b8; margin: 10px 0 0 0; font-size: 11px;">This OTP is valid for 5 minutes. Do not share it with anyone.</p>
+        </div>
+        <p style="color: #475569; font-size: 13px; line-height: 1.5; margin-bottom: 0;">
+          If you did not request this login, please change your admin credentials immediately.
+        </p>
+      </div>
+    `
+  };
+
+  await transporter.sendMail(mailOptions);
+  console.log('✉️ OTP email successfully sent to keerthivasan98406@gmail.com');
+  return { success: true };
+};
+
+// Send OTP Route
+app.post('/api/admin/send-otp', async (req, res) => {
   const { phone, password } = req.body;
 
-  // Use env vars if set (production), otherwise use hardcoded defaults (fallback)
   const expectedPhone = process.env.ADMIN_PHONE        || '9840694616';
   const salt          = process.env.ADMIN_SALT         || 'mmw2026';
   const expectedHash  = process.env.ADMIN_PASSWORD_HASH || '2cb298af21d955b3da5139b96971eef8f23b3d7e6a2f54dc7c3aa9d208b5750d';
 
   const inputHash = crypto.createHmac('sha256', salt).update(password || '').digest('hex');
 
-  if (phone === expectedPhone && inputHash === expectedHash) {
-    console.log('✅ Admin login successful');
-    return res.json({ success: true });
+  if (phone !== expectedPhone || inputHash !== expectedHash) {
+    console.warn('⚠️ OTP request failed: Invalid credentials for phone:', phone);
+    return res.status(401).json({ success: false, message: 'Invalid phone number or password' });
   }
 
-  console.warn('⚠️ Failed admin login attempt for phone:', phone);
-  setTimeout(() => {
-    res.status(401).json({ success: false, message: 'Invalid credentials' });
-  }, 500);
+  // Generate 6-digit OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  currentOtps[phone] = {
+    otp,
+    expiresAt: Date.now() + 5 * 60 * 1000 // 5 minutes validity
+  };
+
+  try {
+    const mailResult = await sendOtpEmail(otp);
+    if (mailResult.success) {
+      return res.json({ success: true, message: 'OTP sent to registered email address.' });
+    } else {
+      return res.json({ 
+        success: true, 
+        warning: true, 
+        message: 'OTP generated. Mail delivery failed (SMTP credentials not configured in .env). Check server console for OTP.' 
+      });
+    }
+  } catch (error) {
+    console.error('❌ Error sending OTP mail:', error);
+    // Print OTP to logs as fallback
+    console.log(`🔑 [OTP Verification Fallback] Generated OTP for ${phone}: ${otp}`);
+    return res.json({ 
+      success: true, 
+      warning: true, 
+      message: `OTP generated. Mail sending error: ${error.message}. Check server console for OTP.` 
+    });
+  }
+});
+
+// Admin Login endpoint — verifies credentials and checks OTP
+app.post('/api/admin/login', (req, res) => {
+  const { phone, password, otp } = req.body;
+
+  const expectedPhone = process.env.ADMIN_PHONE        || '9840694616';
+  const salt          = process.env.ADMIN_SALT         || 'mmw2026';
+  const expectedHash  = process.env.ADMIN_PASSWORD_HASH || '2cb298af21d955b3da5139b96971eef8f23b3d7e6a2f54dc7c3aa9d208b5750d';
+
+  const inputHash = crypto.createHmac('sha256', salt).update(password || '').digest('hex');
+
+  if (phone !== expectedPhone || inputHash !== expectedHash) {
+    console.warn('⚠️ Failed admin login attempt for phone (invalid credentials):', phone);
+    return res.status(401).json({ success: false, message: 'Invalid phone number or password' });
+  }
+
+  // Validate OTP
+  const record = currentOtps[phone];
+  if (!record) {
+    return res.status(400).json({ success: false, message: 'Please request an OTP first.' });
+  }
+
+  if (Date.now() > record.expiresAt) {
+    delete currentOtps[phone];
+    return res.status(400).json({ success: false, message: 'OTP has expired. Please request a new one.' });
+  }
+
+  if (record.otp !== String(otp).trim()) {
+    return res.status(400).json({ success: false, message: 'Invalid OTP. Please check and try again.' });
+  }
+
+  // OTP verified, remove it
+  delete currentOtps[phone];
+
+  console.log('✅ Admin login successful (OTP verified)');
+  return res.json({ success: true });
 });
 
 // DIRECT TEST - Add this button to test screenshot saving directly
