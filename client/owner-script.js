@@ -5400,6 +5400,8 @@ class OwnerPortalApp {
     const returnOnlyStatuses = ['Return'];
     const hiddenWhenReturn = ['In Progress','Parts Ordered','Quality Check','Ready for Pickup','Completed','Delivered'];
 
+    const hasPaidFull = (Number(tracking.amount || 0) - Number(tracking.advanceAmount || 0) - Number(tracking.paidAmount || 0)) <= 0;
+
     const modalHTML = `
       <div class="status-modal" id="statusModal">
         <div class="status-modal-content">
@@ -5412,13 +5414,20 @@ class OwnerPortalApp {
           
           <div class="status-select-group">
             <label class="status-select-label">Select New Status</label>
-            <select class="status-select" id="newStatusSelect" onchange="app.onStatusSelectChange(this)">
-              ${statuses.map(s => `
-                <option value="${s.value}" ${s.value === tracking.status ? 'selected' : ''}
-                  ${hiddenWhenReturn.includes(s.value) && tracking.status === 'Return' ? 'style="display:none"' : ''}>
-                  ${s.label} - ${s.desc}
-                </option>
-              `).join('')}
+            <select class="status-select" id="newStatusSelect" data-qr-id="${tracking.qrId}" onchange="app.onStatusSelectChange(this)">
+              ${statuses.map(s => {
+                const isDelivered = s.value === 'Delivered';
+                const hideReturn = hiddenWhenReturn.includes(s.value) && tracking.status === 'Return';
+                const hideDelivered = isDelivered && !hasPaidFull;
+                const hide = hideReturn || hideDelivered;
+
+                return `
+                  <option value="${s.value}" ${s.value === tracking.status ? 'selected' : ''}
+                    ${hide ? 'style="display:none"' : ''}>
+                    ${s.label} - ${s.desc}
+                  </option>
+                `;
+              }).join('')}
             </select>
           </div>
 
@@ -5441,15 +5450,23 @@ class OwnerPortalApp {
     document.body.insertAdjacentHTML('beforeend', modalHTML);
   }
 
-  // Called when the status dropdown changes — hides/shows options based on Return
+  // Called when the status dropdown changes — hides/shows options based on Return and Payment status
   onStatusSelectChange(selectEl) {
     const hiddenWhenReturn = ['In Progress','Parts Ordered','Quality Check','Ready for Pickup','Completed','Delivered'];
     const isReturn = selectEl.value === 'Return';
     const warning = document.getElementById('returnWarning');
 
+    const qrId = selectEl.dataset.qrId;
+    const tracking = this.trackingData.find(t => t.qrId === qrId);
+    const hasPaidFull = tracking ? ((Number(tracking.amount || 0) - Number(tracking.advanceAmount || 0) - Number(tracking.paidAmount || 0)) <= 0) : true;
+
     Array.from(selectEl.options).forEach(opt => {
       if (hiddenWhenReturn.includes(opt.value)) {
-        opt.style.display = isReturn ? 'none' : '';
+        if (opt.value === 'Delivered' && !hasPaidFull) {
+          opt.style.display = 'none';
+        } else {
+          opt.style.display = isReturn ? 'none' : '';
+        }
       }
     });
 
