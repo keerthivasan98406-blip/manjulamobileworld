@@ -8,7 +8,14 @@ require('dotenv').config();
 
 // Override DNS to use Google DNS (fixes SRV lookup issues on some networks)
 const dns = require('dns');
-dns.setServers(['8.8.8.8', '8.8.4.4']);
+if (process.env.NODE_ENV !== 'production') {
+  try {
+    dns.setServers(['8.8.8.8', '8.8.4.4']);
+    console.log('📡 Local DNS configured: Google DNS');
+  } catch (err) {
+    console.warn('⚠️ Failed to set Google DNS servers:', err.message);
+  }
+}
 if (dns.setDefaultResultOrder) {
   dns.setDefaultResultOrder('ipv4first');
 }
