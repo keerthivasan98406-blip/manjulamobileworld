@@ -139,6 +139,7 @@ const trackingSchema = new mongoose.Schema({
   paidAmount:    { type: Number, default: 0 },
   totalReceived: { type: Number, default: 0 },
   balanceAmount: { type: Number, default: 0 },
+  balancePaidDate: String,
   createdAt: String,
   completedAt: String,
   lastUpdated: String
@@ -370,89 +371,97 @@ const sendOtpEmail = async (otp) => {
     </div>
   `;
 
-  // Method 1: Resend HTTP API (Ideal for Render where SMTP ports are blocked)
-  if (resendApiKey) {
-    console.log('📡 Attempting to send OTP email via Resend HTTP API...');
-    try {
-      const response = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${resendApiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          from: 'Manjula Mobile World <onboarding@resend.dev>',
+  // Decide delivery order: Prioritize SMTP locally in development (goes to Inbox),
+  // and prioritize Resend in production on Render (where SMTP port 587 is blocked).
+  const isProduction = process.env.NODE_ENV === 'production';
+  const deliveryOrder = isProduction ? ['resend', 'smtp'] : ['smtp', 'resend'];
+
+  for (const method of deliveryOrder) {
+    // Method: Resend HTTP API
+    if (method === 'resend' && resendApiKey) {
+      console.log('📡 Attempting to send OTP email via Resend HTTP API...');
+      try {
+        const response = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${resendApiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            from: 'Manjula Mobile World <onboarding@resend.dev>',
+            to: 'keerthivasan98406@gmail.com',
+            subject: '🔐 Admin Login OTP - Manjula Mobile World',
+            html: htmlContent
+          })
+        });
+
+        const resData = await response.json();
+        if (response.ok) {
+          console.log('✉️ OTP email successfully sent via Resend HTTP API:', resData.id);
+          return { success: true };
+        } else {
+          console.warn('⚠️ Resend HTTP API returned error:', resData);
+        }
+      } catch (apiErr) {
+        console.error('❌ Resend HTTP API request failed:', apiErr);
+      }
+    }
+
+    // Method: Standard SMTP fallback / Local SMTP
+    if (method === 'smtp' && smtpUser && smtpPass) {
+      console.log('📡 Attempting to send OTP email via SMTP...');
+      try {
+        // Manually resolve hostname to IPv4 to prevent IPv6 ENETUNREACH issues on cloud hosts (like Render)
+        let resolvedHost = smtpHost;
+        try {
+          const dnsPromises = require('dns').promises;
+          if (/[a-zA-Z]/.test(smtpHost)) {
+            const addresses = await dnsPromises.resolve4(smtpHost);
+            if (addresses && addresses.length > 0) {
+              resolvedHost = addresses[0];
+            }
+          }
+        } catch (dnsErr) {
+          // Ignore DNS resolution errors for SMTP host
+        }
+
+        const transporter = nodemailer.createTransport({
+          host: resolvedHost,
+          port: smtpPort,
+          secure: smtpPort === 465,
+          auth: {
+            user: smtpUser,
+            pass: smtpPass
+          },
+          connectionTimeout: 5000, // 5 seconds
+          greetingTimeout: 5000,   // 5 seconds
+          socketTimeout: 10000,    // 10 seconds
+          family: 4,               // Force IPv4 socket connection
+          tls: {
+            servername: smtpHost,   // Force TLS SNI to validate against the original domain (e.g. smtp.gmail.com)
+            rejectUnauthorized: false // Avoid strict certificate failures when using IP direct connection
+          }
+        });
+
+        const mailOptions = {
+          from: `"Manjula Mobile World" <${smtpUser}>`,
           to: 'keerthivasan98406@gmail.com',
           subject: '🔐 Admin Login OTP - Manjula Mobile World',
           html: htmlContent
-        })
-      });
+        };
 
-      const resData = await response.json();
-      if (response.ok) {
-        console.log('✉️ OTP email successfully sent via Resend HTTP API:', resData.id);
+        await transporter.sendMail(mailOptions);
+        console.log('✉️ OTP email successfully sent to keerthivasan98406@gmail.com via SMTP');
         return { success: true };
-      } else {
-        console.warn('⚠️ Resend HTTP API returned error:', resData);
-        // If API key is invalid/expired, it will print warning and fall back to SMTP
-      }
-    } catch (apiErr) {
-      console.error('❌ Resend HTTP API request failed:', apiErr);
-      // Fall back to SMTP
-    }
-  }
-
-  // Method 2: Standard SMTP fallback (for localhost or if SMTP is opened)
-  if (!smtpUser || !smtpPass) {
-    console.log('⚠️ SMTP credentials (SMTP_USER/SMTP_PASS) not set in environment variables.');
-    console.log(`🔑 [OTP Verification] Generated OTP is: ${otp}`);
-    return { success: false, reason: 'SMTP credentials not configured.' };
-  }
-
-  // Manually resolve hostname to IPv4 to prevent IPv6 ENETUNREACH issues on cloud hosts (like Render)
-  let resolvedHost = smtpHost;
-  try {
-    const dnsPromises = require('dns').promises;
-    if (/[a-zA-Z]/.test(smtpHost)) {
-      console.log(`📡 Resolving SMTP host ${smtpHost} to IPv4...`);
-      const addresses = await dnsPromises.resolve4(smtpHost);
-      if (addresses && addresses.length > 0) {
-        resolvedHost = addresses[0];
-        console.log(`✅ Resolved ${smtpHost} to IPv4 IP: ${resolvedHost}`);
+      } catch (smtpErr) {
+        console.error('❌ SMTP sending failed:', smtpErr.message);
       }
     }
-  } catch (dnsErr) {
-    console.warn(`⚠️ DNS IPv4 resolution failed for ${smtpHost}, using default hostname directly:`, dnsErr.message);
   }
 
-  const transporter = nodemailer.createTransport({
-    host: resolvedHost,
-    port: smtpPort,
-    secure: smtpPort === 465,
-    auth: {
-      user: smtpUser,
-      pass: smtpPass
-    },
-    connectionTimeout: 5000, // 5 seconds
-    greetingTimeout: 5000,   // 5 seconds
-    socketTimeout: 10000,    // 10 seconds
-    family: 4,               // Force IPv4 socket connection
-    tls: {
-      servername: smtpHost,   // Force TLS SNI to validate against the original domain (e.g. smtp.gmail.com)
-      rejectUnauthorized: false // Avoid strict certificate failures when using IP direct connection
-    }
-  });
-
-  const mailOptions = {
-    from: `"Manjula Mobile World" <${smtpUser}>`,
-    to: 'keerthivasan98406@gmail.com',
-    subject: '🔐 Admin Login OTP - Manjula Mobile World',
-    html: htmlContent
-  };
-
-  await transporter.sendMail(mailOptions);
-  console.log('✉️ OTP email successfully sent to keerthivasan98406@gmail.com via SMTP');
-  return { success: true };
+  // If both methods failed/were skipped
+  console.log('⚠️ Both Resend and SMTP failed to send the email.');
+  return { success: false, reason: 'All configured email delivery services failed.' };
 };
 
 // Send OTP Route
@@ -476,6 +485,7 @@ app.post('/api/admin/send-otp', async (req, res) => {
     otp,
     expiresAt: Date.now() + 5 * 60 * 1000 // 5 minutes validity
   };
+  console.log(`🔑 [OTP Generation] Generated OTP for ${phone} is: ${otp}`);
 
   try {
     const mailResult = await sendOtpEmail(otp);

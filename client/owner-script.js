@@ -1087,33 +1087,82 @@ class OwnerPortalApp {
     // - Records saved WITH the new payment system: count advance + paid only (never full price or balance)
     // - Records saved BEFORE the new payment system (no advanceAmount field): count the stored amount
     //   so old data still shows correctly
-    const calcReceived = (t) => {
-      // If advanceAmount was never saved (old record), fall back to amount
-      if (t.advanceAmount === undefined && t.paidAmount === undefined) {
-        return Number(t.amount) || 0;
-      }
-      // New record — only advance + paid count toward daily sales
-      return (Number(t.advanceAmount) || 0) + (Number(t.paidAmount) || 0);
-    };
-
-    // Calculate today's income
+    // Calculate today's income & this month's income based on actual payment dates
     const today = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    const todayRecords = this.trackingData.filter(t => t.createdAt === today);
-    const todayIncome = todayRecords.reduce((sum, t) => sum + calcReceived(t), 0);
-
-    // Calculate this month's income
     const now = new Date();
     const thisMonth = now.getMonth();
     const thisYear = now.getFullYear();
-    const monthRecords = this.trackingData.filter(t => {
-      if (!t.createdAt) return false;
-      const parts = t.createdAt.split('/');
-      if (parts.length !== 3) return false;
-      const d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
-      return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
-    });
-    const monthIncome = monthRecords.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
     const monthLabel = now.toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+
+    let todayIncome = 0;
+    let todayPaymentsCount = 0;
+    let monthIncome = 0;
+    const monthRecordsSet = new Set();
+
+    this.trackingData.forEach(t => {
+      const isOldRecord = t.advanceAmount === undefined && t.paidAmount === undefined;
+
+      if (isOldRecord) {
+        const date = t.createdAt || '';
+        const amt = Number(t.amount) || 0;
+        if (date === today) {
+          todayIncome += amt;
+          todayPaymentsCount++;
+        }
+        if (date) {
+          const parts = date.split('/');
+          if (parts.length === 3) {
+            const d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+            if (d.getMonth() === thisMonth && d.getFullYear() === thisYear) {
+              monthIncome += amt;
+              monthRecordsSet.add(t.qrId);
+            }
+          }
+        }
+      } else {
+        // Advance Payment: counts on creation date
+        const adv = Number(t.advanceAmount) || 0;
+        const dateCreated = t.createdAt || '';
+        if (adv > 0) {
+          if (dateCreated === today) {
+            todayIncome += adv;
+            todayPaymentsCount++;
+          }
+          if (dateCreated) {
+            const parts = dateCreated.split('/');
+            if (parts.length === 3) {
+              const d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+              if (d.getMonth() === thisMonth && d.getFullYear() === thisYear) {
+                monthIncome += adv;
+                monthRecordsSet.add(t.qrId);
+              }
+            }
+          }
+        }
+
+        // Balance Payment: counts on balancePaidDate (falls back to creation date)
+        const paid = Number(t.paidAmount) || 0;
+        const datePaid = t.balancePaidDate || dateCreated;
+        if (paid > 0) {
+          if (datePaid === today) {
+            todayIncome += paid;
+            todayPaymentsCount++;
+          }
+          if (datePaid) {
+            const parts = datePaid.split('/');
+            if (parts.length === 3) {
+              const d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+              if (d.getMonth() === thisMonth && d.getFullYear() === thisYear) {
+                monthIncome += paid;
+                monthRecordsSet.add(t.qrId);
+              }
+            }
+          }
+        }
+      }
+    });
+
+    const monthRecordsCountTotal = monthRecordsSet.size;
 
     return `
       <div style="min-height: 100vh; background-color: #f13e74fb; padding-top: 96px; padding-bottom: 80px;">
@@ -1130,13 +1179,13 @@ class OwnerPortalApp {
               <div onclick="app.renderPage('admin-tracking-daily')" style="background: linear-gradient(135deg,#065f46,#047857); border: 2px solid #10b981; border-radius: 10px; padding: 10px 16px; cursor: pointer; min-width: 130px; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
                 <div style="font-size: 10px; color: #6ee7b7; font-weight: 600; margin-bottom: 2px;">📅 Today</div>
                 <div style="font-size: 20px; font-weight: 800; color: #fff; line-height:1;">₹${todayIncome.toLocaleString('en-IN')}</div>
-                <div style="font-size: 10px; color: #a7f3d0; margin-top: 2px;">${todayRecords.length} record${todayRecords.length !== 1 ? 's' : ''} →</div>
+                <div style="font-size: 10px; color: #a7f3d0; margin-top: 2px;">${todayPaymentsCount} payment${todayPaymentsCount !== 1 ? 's' : ''} →</div>
               </div>
               <!-- Monthly Income widget -->
               <div onclick="app.renderPage('admin-tracking-monthly')" style="background: linear-gradient(135deg,#1e3a8a,#1d4ed8); border: 2px solid #3b82f6; border-radius: 10px; padding: 10px 16px; cursor: pointer; min-width: 130px; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
                 <div style="font-size: 10px; color: #93c5fd; font-weight: 600; margin-bottom: 2px;">📆 ${monthLabel}</div>
                 <div style="font-size: 20px; font-weight: 800; color: #fff; line-height:1;">₹${monthIncome.toLocaleString('en-IN')}</div>
-                <div style="font-size: 10px; color: #bfdbfe; margin-top: 2px;">${monthRecords.length} record${monthRecords.length !== 1 ? 's' : ''} →</div>
+                <div style="font-size: 10px; color: #bfdbfe; margin-top: 2px;">${monthRecordsCountTotal} record${monthRecordsCountTotal !== 1 ? 's' : ''} →</div>
               </div>
               <!-- Add Tracking button -->
               <button class="btn btn-primary" data-action="toggle-tracking-form" style="padding: 12px 24px; font-size: 16px; white-space: nowrap;">+ Add Tracking</button>
@@ -1168,16 +1217,55 @@ class OwnerPortalApp {
   }
 
   renderTrackingDailyIncome() {
-    // Group tracking records by date
-    const groups = {};
+    // Group payments by date
+    const paymentsByDate = {};
     this.trackingData.forEach(t => {
-      const key = t.createdAt || 'Unknown';
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(t);
+      const isOldRecord = t.advanceAmount === undefined && t.paidAmount === undefined;
+      
+      if (isOldRecord) {
+        const date = t.createdAt || 'Unknown';
+        if (!paymentsByDate[date]) paymentsByDate[date] = [];
+        paymentsByDate[date].push({
+          qrId: t.qrId,
+          customerName: t.customerName,
+          productName: t.productName || t.deviceModel || '',
+          type: 'Full Payment',
+          amount: Number(t.amount) || 0,
+          balance: 0
+        });
+      } else {
+        const adv = Number(t.advanceAmount) || 0;
+        if (adv > 0) {
+          const date = t.createdAt || 'Unknown';
+          if (!paymentsByDate[date]) paymentsByDate[date] = [];
+          paymentsByDate[date].push({
+            qrId: t.qrId,
+            customerName: t.customerName,
+            productName: t.productName || t.deviceModel || '',
+            type: 'Advance',
+            amount: adv,
+            balance: Number(t.balanceAmount) || 0
+          });
+        }
+        
+        const paid = Number(t.paidAmount) || 0;
+        if (paid > 0) {
+          const date = t.balancePaidDate || t.createdAt || 'Unknown';
+          if (!paymentsByDate[date]) paymentsByDate[date] = [];
+          paymentsByDate[date].push({
+            qrId: t.qrId,
+            customerName: t.customerName,
+            productName: t.productName || t.deviceModel || '',
+            type: 'Balance',
+            amount: paid,
+            balance: Number(t.balanceAmount) || 0
+          });
+        }
+      }
     });
 
     // Sort dates newest first (DD/MM/YYYY format)
-    const sortedKeys = Object.keys(groups).sort((a, b) => {
+    const sortedKeys = Object.keys(paymentsByDate).sort((a, b) => {
       const parseDate = s => {
         const p = s.split('/');
         return p.length === 3 ? new Date(`${p[2]}-${p[1]}-${p[0]}`) : new Date(0);
@@ -1191,30 +1279,22 @@ class OwnerPortalApp {
           <button class="back-button" data-page="admin-tracking" style="margin-bottom:20px;">&#8592; Tracking</button>
           <div style="margin-bottom:28px;">
             <h1 style="font-size:32px; font-weight:700; margin-bottom:4px;">📅 Daily Tracking Income</h1>
-            <p style="color:#94a3b8;">Repair income grouped by day — ${this.trackingData.length} total records</p>
+            <p style="color:#94a3b8;">Repair income grouped by the actual payment date</p>
           </div>
 
           ${sortedKeys.length === 0 ? `
-            <div style="text-align:center; padding:60px; color:#fff; font-size:16px;">No tracking records found</div>
+            <div style="text-align:center; padding:60px; color:#fff; font-size:16px;">No tracking payments found</div>
           ` : sortedKeys.map(dateKey => {
-            const recs = groups[dateKey];
-            // Daily sales: old records (no advanceAmount/paidAmount saved) use amount
-            // New records: only advance + paid count, never full price or balance
-            const totalReceived = recs.reduce((s, t) => {
-              if (t.advanceAmount === undefined && t.paidAmount === undefined) {
-                return s + (Number(t.amount) || 0);
-              }
-              return s + (Number(t.advanceAmount)||0) + (Number(t.paidAmount)||0);
-            }, 0);
-            const totalBalance = recs.reduce((s, t) => s + (Number(t.balanceAmount) || 0), 0);
+            const payments = paymentsByDate[dateKey];
+            const totalReceived = payments.reduce((sum, p) => sum + p.amount, 0);
+            
             return `
               <div style="background:rgba(255,255,255,0.95); border-radius:12px; margin-bottom:20px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
                 <div style="background:linear-gradient(135deg,#065f46,#047857); padding:14px 20px; display:flex; justify-content:space-between; align-items:center;">
                   <div style="color:#fff; font-weight:700; font-size:16px;">📅 ${dateKey}</div>
                   <div style="text-align:right;">
-                    <div style="color:#6ee7b7; font-size:12px;">${recs.length} record${recs.length !== 1 ? 's' : ''}</div>
+                    <div style="color:#6ee7b7; font-size:12px;">${payments.length} payment${payments.length !== 1 ? 's' : ''}</div>
                     <div style="color:#fff; font-weight:800; font-size:20px;">₹${totalReceived.toLocaleString('en-IN')} received</div>
-                    ${totalBalance > 0 ? `<div style="color:#fcd34d; font-size:12px; font-weight:700;">Balance pending: ₹${totalBalance.toLocaleString('en-IN')}</div>` : ''}
                   </div>
                 </div>
                 <table style="width:100%; border-collapse:collapse; font-size:13px;">
@@ -1222,58 +1302,44 @@ class OwnerPortalApp {
                     <tr style="background:#f1f5f9;">
                       <th style="padding:10px 14px; text-align:left; color:#374151; font-weight:700;">Service Code</th>
                       <th style="padding:10px 14px; text-align:left; color:#374151; font-weight:700;">Customer</th>
-                      <th style="padding:10px 14px; text-align:right; color:#374151; font-weight:700;">Advance Received</th>
-                      <th style="padding:10px 14px; text-align:right; color:#374151; font-weight:700;">Paid Amount</th>
-                      <th style="padding:10px 14px; text-align:right; color:#374151; font-weight:700;">Total Received</th>
-                      <th style="padding:10px 14px; text-align:right; color:#374151; font-weight:700;">Balance Amount</th>
+                      <th style="padding:10px 14px; text-align:center; color:#374151; font-weight:700;">Payment Type</th>
+                      <th style="padding:10px 14px; text-align:right; color:#374151; font-weight:700;">Amount Received</th>
+                      <th style="padding:10px 14px; text-align:right; color:#374151; font-weight:700;">Remaining Balance</th>
                     </tr>
                   </thead>
                   <tbody>
-                    ${recs.map((t, i) => {
-                      const isOldRecord = t.advanceAmount === undefined && t.paidAmount === undefined;
-                      const adv  = Number(t.advanceAmount) || 0;
-                      const paid = Number(t.paidAmount)    || 0;
-                      const bal  = Number(t.balanceAmount) || 0;
-                      const full = Number(t.amount)        || 0;
-                      // Old record (pre-payment-system): show full amount in Total Received
-                      // New record: show advance+paid only
-                      const tot  = isOldRecord ? full : (adv + paid);
-                      const displayBal = bal > 0 ? bal : 0;
+                    ${payments.map((p, i) => {
+                      const displayBal = p.balance > 0 ? p.balance : 0;
                       return `
                       <tr style="border-top:1px solid #e5e7eb; background:${i % 2 === 0 ? '#fff' : '#f9fafb'};">
-                        <td style="padding:10px 14px; color:#1d4ed8; font-weight:700;">${t.qrId}</td>
+                        <td style="padding:10px 14px; color:#1d4ed8; font-weight:700;">${p.qrId}</td>
                         <td style="padding:10px 14px; color:#111827; font-size:12px;">
-                          <div style="font-weight:600;">${t.customerName}</div>
-                          <div style="color:#6b7280; font-size:11px;">${t.productName || t.deviceModel || ''}</div>
+                          <div style="font-weight:600;">${p.customerName}</div>
+                          <div style="color:#6b7280; font-size:11px;">${p.productName}</div>
                         </td>
-                        <td style="padding:10px 14px; text-align:right; color:#f59e0b; font-weight:700;">
-                          ${isOldRecord ? '<span style="color:#94a3b8;font-size:11px;">—</span>' : (adv > 0 ? `₹${adv.toLocaleString('en-IN')}` : '<span style="color:#d1d5db;">—</span>')}
+                        <td style="padding:10px 14px; text-align:center;">
+                          <span style="padding:2px 8px; border-radius:4px; font-size:11px; font-weight:700; 
+                            background:${p.type === 'Advance' ? '#fef3c7; color:#d97706;' : p.type === 'Balance' ? '#d1fae5; color:#059669;' : '#dbeafe; color:#2563eb;'}">
+                            ${p.type}
+                          </span>
                         </td>
-                        <td style="padding:10px 14px; text-align:right; color:#059669; font-weight:700;">
-                          ${isOldRecord ? '<span style="color:#94a3b8;font-size:11px;">—</span>' : (paid > 0 ? `₹${paid.toLocaleString('en-IN')}` : '<span style="color:#d1d5db;">—</span>')}
-                        </td>
-                        <td style="padding:10px 14px; text-align:right; color:#1d4ed8; font-weight:800;">
-                          ${tot > 0 ? `₹${tot.toLocaleString('en-IN')}` : '<span style="color:#d1d5db;">—</span>'}
+                        <td style="padding:10px 14px; text-align:right; color:#1d4ed8; font-weight:800; font-size:14px;">
+                          ₹${p.amount.toLocaleString('en-IN')}
                         </td>
                         <td style="padding:10px 14px; text-align:right; font-weight:700;">
-                          ${isOldRecord ? '<span style="color:#94a3b8;font-size:11px;">—</span>' : (displayBal > 0
+                          ${p.type === 'Full Payment' ? '<span style="color:#10b981;">✓ Paid</span>' : (displayBal > 0
                             ? `<span style="color:#dc2626; font-weight:800;">₹${displayBal.toLocaleString('en-IN')}</span>`
                             : `<span style="color:#10b981;">✓ Cleared</span>`)}
                         </td>
                       </tr>
                     `}).join('')}
                     <tr style="border-top:2px solid #10b981; background:#f0fdf4; font-weight:800; font-size:13px;">
-                      <td colspan="2" style="padding:10px 14px; color:#065f46;">📊 Total</td>
-                      <td style="padding:10px 14px; text-align:right; color:#f59e0b;">
-                        ₹${recs.reduce((s,t)=>s+(Number(t.advanceAmount)||0),0).toLocaleString('en-IN')}
-                      </td>
-                      <td style="padding:10px 14px; text-align:right; color:#059669;">
-                        ₹${recs.reduce((s,t)=>s+(Number(t.paidAmount)||0),0).toLocaleString('en-IN')}
-                      </td>                      <td style="padding:10px 14px; text-align:right; color:#1d4ed8; font-size:15px;">
+                      <td colspan="3" style="padding:10px 14px; color:#065f46;">📊 Total Daily Income</td>
+                      <td style="padding:10px 14px; text-align:right; color:#1d4ed8; font-size:15px;">
                         ₹${totalReceived.toLocaleString('en-IN')}
                       </td>
-                      <td style="padding:10px 14px; text-align:right; color:#dc2626;">
-                        ${totalBalance > 0 ? `₹${totalBalance.toLocaleString('en-IN')}` : '✓'}
+                      <td style="padding:10px 14px; text-align:right;">
+                        -
                       </td>
                     </tr>
                   </tbody>
@@ -1287,14 +1353,63 @@ class OwnerPortalApp {
   }
 
   renderTrackingMonthlyIncome() {
-    // Group tracking records by month (YYYY-MM)
+    // Group payments by month (YYYY-MM)
     const groups = {};
+    
     this.trackingData.forEach(t => {
-      if (!t.createdAt) return;
-      const parts = t.createdAt.split('/');
-      const key = parts.length === 3 ? `${parts[2]}-${parts[1]}` : 'Unknown';
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(t);
+      const isOldRecord = t.advanceAmount === undefined && t.paidAmount === undefined;
+
+      if (isOldRecord) {
+        if (!t.createdAt) return;
+        const parts = t.createdAt.split('/');
+        const key = parts.length === 3 ? `${parts[2]}-${parts[1]}` : 'Unknown';
+        if (!groups[key]) groups[key] = [];
+        groups[key].push({
+          date: t.createdAt,
+          qrId: t.qrId,
+          customerName: t.customerName,
+          productName: t.productName || t.deviceModel || '-',
+          status: t.status,
+          amount: Number(t.amount) || 0
+        });
+      } else {
+        // Advance
+        const adv = Number(t.advanceAmount) || 0;
+        if (adv > 0) {
+          if (!t.createdAt) return;
+          const parts = t.createdAt.split('/');
+          const key = parts.length === 3 ? `${parts[2]}-${parts[1]}` : 'Unknown';
+          if (!groups[key]) groups[key] = [];
+          groups[key].push({
+            date: t.createdAt,
+            qrId: t.qrId,
+            customerName: t.customerName,
+            productName: t.productName || t.deviceModel || '-',
+            status: t.status,
+            amount: adv,
+            type: 'Advance'
+          });
+        }
+        
+        // Balance
+        const paid = Number(t.paidAmount) || 0;
+        if (paid > 0) {
+          const date = t.balancePaidDate || t.createdAt;
+          if (!date) return;
+          const parts = date.split('/');
+          const key = parts.length === 3 ? `${parts[2]}-${parts[1]}` : 'Unknown';
+          if (!groups[key]) groups[key] = [];
+          groups[key].push({
+            date: date,
+            qrId: t.qrId,
+            customerName: t.customerName,
+            productName: t.productName || t.deviceModel || '-',
+            status: t.status,
+            amount: paid,
+            type: 'Balance'
+          });
+        }
+      }
     });
 
     const sortedKeys = Object.keys(groups).sort((a, b) => b.localeCompare(a));
@@ -1311,20 +1426,20 @@ class OwnerPortalApp {
           <button class="back-button" data-page="admin-tracking" style="margin-bottom:20px;">&#8592; Tracking</button>
           <div style="margin-bottom:28px;">
             <h1 style="font-size:32px; font-weight:700; margin-bottom:4px;">📆 Monthly Tracking Income</h1>
-            <p style="color:#94a3b8;">Repair income grouped by month — ${this.trackingData.length} total records</p>
+            <p style="color:#94a3b8;">Repair income grouped by month — actual payment dates</p>
           </div>
 
           ${sortedKeys.length === 0 ? `
             <div style="text-align:center; padding:60px; color:#fff; font-size:16px;">No tracking records found</div>
           ` : sortedKeys.map(monthKey => {
             const recs = groups[monthKey];
-            const total = recs.reduce((s, t) => s + (Number(t.amount) || 0), 0);
+            const total = recs.reduce((s, t) => s + t.amount, 0);
             return `
               <div style="background:rgba(255,255,255,0.95); border-radius:12px; margin-bottom:20px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
                 <div style="background:linear-gradient(135deg,#1e3a8a,#1d4ed8); padding:14px 20px; display:flex; justify-content:space-between; align-items:center;">
                   <div style="color:#fff; font-weight:700; font-size:16px;">📆 ${monthLabel(monthKey)}</div>
                   <div style="text-align:right;">
-                    <div style="color:#93c5fd; font-size:12px;">${recs.length} record${recs.length !== 1 ? 's' : ''}</div>
+                    <div style="color:#93c5fd; font-size:12px;">${recs.length} payment${recs.length !== 1 ? 's' : ''}</div>
                     <div style="color:#fff; font-weight:800; font-size:20px;">₹${total.toLocaleString('en-IN')}</div>
                   </div>
                 </div>
@@ -1335,19 +1450,22 @@ class OwnerPortalApp {
                       <th style="padding:10px 14px; text-align:left; color:#374151; font-weight:600;">QR ID</th>
                       <th style="padding:10px 14px; text-align:left; color:#374151; font-weight:600;">Customer</th>
                       <th style="padding:10px 14px; text-align:left; color:#374151; font-weight:600;">Device</th>
-                      <th style="padding:10px 14px; text-align:left; color:#374151; font-weight:600;">Status</th>
+                      <th style="padding:10px 14px; text-align:left; color:#374151; font-weight:600;">Status/Type</th>
                       <th style="padding:10px 14px; text-align:right; color:#374151; font-weight:600;">Amount</th>
                     </tr>
                   </thead>
                   <tbody>
-                    ${recs.map((t, i) => `
+                    ${recs.map((p, i) => `
                       <tr style="border-top:1px solid #e5e7eb; background:${i % 2 === 0 ? '#fff' : '#f9fafb'};">
-                        <td style="padding:10px 14px; color:#374151; font-size:12px;">${t.createdAt}</td>
-                        <td style="padding:10px 14px; color:#1d4ed8; font-weight:600;">${t.qrId}</td>
-                        <td style="padding:10px 14px; color:#111827;">${t.customerName}</td>
-                        <td style="padding:10px 14px; color:#374151;">${t.productName || t.deviceModel || '-'}</td>
-                        <td style="padding:10px 14px;"><span style="background:#dbeafe; color:#1e40af; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600;">${t.status}</span></td>
-                        <td style="padding:10px 14px; text-align:right; color:#1d4ed8; font-weight:700;">₹${(Number(t.amount) || 0).toLocaleString('en-IN')}</td>
+                        <td style="padding:10px 14px; color:#374151; font-size:12px;">${p.date}</td>
+                        <td style="padding:10px 14px; color:#1d4ed8; font-weight:600;">${p.qrId}</td>
+                        <td style="padding:10px 14px; color:#111827;">${p.customerName}</td>
+                        <td style="padding:10px 14px; color:#374151;">${p.productName}</td>
+                        <td style="padding:10px 14px;">
+                          <span style="background:#dbeafe; color:#1e40af; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600;">${p.status}</span>
+                          ${p.type ? `<span style="background:${p.type==='Advance'?'#fef3c7':'#d1fae5'}; color:${p.type==='Advance'?'#b45309':'#047857'}; padding:2px 6px; border-radius:4px; font-size:9px; font-weight:700; margin-left:4px;">${p.type}</span>` : ''}
+                        </td>
+                        <td style="padding:10px 14px; text-align:right; color:#1d4ed8; font-weight:700;">₹${(p.amount).toLocaleString('en-IN')}</td>
                       </tr>
                     `).join('')}
                     <tr style="border-top:2px solid #3b82f6; background:#eff6ff;">
@@ -1367,6 +1485,26 @@ class OwnerPortalApp {
   renderTrackingForm() {
     return `
       <div id="trackingForm" style="display: none; background-color: rgba(30, 41, 59, 0.5); border: 1px solid #334155; border-radius: 12px; padding: 24px; margin-bottom: 32px;">
+        
+        <!-- Barcode display and print buttons at the top of the form -->
+        <div style="margin-bottom: 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+          <!-- Barcode display -->
+          <div style="background:#fff; padding:8px; border-radius:8px; text-align:center; display:inline-block; flex-shrink: 0;">
+            <canvas id="formBarcodeCanvas" style="display:none; max-width:100%;"></canvas>
+          </div>
+          <!-- Print buttons -->
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <button type="button" onclick="app.printTrackingLabel(document.getElementById('newTrackingQRId').value, document.getElementById('newTrackingCustomer')?.value, document.getElementById('newTrackingDevice')?.value)"
+              style="background:#1e293b; color:#fff; border:none; border-radius:6px; padding:7px 16px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;">
+              🏷️ Print Label (Browser)
+            </button>
+            <button type="button" onclick="app.printTSCLabel(document.getElementById('newTrackingQRId').value, document.getElementById('newTrackingCustomer')?.value, document.getElementById('newTrackingDevice')?.value)"
+              style="background:#ea580c; color:#fff; border:none; border-radius:6px; padding:7px 16px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;">
+              🖶 TSC Printer (.prn)
+            </button>
+          </div>
+        </div>
+
         <h3 style="margin-bottom: 24px;">Add New Tracking Record</h3>
 
         <!-- Barcode scan lookup -->
@@ -1388,21 +1526,6 @@ class OwnerPortalApp {
             <input type="text" class="input" id="newTrackingQRId"
               oninput="app._renderFormBarcode(this.value)"
               placeholder="Auto-generated from 01518">
-            <!-- Barcode display -->
-            <div style="margin-top:10px; background:#fff; padding:8px; border-radius:6px; text-align:center; display:inline-block;">
-              <canvas id="formBarcodeCanvas" style="display:none; max-width:100%;"></canvas>
-            </div>
-            <!-- Print Label button -->
-            <div style="margin-top:8px; display:flex; gap:8px;">
-              <button type="button" onclick="app.printTrackingLabel(document.getElementById('newTrackingQRId').value, document.getElementById('newTrackingCustomer')?.value, document.getElementById('newTrackingDevice')?.value)"
-                style="background:#1e293b; color:#fff; border:none; border-radius:6px; padding:7px 16px; font-size:12px; font-weight:700; cursor:pointer;">
-                🏷️ Print Label (Browser)
-              </button>
-              <button type="button" onclick="app.printTSCLabel(document.getElementById('newTrackingQRId').value, document.getElementById('newTrackingCustomer')?.value, document.getElementById('newTrackingDevice')?.value)"
-                style="background:#ea580c; color:#fff; border:none; border-radius:6px; padding:7px 16px; font-size:12px; font-weight:700; cursor:pointer;">
-                🖶 TSC Printer (.prn)
-              </button>
-            </div>
           </div>
           <div class="form-field">
             <label class="form-label">Password *</label>
@@ -5274,8 +5397,13 @@ class OwnerPortalApp {
             <div>
               <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Paid Amount (₹) <span style="color:#059669;">(balance received)</span></label>
               <input id="et_paid" class="input" type="number" value="${Number(t.paidAmount) || ''}" style="width:100%;color:#111;background:#f8fafc;border:1px solid #d1d5db;"
-                oninput="var f=Number(document.getElementById('et_amount').value)||0;var a=Number(document.getElementById('et_advance').value)||0;var p=Number(this.value)||0;var tot=a+p;document.getElementById('et_total').value=tot;document.getElementById('et_balance').value=Math.max(0,f-tot);">
+                oninput="var f=Number(document.getElementById('et_amount').value)||0;var a=Number(document.getElementById('et_advance').value)||0;var p=Number(this.value)||0;var tot=a+p;document.getElementById('et_total').value=tot;document.getElementById('et_balance').value=Math.max(0,f-tot); if(p > 0 && !document.getElementById('et_balancePaidDate').value) { document.getElementById('et_balancePaidDate').value = new Date().toLocaleDateString('en-IN', {day:'2-digit',month:'2-digit',year:'numeric'}); }">
               <small style="color:#059669;font-size:10px;">Amount paid when customer collects → shows in Today's Sales</small>
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Balance Paid Date</label>
+              <input id="et_balancePaidDate" class="input" type="text" placeholder="DD/MM/YYYY" value="${t.balancePaidDate || ''}" style="width:100%;color:#111;background:#f8fafc;border:1px solid #d1d5db;">
+              <small style="color:#6b7280;font-size:10px;">Date of balance payment (DD/MM/YYYY)</small>
             </div>
             <div>
               <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Total Received (₹)</label>
@@ -5338,6 +5466,7 @@ class OwnerPortalApp {
       return;
     }
 
+    const paidAmt = Number(document.getElementById('et_paid')?.value) || 0;
     const updatedData = {
       customerName,
       productName,
@@ -5345,9 +5474,10 @@ class OwnerPortalApp {
       address:        document.getElementById('et_address')?.value?.trim(),
       amount:         Number(document.getElementById('et_amount')?.value) || 0,
       advanceAmount:  Number(document.getElementById('et_advance')?.value) || 0,
-      paidAmount:     Number(document.getElementById('et_paid')?.value) || 0,
+      paidAmount:     paidAmt,
       totalReceived:  Number(document.getElementById('et_total')?.value) || 0,
       balanceAmount:  Number(document.getElementById('et_balance')?.value) || 0,
+      balancePaidDate: document.getElementById('et_balancePaidDate')?.value?.trim() || (paidAmt > 0 ? new Date().toLocaleDateString('en-IN', {day:'2-digit',month:'2-digit',year:'numeric'}) : ''),
       estimatedDays:  Number(document.getElementById('et_estimatedDays')?.value) || 0,
       qrPassword:     document.getElementById('et_qrPassword')?.value?.trim(),
       issue
@@ -5908,13 +6038,13 @@ class OwnerPortalApp {
     /* ── Print mode: only the strip, exact paper size ── */
     @media print {
       @page {
-        size: 101.5mm 25mm portrait;
+        size: 25mm 101.5mm portrait;
         margin: 0;
       }
       html,
       body {
-        width: 101.5mm;
-        height: 25mm;
+        width: 25mm;
+        height: 101.5mm;
         margin: 0;
         padding: 0;
         overflow: hidden;
@@ -5929,12 +6059,34 @@ class OwnerPortalApp {
       }
       .print-strip {
         display: flex !important;
-        flex-direction: row;
-        width: 101.5mm;
-        height: 25mm;
+        flex-direction: column !important;
+        width: 25mm !important;
+        height: 101.5mm !important;
         position: absolute;
         top: 0;
         left: 0;
+      }
+      .label {
+        width: 25mm !important;
+        height: 33.83mm !important;
+        border-right: none !important;
+        position: relative !important;
+        overflow: hidden !important;
+      }
+      .label-inner {
+        width: 33.83mm !important;
+        height: 25mm !important;
+        position: absolute !important;
+        top: 4.415mm !important;
+        left: -4.415mm !important;
+        transform: rotate(90deg); /* If sideways, try rotate(-90deg) */
+        transform-origin: center !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        padding: 0.3mm 0.5mm 0 0.5mm !important;
+        box-sizing: border-box !important;
       }
       h2, .hint, .print-btn, .steps, .scale-wrap {
         display: none !important;
@@ -5982,33 +6134,40 @@ class OwnerPortalApp {
   <div class="steps">
     In the print dialog: &nbsp;
     ① Select <span>TSC / Zenpert</span> printer &nbsp;
-    ② Paper size → <span>101.5 × 25 mm</span> &nbsp;
-    ③ Margins → <span>None</span> &nbsp;
-    ④ Click <span>Print</span>
+    ② Paper size → <span>LABEL25</span> &nbsp;
+    ③ Layout → <span>Portrait</span> &nbsp;
+    ④ Margins → <span>None</span> &nbsp;
+    ⑤ Click <span>Print</span>
   </div>
 
   <!-- Hidden print-only strip (exact size, no transform) -->
   <div class="print-strip" style="display:none;">
     <div class="label">
-      <div class="shop">MANJULA MOBILES</div>
-      <canvas class="bc" id="bcp1"></canvas>
-      <div class="barnum">${barVal}</div>
-      <div class="device">${dev}</div>
-      ${cust ? `<div class="custname">${cust}</div>` : ''}
+      <div class="label-inner">
+        <div class="shop">MANJULA MOBILES</div>
+        <canvas class="bc" id="bcp1"></canvas>
+        <div class="barnum">${barVal}</div>
+        <div class="device">${dev}</div>
+        ${cust ? `<div class="custname">${cust}</div>` : ''}
+      </div>
     </div>
     <div class="label">
-      <div class="shop">MANJULA MOBILES</div>
-      <canvas class="bc" id="bcp2"></canvas>
-      <div class="barnum">${barVal}</div>
-      <div class="device">${dev}</div>
-      ${cust ? `<div class="custname">${cust}</div>` : ''}
+      <div class="label-inner">
+        <div class="shop">MANJULA MOBILES</div>
+        <canvas class="bc" id="bcp2"></canvas>
+        <div class="barnum">${barVal}</div>
+        <div class="device">${dev}</div>
+        ${cust ? `<div class="custname">${cust}</div>` : ''}
+      </div>
     </div>
     <div class="label">
-      <div class="shop">MANJULA MOBILES</div>
-      <canvas class="bc" id="bcp3"></canvas>
-      <div class="barnum">${barVal}</div>
-      <div class="device">${dev}</div>
-      ${cust ? `<div class="custname">${cust}</div>` : ''}
+      <div class="label-inner">
+        <div class="shop">MANJULA MOBILES</div>
+        <canvas class="bc" id="bcp3"></canvas>
+        <div class="barnum">${barVal}</div>
+        <div class="device">${dev}</div>
+        ${cust ? `<div class="custname">${cust}</div>` : ''}
+      </div>
     </div>
   </div>
 
