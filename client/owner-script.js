@@ -5956,13 +5956,13 @@ class OwnerPortalApp {
       flex-direction: column;
       align-items: center;
       justify-content: flex-start;
-      padding: 0.3mm 0.5mm 0 0.5mm;
+      padding: 4.5mm 0.5mm 0 0.5mm;
       overflow: hidden;
       gap: 0;
     }
     .label:last-child { border-right: none; }
     .shop {
-      font-size: 5pt;
+      font-size: 7.5pt;
       font-weight: 800;
       text-align: center;
       color: #000;
@@ -5978,7 +5978,7 @@ class OwnerPortalApp {
       margin: 0 auto;
     }
     .barnum {
-      font-size: 6pt;
+      font-size: 7pt;
       font-weight: 700;
       color: #000;
       letter-spacing: 1px;
@@ -5987,8 +5987,8 @@ class OwnerPortalApp {
       margin-bottom: 0.4mm;
     }
     .device {
-      font-size: 4.5pt;
-      font-weight: 600;
+      font-size: 7.5pt;
+      font-weight: 800;
       color: #000;
       text-align: center;
       white-space: nowrap;
@@ -5999,7 +5999,7 @@ class OwnerPortalApp {
       letter-spacing: 0.2px;
     }
     .custname {
-      font-size: 4pt;
+      font-size: 6pt;
       font-weight: 600;
       color: #333;
       text-align: center;
@@ -6085,7 +6085,7 @@ class OwnerPortalApp {
         flex-direction: column !important;
         align-items: center !important;
         justify-content: flex-start !important;
-        padding: 0.3mm 0.5mm 0 0.5mm !important;
+        padding: 4.5mm 0.5mm 0 0.5mm !important;
         box-sizing: border-box !important;
       }
       h2, .hint, .print-btn, .steps, .scale-wrap {
@@ -6110,21 +6110,18 @@ class OwnerPortalApp {
         <canvas class="bc" id="bc1"></canvas>
         <div class="barnum">${barVal}</div>
         <div class="device">${dev}</div>
-        ${cust ? `<div class="custname">${cust}</div>` : ''}
       </div>
       <div class="label">
         <div class="shop">MANJULA MOBILES</div>
         <canvas class="bc" id="bc2"></canvas>
         <div class="barnum">${barVal}</div>
         <div class="device">${dev}</div>
-        ${cust ? `<div class="custname">${cust}</div>` : ''}
       </div>
       <div class="label">
         <div class="shop">MANJULA MOBILES</div>
         <canvas class="bc" id="bc3"></canvas>
         <div class="barnum">${barVal}</div>
         <div class="device">${dev}</div>
-        ${cust ? `<div class="custname">${cust}</div>` : ''}
       </div>
     </div>
   </div>
@@ -6148,7 +6145,6 @@ class OwnerPortalApp {
         <canvas class="bc" id="bcp1"></canvas>
         <div class="barnum">${barVal}</div>
         <div class="device">${dev}</div>
-        ${cust ? `<div class="custname">${cust}</div>` : ''}
       </div>
     </div>
     <div class="label">
@@ -6157,7 +6153,6 @@ class OwnerPortalApp {
         <canvas class="bc" id="bcp2"></canvas>
         <div class="barnum">${barVal}</div>
         <div class="device">${dev}</div>
-        ${cust ? `<div class="custname">${cust}</div>` : ''}
       </div>
     </div>
     <div class="label">
@@ -6166,7 +6161,6 @@ class OwnerPortalApp {
         <canvas class="bc" id="bcp3"></canvas>
         <div class="barnum">${barVal}</div>
         <div class="device">${dev}</div>
-        ${cust ? `<div class="custname">${cust}</div>` : ''}
       </div>
     </div>
   </div>
@@ -6187,7 +6181,7 @@ class OwnerPortalApp {
         var opts = {
           format: 'CODE128',
           width: 2,
-          height: 50,
+          height: 35,
           displayValue: false,
           margin: 8,
           background: '#ffffff',
@@ -6232,25 +6226,28 @@ class OwnerPortalApp {
       'SET PARTIAL_CUTTER OFF',
       'SET TEAR OFF',
       'CLS',
-      `BARCODE 131,152,"128M",42,0,180,2,4,"!104${barVal}"`,
+      `BARCODE 131,114,"128M",30,0,180,2,4,"!104${barVal}"`,
       'CODEPAGE 1252',
-      `TEXT 176,105,"0",180,8,8,"${barVal}"`,
-      `TEXT 214,191,"0",180,6,12,"MANJULA MOBILES"`,
-      `TEXT 260,81,"0",180,6,12,"${dev}"`,
-      'BAR 131,22, 78, 2',
-      'BAR 134,21, 1, 2',
-      `BARCODE 402,152,"128M",42,0,180,2,4,"!104${barVal}"`,
-      `TEXT 447,105,"0",180,8,8,"${barVal}"`,
-      `TEXT 485,191,"0",180,6,12,"MANJULA MOBILES"`,
-      `TEXT 531,81,"0",180,6,12,"${dev}"`,
-      'BAR 402,22, 78, 2',
-      'BAR 405,21, 1, 2',
-      `BARCODE 672,152,"128M",42,0,180,2,4,"!104${barVal}"`,
-      `TEXT 717,105,"0",180,8,8,"${barVal}"`,
-      `TEXT 755,191,"0",180,6,12,"MANJULA MOBILES"`,
-      `TEXT 801,81,"0",180,6,12,"${dev}"`,
-      'BAR 672,22, 78, 2',
-      'BAR 675,21, 1, 2',
+      `TEXT 176,78,"0",180,8,8,"${barVal}"`,
+      `TEXT 214,160,"0",180,10,10,"MANJULA MOBILES"`,
+      `TEXT 260,50,"0",180,8,8,"${dev}"`,
+      `TEXT 261,50,"0",180,8,8,"${dev}"`,
+      'BAR 131,12, 78, 2',
+      'BAR 134,11, 1, 2',
+      `BARCODE 402,114,"128M",30,0,180,2,4,"!104${barVal}"`,
+      `TEXT 447,78,"0",180,8,8,"${barVal}"`,
+      `TEXT 485,160,"0",180,10,10,"MANJULA MOBILES"`,
+      `TEXT 531,50,"0",180,8,8,"${dev}"`,
+      `TEXT 532,50,"0",180,8,8,"${dev}"`,
+      'BAR 402,12, 78, 2',
+      'BAR 405,11, 1, 2',
+      `BARCODE 672,114,"128M",30,0,180,2,4,"!104${barVal}"`,
+      `TEXT 717,78,"0",180,8,8,"${barVal}"`,
+      `TEXT 755,160,"0",180,10,10,"MANJULA MOBILES"`,
+      `TEXT 801,50,"0",180,8,8,"${dev}"`,
+      `TEXT 802,50,"0",180,8,8,"${dev}"`,
+      'BAR 672,12, 78, 2',
+      'BAR 675,11, 1, 2',
       'PRINT 1,1'
     ].join('\r\n');
 
