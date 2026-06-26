@@ -549,7 +549,7 @@ class OwnerPortalApp {
         if (result.warning) {
           alert(`⚠️ OTP Generated!\n\n${result.message}`);
         } else {
-          alert("✅ OTP sent to your registered email address (keerthivasan98406@gmail.com)");
+          alert("✅ OTP sent to your registered email address (manjulamobiles125@gmail.com)");
         }
         await this.renderPage("admin-login");
       } else {

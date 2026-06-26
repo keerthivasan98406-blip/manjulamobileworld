@@ -389,7 +389,7 @@ const sendOtpEmail = async (otp) => {
           },
           body: JSON.stringify({
             from: 'Manjula Mobile World <onboarding@resend.dev>',
-            to: 'keerthivasan98406@gmail.com',
+            to: smtpUser || 'manjulamobiles125@gmail.com',
             subject: '🔐 Admin Login OTP - Manjula Mobile World',
             html: htmlContent
           })
@@ -445,13 +445,13 @@ const sendOtpEmail = async (otp) => {
 
         const mailOptions = {
           from: `"Manjula Mobile World" <${smtpUser}>`,
-          to: 'keerthivasan98406@gmail.com',
+          to: smtpUser || 'manjulamobiles125@gmail.com',
           subject: '🔐 Admin Login OTP - Manjula Mobile World',
           html: htmlContent
         };
 
         await transporter.sendMail(mailOptions);
-        console.log('✉️ OTP email successfully sent to keerthivasan98406@gmail.com via SMTP');
+        console.log(`✉️ OTP email successfully sent to ${smtpUser || 'manjulamobiles125@gmail.com'} via SMTP`);
         return { success: true };
       } catch (smtpErr) {
         console.error('❌ SMTP sending failed:', smtpErr.message);
