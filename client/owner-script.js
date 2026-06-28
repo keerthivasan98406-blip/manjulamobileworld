@@ -1553,19 +1553,19 @@ class OwnerPortalApp {
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
           <div class="form-field">
-            <label class="form-label">Customer Name *</label>
-            <input type="text" class="input" placeholder="Enter customer name" id="newTrackingCustomer">
+            <label class="form-label">Contact Number</label>
+            <input type="tel" class="input" placeholder="Enter contact number" id="newTrackingContact">
           </div>
           <div class="form-field">
-            <label class="form-label">Device Model *</label>
-            <input type="text" class="input" placeholder="Enter device model" id="newTrackingDevice">
+            <label class="form-label">Customer Name *</label>
+            <input type="text" class="input" placeholder="Enter customer name" id="newTrackingCustomer">
           </div>
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
           <div class="form-field">
-            <label class="form-label">Contact Number</label>
-            <input type="tel" class="input" placeholder="Enter contact number" id="newTrackingContact">
+            <label class="form-label">Device Model *</label>
+            <input type="text" class="input" placeholder="Enter device model" id="newTrackingDevice">
           </div>
           <div class="form-field">
             <label class="form-label">Estimated Completion</label>
@@ -5385,12 +5385,12 @@ class OwnerPortalApp {
           <h3 style="font-size:18px;font-weight:800;color:#111;margin-bottom:20px;">✏️ Edit Tracking Record</h3>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
             <div>
-              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Customer Name *</label>
-              <input id="et_customerName" class="input" value="${t.customerName || ''}" style="width:100%;color:#111;background:#f8fafc;border:1px solid #d1d5db;">
-            </div>
-            <div>
               <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Contact Number</label>
               <input id="et_contact" class="input" value="${t.contact || ''}" style="width:100%;color:#111;background:#f8fafc;border:1px solid #d1d5db;">
+            </div>
+            <div>
+              <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Customer Name *</label>
+              <input id="et_customerName" class="input" value="${t.customerName || ''}" style="width:100%;color:#111;background:#f8fafc;border:1px solid #d1d5db;">
             </div>
             <div>
               <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Address</label>
