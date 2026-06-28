@@ -466,10 +466,22 @@ class OwnerPortalApp {
         this.adminSearch = e.target.value;
       }
       if (e.target.id === 'newTrackingContact') {
+        this.showContactSuggestions(e.target, 'newTrackingCustomer', 'newTrackingAddress');
         this.handleContactAutofill(e.target.value, 'newTrackingCustomer', 'newTrackingAddress');
       }
       if (e.target.id === 'et_contact') {
+        this.showContactSuggestions(e.target, 'et_customerName', 'et_address');
         this.handleContactAutofill(e.target.value, 'et_customerName', 'et_address');
+      }
+    })
+
+    // Close suggestions dropdown on focus loss
+    app.addEventListener('focusout', (e) => {
+      if (e.target.id === 'newTrackingContact' || e.target.id === 'et_contact') {
+        setTimeout(() => {
+          const dropdown = document.getElementById('contactSuggestionsDropdown');
+          if (dropdown) dropdown.style.display = 'none';
+        }, 200);
       }
     })
 
@@ -6438,6 +6450,94 @@ class OwnerPortalApp {
         console.error('Error fetching customer details for autofill:', err);
       }
     }
+  }
+
+  getContactSuggestions(query) {
+    const term = query.trim();
+    if (term.length < 4) return [];
+
+    const suggestionsMap = new Map();
+    const addIfMatches = (phone, name, address, source) => {
+      if (!phone) return;
+      const cleanPhone = phone.trim();
+      if (cleanPhone.includes(term) && !suggestionsMap.has(cleanPhone)) {
+        suggestionsMap.set(cleanPhone, {
+          phone: cleanPhone,
+          name: (name || '').trim(),
+          address: (address || '').trim(),
+          source: source
+        });
+      }
+    };
+
+    if (this.trackingData) {
+      this.trackingData.forEach(t => addIfMatches(t.contact, t.customerName, t.address, 'Repair'));
+    }
+    if (this.salesRecords) {
+      this.salesRecords.forEach(s => addIfMatches(s.phoneNumber, s.customerName, s.customerAddress, 'Sale'));
+    }
+    if (this.serviceRecords) {
+      this.serviceRecords.forEach(s => addIfMatches(s.phoneNumber, s.customerName, s.customerAddress, 'Service'));
+    }
+    if (this.orders) {
+      this.orders.forEach(o => {
+        if (o.customer) {
+          addIfMatches(o.customer.phone, o.customer.name, o.customer.address, 'Order');
+        }
+      });
+    }
+
+    return Array.from(suggestionsMap.values()).slice(0, 10);
+  }
+
+  showContactSuggestions(inputElement, targetNameId, targetAddressId) {
+    const value = inputElement.value;
+    let dropdown = document.getElementById('contactSuggestionsDropdown');
+    if (!dropdown) {
+      dropdown = document.createElement('div');
+      dropdown.id = 'contactSuggestionsDropdown';
+      dropdown.style.cssText = 'display:none; position:absolute; background:#fff; border:1.5px solid #10b981; border-radius:8px; max-height:200px; overflow-y:auto; z-index:99999; box-shadow:0 6px 20px rgba(0,0,0,0.18);';
+      document.body.appendChild(dropdown);
+    }
+
+    const matches = this.getContactSuggestions(value);
+    if (matches.length === 0) {
+      dropdown.style.display = 'none';
+      return;
+    }
+
+    const rect = inputElement.getBoundingClientRect();
+    dropdown.style.top = (rect.bottom + window.scrollY + 4) + 'px';
+    dropdown.style.left = (rect.left + window.scrollX) + 'px';
+    dropdown.style.width = rect.width + 'px';
+
+    dropdown.innerHTML = matches.map(item => `
+      <div onmousedown="event.preventDefault(); app.selectContactSuggestion('${item.phone}', '${item.name.replace(/'/g, "\\'")}', '${item.address.replace(/'/g, "\\'")}', '${inputElement.id}', '${targetNameId}', '${targetAddressId}');"
+        style="padding:10px 14px; cursor:pointer; border-bottom:1px solid #f1f5f9; font-size:13px;"
+        onmouseover="this.style.background='#f0fdf4'" onmouseout="this.style.background='#fff'">
+        <div style="font-weight:700; color:#111827;">${item.phone}</div>
+        <div style="font-size:11px; color:#4b5563; display:flex; justify-content:space-between; margin-top:2px;">
+          <span>👤 ${item.name || 'No name'}</span>
+          <span style="font-size:9px; background:#e0f2fe; color:#0369a1; padding:1px 4px; border-radius:4px;">${item.source}</span>
+        </div>
+        ${item.address ? `<div style="font-size:10px; color:#9ca3af; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">📍 ${item.address}</div>` : ''}
+      </div>
+    `).join('');
+
+    dropdown.style.display = 'block';
+  }
+
+  selectContactSuggestion(phone, name, address, inputId, targetNameId, targetAddressId) {
+    const contactInput = document.getElementById(inputId);
+    const customerInput = document.getElementById(targetNameId);
+    const addressInput = document.getElementById(targetAddressId);
+
+    if (contactInput) contactInput.value = phone;
+    if (customerInput) customerInput.value = name;
+    if (addressInput) addressInput.value = address;
+
+    const dropdown = document.getElementById('contactSuggestionsDropdown');
+    if (dropdown) dropdown.style.display = 'none';
   }
 
   filterTracking(status) {
