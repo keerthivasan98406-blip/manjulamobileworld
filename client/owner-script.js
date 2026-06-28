@@ -465,6 +465,12 @@ class OwnerPortalApp {
       if (e.target.id === 'adminSearch') {
         this.adminSearch = e.target.value;
       }
+      if (e.target.id === 'newTrackingContact') {
+        this.handleContactAutofill(e.target.value, 'newTrackingCustomer', 'newTrackingAddress');
+      }
+      if (e.target.id === 'et_contact') {
+        this.handleContactAutofill(e.target.value, 'et_customerName', 'et_address');
+      }
     })
 
     // Handle Enter key in search inputs
@@ -6407,6 +6413,31 @@ class OwnerPortalApp {
     this.searchTimeout = setTimeout(() => {
       this.renderTrackingListOnly();
     }, 500); // Increased to 500ms for smoother typing
+  }
+
+  async handleContactAutofill(phone, targetNameId, targetAddressId) {
+    const trimmedPhone = phone.trim();
+    if (trimmedPhone.length === 10) {
+      try {
+        const response = await fetch(`${this.API_URL}/customer/${encodeURIComponent(trimmedPhone)}`);
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success) {
+            const customerInput = document.getElementById(targetNameId);
+            const addressInput = document.getElementById(targetAddressId);
+            
+            if (customerInput && !customerInput.value.trim()) {
+              customerInput.value = result.customerName;
+            }
+            if (addressInput && !addressInput.value.trim()) {
+              addressInput.value = result.address;
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching customer details for autofill:', err);
+      }
+    }
   }
 
   filterTracking(status) {

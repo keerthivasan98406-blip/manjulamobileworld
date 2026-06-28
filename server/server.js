@@ -941,6 +941,67 @@ app.post('/api/print-label', async (req, res) => {
   }
 });
 
+// Customer Lookup Route
+app.get('/api/customer/:phone', async (req, res) => {
+  try {
+    const { phone } = req.params;
+    if (!phone) {
+      return res.status(400).json({ error: 'Phone number is required' });
+    }
+
+    // Query in parallel for speed
+    const [trackingMatch, salesMatch, serviceMatch, orderMatch] = await Promise.all([
+      Tracking.findOne({ contact: phone }).sort({ _id: -1 }).lean(),
+      SalesRecord.findOne({ phoneNumber: phone }).sort({ _id: -1 }).lean(),
+      ServiceRecord.findOne({ phoneNumber: phone }).sort({ _id: -1 }).lean(),
+      Order.findOne({ "customer.phone": phone }).sort({ _id: -1 }).lean()
+    ]);
+
+    let customerName = '';
+    let address = '';
+
+    // Prioritize tracking records
+    if (trackingMatch) {
+      customerName = trackingMatch.customerName || '';
+      address = trackingMatch.address || '';
+    }
+
+    // Fallback to SalesRecord
+    if ((!customerName || !address) && salesMatch) {
+      customerName = customerName || salesMatch.customerName || '';
+      address = address || salesMatch.customerAddress || '';
+    }
+
+    // Fallback to ServiceRecord
+    if ((!customerName || !address) && serviceMatch) {
+      customerName = customerName || serviceMatch.customerName || '';
+      address = address || serviceMatch.customerAddress || '';
+    }
+
+    // Fallback to Order
+    if ((!customerName || !address) && orderMatch && orderMatch.customer) {
+      customerName = customerName || orderMatch.customer.name || '';
+      address = address || orderMatch.customer.address || '';
+    }
+
+    if (customerName || address) {
+      return res.json({
+        success: true,
+        customerName,
+        address
+      });
+    }
+
+    return res.json({
+      success: false,
+      message: 'No customer details found'
+    });
+  } catch (error) {
+    console.error('Error fetching customer details:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Tracking Routes
 app.get('/api/tracking', async (req, res) => {
   try {
