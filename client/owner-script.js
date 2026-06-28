@@ -6237,7 +6237,7 @@ class OwnerPortalApp {
       'SIZE 101.5 mm, 25 mm',
       'GAP 2 mm, 0 mm',
       'DIRECTION 0,0',
-      'REFERENCE 0,3',
+      'REFERENCE 0,4',
       'OFFSET 0 mm',
       'SET PEEL OFF',
       'SET CUTTER OFF',
