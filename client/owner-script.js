@@ -2940,6 +2940,8 @@ class OwnerPortalApp {
       });
     }
 
+    const lowStock = filtered.filter(d => (Number(d.stock) || 0) === 1);
+
     return `
       <div style="min-height:100vh; background-color:#f8fafc; color:#0f172a; padding-top:96px; padding-bottom:80px;">
         <div class="container">
