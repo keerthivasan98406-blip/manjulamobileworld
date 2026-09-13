@@ -1577,6 +1577,12 @@ class ManjulaMobilesApp {
   }
 
   async renderPage(page) {
+    const activeEl = document.activeElement;
+    const activeId = activeEl && activeEl.id ? activeEl.id : null;
+    const activeName = activeEl && activeEl.name ? activeEl.name : null;
+    const activeStart = (activeEl && typeof activeEl.selectionStart === 'number') ? activeEl.selectionStart : null;
+    const activeEnd = (activeEl && typeof activeEl.selectionEnd === 'number') ? activeEl.selectionEnd : null;
+
     const app = document.getElementById("app")
     this.currentPage = page
 
@@ -1623,6 +1629,18 @@ class ManjulaMobilesApp {
     }
 
     app.innerHTML = html
+
+    if (activeId || activeName) {
+      const restored = activeId ? document.getElementById(activeId) : document.querySelector(`input[name="${activeName}"], textarea[name="${activeName}"]`);
+      if (restored && typeof restored.focus === 'function') {
+        restored.focus();
+        if (activeStart !== null && activeEnd !== null && typeof restored.setSelectionRange === 'function') {
+          try {
+            restored.setSelectionRange(activeStart, activeEnd);
+          } catch (e) {}
+        }
+      }
+    }
     
     // Start carousel if on home page
     if (page === "home") {

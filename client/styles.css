@@ -888,9 +888,9 @@ nav {
 }
 
 nav .nav-content {
-    max-width: 1280px;
+    max-width: 100%;
     margin: 0 auto;
-    padding: 6px 24px;
+    padding: 4px 16px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -902,26 +902,28 @@ nav .nav-content {
 .nav-brand {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
     cursor: pointer;
     transition: transform 0.3s ease;
-    margin-right: 48px;
+    margin-right: 12px;
+    flex-shrink: 0;
 }
 
 .nav-brand:hover {
-    transform: scale(1.05);
+    transform: scale(1.03);
 }
 
 /* Updated nav logo for image */
 .nav-logo {
-    width: 50px;
-    height: 50px;
-    border-radius: 8px;
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
     overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
     background: linear-gradient(to bottom right, #dc2626, #b91c1c);
+    flex-shrink: 0;
 }
 
 .nav-logo img {
@@ -938,70 +940,86 @@ nav .nav-content {
 }
 
 .nav-title div:first-child {
-    font-size: 16px;
-    font-weight: 700;
+    font-size: 14px;
+    font-weight: 800;
     background: linear-gradient(to right, #dc2626, #b91c1c);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
-    line-height: 1.2;
+    line-height: 1.1;
+    white-space: nowrap;
 }
 
 .nav-title div:last-child {
-    font-size: 10px;
-    font-weight: 500;
+    font-size: 9px;
+    font-weight: 600;
     color: #6b7280;
-    line-height: 1.2;
+    line-height: 1.1;
+    white-space: nowrap;
 }
 
 /* Bootstrap-style Pills Navigation */
 .nav {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 3px;
     list-style: none;
     margin: 0;
     padding: 0;
 }
 
 .nav-pills {
-    background-color: #fef2f2;
-    border: 2px solid #eb0808;
+    background-color: #ffffff;
+    border: 1px solid #cbd5e1;
     border-radius: 50px;
-    padding: 4px;
+    padding: 3px 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    flex-wrap: nowrap;
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.nav-pills::-webkit-scrollbar {
+    display: none;
 }
 
 .nav-item {
     margin: 0;
     position: relative;
+    flex-shrink: 0;
 }
 
 .nav-link {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 4px 12px;
+    gap: 4px;
+    padding: 4px 10px;
     border-radius: 50px;
-    color: #000000;
+    color: #334155;
     text-decoration: none;
-    font-size: 12px;
-    font-weight: 500;
+    font-size: 11.5px;
+    font-weight: 700;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
     border: none;
     background: transparent;
     white-space: nowrap;
 }
 
 .nav-link:hover {
-    color: #dc2626;
-    background-color: #fecaca;
+    color: #2563eb;
+    background-color: #eff6ff;
 }
 
 .nav-link.active {
-    background: linear-gradient(to right, #dc2626, #b91c1c);
+    background: linear-gradient(to right, #2563eb, #1d4ed8);
     color: #ffffff;
-    font-weight: 600;
+    font-weight: 700;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
 }
 
 /* Special pill styles for cart and admin */
@@ -6108,3 +6126,32 @@ Product Image Slider Dots */
         padding: 12px;
     }
 }
+
+/* Distributor Management & Purchase Bill Print Styles */
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    #printablePurchaseBill, #printablePurchaseBill * {
+        visibility: visible;
+    }
+    #printablePurchaseBill {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0;
+        padding: 20px;
+        box-shadow: none !important;
+        border: none !important;
+        background: #ffffff !important;
+        color: #000000 !important;
+    }
+}
+
+.pur-row-input:focus {
+    outline: none;
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+}
+
