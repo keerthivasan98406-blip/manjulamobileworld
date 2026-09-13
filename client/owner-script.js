@@ -20,7 +20,12 @@ class OwnerPortalApp {
     
     // MongoDB API URL - Auto-detect local vs production
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const baseURL = isLocalhost ? 'http://localhost:3001' : window.location.origin;
+    const isRender = window.location.hostname.includes('onrender.com');
+    const baseURL = isLocalhost 
+      ? 'http://localhost:3001' 
+      : isRender 
+        ? window.location.origin 
+        : 'https://manjulamobilesworld.onrender.com';
     this.API_URL = `${baseURL}/api`
     
     // Socket.IO connection for real-time updates with reconnection
@@ -2921,10 +2926,11 @@ class OwnerPortalApp {
 
   renderDisplayStock() {
     const search = (this.stockSearch || '').toLowerCase().trim();
-    const filtered = (this.displayStock || []).filter(d =>
-      (d.displayName && d.displayName.toLowerCase().includes(search)) ||
-      (d.displayId && d.displayId.toLowerCase().includes(search)) ||
-      (d.barcode && d.barcode.toLowerCase().includes(search))
+    const displayList = Array.isArray(this.displayStock) ? this.displayStock : [];
+    const filtered = displayList.filter(d =>
+      (d && d.displayName && d.displayName.toLowerCase().includes(search)) ||
+      (d && d.displayId && d.displayId.toLowerCase().includes(search)) ||
+      (d && d.barcode && d.barcode.toLowerCase().includes(search))
     );
 
     if (search) {
@@ -2940,7 +2946,7 @@ class OwnerPortalApp {
       });
     }
 
-    const lowStock = filtered.filter(d => (Number(d.stock) || 0) === 1);
+    const lowStock = filtered.filter(d => d && (Number(d.stock) || 0) === 1);
 
     return `
       <div style="min-height:100vh; background-color:#f8fafc; color:#0f172a; padding-top:96px; padding-bottom:80px;">
