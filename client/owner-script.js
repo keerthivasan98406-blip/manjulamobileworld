@@ -3096,7 +3096,10 @@ class OwnerPortalApp {
                             onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='${rowBg}'">
                           <td style="padding:10px 14px; color:#64748b; font-weight:600; border-right:1px solid #e2e8f0; text-align:center;">${idx + 1}</td>
                           <td style="padding:10px 14px; font-weight:700; color:#0f172a; border-right:1px solid #e2e8f0;">
-                            ${this.escapeHtml(item.displayName)}
+                            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
+                              <span>${this.escapeHtml(item.displayName)}</span>
+                              <span style="font-size:13px; font-weight:800; color:#059669; white-space:nowrap;">₹${customerPrice.toLocaleString('en-IN')}</span>
+                            </div>
                             <div style="font-size:11px; color:#64748b; font-weight:normal;">ID: ${this.escapeHtml(item.displayId)}</div>
                             ${stock <= 1 && stock > 0 ? `<span style="margin-top:2px; background:#fef2f2; color:#dc2626; font-size:10px; font-weight:800; padding:1px 6px; border-radius:4px; border:1px solid #fca5a5; display:inline-block;">⚠️ LAST 1</span>` : ''}
                             ${stock === 0 ? `<span style="margin-top:2px; background:#fef2f2; color:#dc2626; font-size:10px; font-weight:800; padding:1px 6px; border-radius:4px; border:1px solid #fca5a5; display:inline-block;">❌ OUT OF STOCK</span>` : ''}
@@ -7681,7 +7684,7 @@ class OwnerPortalApp {
                       const stockColor = stock === 0 ? '#dc2626' : stock <= 1 ? '#dc2626' : stock <= 3 ? '#d97706' : '#16a34a';
                       const stockBg    = stock === 0 ? '#fef2f2' : stock <= 1 ? '#fef2f2' : stock <= 3 ? '#fffbeb' : '#f0fdf4';
                       const rowBg      = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
-                      const spBcId     = `bc_sp_${item.partItemId.replace(/[^a-zA-Z0-9]/g, '_')}`;
+                      const spBcId     = `bc_sp_${(item.partItemId || item._id || idx).toString().replace(/[^a-zA-Z0-9]/g, '_')}`;
 
                       setTimeout(() => {
                         const el = document.getElementById(spBcId);
@@ -7704,7 +7707,10 @@ class OwnerPortalApp {
                             onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='${rowBg}'">
                           <td style="padding:10px 14px; color:#9ca3af; font-weight:600; border-right:1px solid #e2e8f0; text-align:center;">${idx + 1}</td>
                           <td style="padding:10px 14px; font-weight:700; color:#111827; border-right:1px solid #e2e8f0;">
-                            ${item.partName}
+                            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
+                              <span>${item.partName}</span>
+                              <span style="font-size:13px; font-weight:800; color:#059669; white-space:nowrap;">${customerPrice ? `₹${customerPrice.toLocaleString('en-IN')}` : ''}</span>
+                            </div>
                             ${stock <= 1 && stock > 0 ? `<span style="margin-left:6px; background:#fef2f2; color:#dc2626; font-size:10px; font-weight:800; padding:2px 7px; border-radius:4px; border:1px solid #fca5a5;">⚠️ LAST 1</span>` : ''}
                             ${stock === 0 ? `<span style="margin-left:6px; background:#fef2f2; color:#dc2626; font-size:10px; font-weight:800; padding:2px 7px; border-radius:4px; border:1px solid #fca5a5;">❌ OUT</span>` : ''}
                           </td>
