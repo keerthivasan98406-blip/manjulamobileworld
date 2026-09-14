@@ -3076,7 +3076,7 @@ class OwnerPortalApp {
                       const stockColor  = stock === 0 ? '#dc2626' : stock <= 1 ? '#dc2626' : stock <= 3 ? '#d97706' : '#16a34a';
                       const stockBg     = stock === 0 ? '#fef2f2' : stock <= 1 ? '#fef2f2' : stock <= 3 ? '#fffbeb' : '#f0fdf4';
                       const rowBg       = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
-                      const bcCanvasId  = `bc_disp_${item.stockItemId.replace(/[^a-zA-Z0-9]/g, '_')}`;
+                      const bcCanvasId  = `bc_disp_${(item.stockItemId || item._id || idx).toString().replace(/[^a-zA-Z0-9]/g, '_')}`;
 
                       setTimeout(() => {
                         const el = document.getElementById(bcCanvasId);
