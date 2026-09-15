@@ -2826,6 +2826,23 @@ class OwnerPortalApp {
                   </button>
                 </div>
 
+                <!-- Barcode / IMEI scan row -->
+                <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px; background:#f0fdf4; border:1.5px solid #86efac; border-radius:8px; padding:8px 12px;">
+                  <span style="font-size:12px; font-weight:700; color:#15803d; white-space:nowrap;">🔍 Scan Barcode:</span>
+                  <input id="sale_barcode_scan" placeholder="Scan or type barcode / product name..." autocomplete="off"
+                    style="flex:1; padding:7px 10px; border:1px solid #86efac; border-radius:6px; font-size:13px; color:#111; background:#fff; outline:none;"
+                    oninput="app.onSaleBarcodeInput(this.value)"
+                    onkeydown="if(event.key==='Enter'){event.preventDefault();app.addSaleItemByBarcode(this.value);}">
+                  <button type="button" onclick="app.addSaleItemByBarcode(document.getElementById('sale_barcode_scan').value)"
+                    style="background:#15803d; color:#fff; border:none; border-radius:6px; padding:7px 14px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;">
+                    + Scan &amp; Add
+                  </button>
+                  <button type="button" onclick="app.openSaleBarcodeCamera()"
+                    style="background:#4f46e5; color:#fff; border:none; border-radius:6px; padding:7px 12px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;">
+                    📷 Camera
+                  </button>
+                </div>
+
                 <!-- Column headers -->
                 <div style="display:grid; grid-template-columns:2fr 1.2fr 0.8fr 1fr 1fr 32px; gap:6px; margin-bottom:4px; padding:0 2px;">
                   <span style="font-size:11px; font-weight:700; color:#6b7280;">Product Name</span>
@@ -2859,12 +2876,12 @@ class OwnerPortalApp {
 
               <!-- IMSI / IMEI Numbers -->
               <div>
-                <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">IMSI Number</label>
-                <input class="input" id="sale_imsi" placeholder="Enter IMSI number (15 digits)" maxlength="20" style="width:100%; font-family:monospace; letter-spacing:1px;">
+                <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">IMSI Number <span style="font-weight:400; color:#9ca3af;">(Optional)</span></label>
+                <input class="input" id="sale_imsi" placeholder="15-digit IMSI number" maxlength="20" style="width:100%; font-family:monospace; letter-spacing:1px;">
               </div>
               <div>
-                <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">IMEI Number</label>
-                <input class="input" id="sale_imei" placeholder="Enter IMEI number (15 digits)" maxlength="20" style="width:100%; font-family:monospace; letter-spacing:1px;">
+                <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">IMEI Number <span style="font-weight:400; color:#9ca3af;">(Optional)</span></label>
+                <input class="input" id="sale_imei" placeholder="15-digit IMEI number" maxlength="20" style="width:100%; font-family:monospace; letter-spacing:1px;">
               </div>
 
               <div style="grid-column: 1/-1;">
@@ -4656,6 +4673,83 @@ class OwnerPortalApp {
   _removeSalePhoto(index) {
     if (this._salePhotos) this._salePhotos.splice(index, 1);
     this._renderSalePhotosPreview();
+  }
+
+  onSaleBarcodeInput(value) {
+    // If a hardware scanner fires Enter automatically, the keydown handler catches it.
+    // This is a no-op hook for future live suggestions if needed.
+  }
+
+  addSaleItemByBarcode(code) {
+    const query = (code || '').trim().toLowerCase();
+    if (!query) return;
+
+    // Search products, display stock, spare parts by barcode or name
+    const allItems = [
+      ...(this.products || []).map(p => ({
+        name: p.name, category: p.category || 'Product',
+        price: Number(p.price) || 0, barcode: (p.barcode || '').toLowerCase()
+      })),
+      ...(this.displayStock || []).map(d => ({
+        name: d.displayName, category: 'Display',
+        price: Number(d.customerPrice || d.price) || 0, barcode: (d.barcode || d.displayId || '').toLowerCase()
+      })),
+      ...(this.sparePartsStock || []).map(s => ({
+        name: s.partName, category: 'Spare Part',
+        price: Number(s.customerPrice || s.price) || 0, barcode: (s.partId || '').toLowerCase()
+      }))
+    ];
+
+    // Exact barcode match first, then name contains
+    let match = allItems.find(i => i.barcode === query);
+    if (!match) match = allItems.find(i => i.name?.toLowerCase().includes(query));
+
+    if (match) {
+      // Add a new product row pre-filled
+      this.addSaleProductRow();
+      const container = document.getElementById('sale_items_container');
+      if (!container) return;
+      const lastRow = container.lastElementChild;
+      if (!lastRow) return;
+      const nameInput   = lastRow.querySelector('.sp_name');
+      const catInput    = lastRow.querySelector('.sp_cat');
+      const amountInput = lastRow.querySelector('.sp_amount');
+      if (nameInput)   nameInput.value   = match.name;
+      if (catInput)    catInput.value    = match.category;
+      if (amountInput) amountInput.value = match.price || '';
+      this.updateBillPreview();
+
+      // Flash feedback and clear scan input
+      const scanInput = document.getElementById('sale_barcode_scan');
+      if (scanInput) {
+        scanInput.value = '';
+        scanInput.style.background = '#d1fae5';
+        setTimeout(() => { scanInput.style.background = '#fff'; scanInput.focus(); }, 600);
+      }
+    } else {
+      // Not found — show red flash and keep text so user can edit
+      const scanInput = document.getElementById('sale_barcode_scan');
+      if (scanInput) {
+        scanInput.style.background = '#fee2e2';
+        setTimeout(() => { scanInput.style.background = '#fff'; }, 800);
+      }
+      this.showNotification(`⚠️ Item not found: "${code}"`);
+    }
+  }
+
+  openSaleBarcodeCamera() {
+    // Reuse the existing mobile camera scanner if available
+    if (typeof this.openMobileCameraBarcodeScanner === 'function') {
+      this.openMobileCameraBarcodeScanner('sale-barcode');
+    } else {
+      // Fallback: file input with camera capture
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.capture = 'environment';
+      input.onchange = () => this.showNotification('📷 Camera scan requires the barcode scanner module.');
+      input.click();
+    }
   }
 
   // Generate a unique row ID
@@ -11034,6 +11128,11 @@ class OwnerPortalApp {
         input.value = code;
         this._renderSparePartsFormBarcode(code);
       }
+      this.closeMobileCameraBarcodeScanner();
+    } else if (this.activeCameraContext === 'sale-barcode') {
+      const input = document.getElementById('sale_barcode_scan');
+      if (input) input.value = code;
+      this.addSaleItemByBarcode(code);
       this.closeMobileCameraBarcodeScanner();
     }
   }
