@@ -1833,6 +1833,32 @@ class OwnerPortalApp {
           </div>
         </div>
 
+        <!-- IMSI / IMEI — Optional -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+          <div class="form-field">
+            <label class="form-label">IMSI Number <span style="font-size:11px; color:#94a3b8; font-weight:400;">(Optional)</span></label>
+            <div style="display:flex; gap:6px; align-items:center;">
+              <input type="text" class="input" placeholder="15-digit IMSI" id="newTrackingIMSI"
+                maxlength="20" style="flex:1; font-family:monospace; letter-spacing:1px;">
+              <button type="button" onclick="app._scanToTrackingField('newTrackingIMSI')"
+                style="background:#4f46e5; color:#fff; border:none; border-radius:6px; padding:7px 10px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;">
+                📷
+              </button>
+            </div>
+          </div>
+          <div class="form-field">
+            <label class="form-label">IMEI Number <span style="font-size:11px; color:#94a3b8; font-weight:400;">(Optional)</span></label>
+            <div style="display:flex; gap:6px; align-items:center;">
+              <input type="text" class="input" placeholder="15-digit IMEI" id="newTrackingIMEI"
+                maxlength="20" style="flex:1; font-family:monospace; letter-spacing:1px;">
+              <button type="button" onclick="app._scanToTrackingField('newTrackingIMEI')"
+                style="background:#4f46e5; color:#fff; border:none; border-radius:6px; padding:7px 10px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;">
+                📷
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
           <div class="form-field">
             <label class="form-label">📥 Date In <span style="font-size:11px; color:#10b981;">(item received)</span></label>
@@ -4752,6 +4778,12 @@ class OwnerPortalApp {
     }
   }
 
+  // Scan a barcode directly into a specific tracking form field
+  _scanToTrackingField(fieldId) {
+    this._pendingScanFieldId = fieldId;
+    this.openMobileCameraBarcodeScanner('tracking-field-scan');
+  }
+
   // Generate a unique row ID
   _saleRowId() {
     return 'row_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
@@ -6154,7 +6186,10 @@ class OwnerPortalApp {
     const advance       = document.getElementById("newTrackingAdvance")?.value?.trim();
     const paidAmount    = document.getElementById("newTrackingPaid")?.value?.trim();
     const totalReceived = document.getElementById("newTrackingTotalReceived")?.value?.trim();
-    const balance       = document.getElementById("newTrackingBalance")?.value?.trim();    if (!qrId || !password || !customer || !device || !issue || !amount) {
+    const balance       = document.getElementById("newTrackingBalance")?.value?.trim();
+    const imsi          = document.getElementById("newTrackingIMSI")?.value?.trim() || '';
+    const imei          = document.getElementById("newTrackingIMEI")?.value?.trim() || '';
+    if (!qrId || !password || !customer || !device || !issue || !amount) {
       alert("Please fill all required fields: QR ID, Password, Customer Name, Device Model, Issue Description, and Full Price");
       return;
     }
@@ -6194,7 +6229,10 @@ class OwnerPortalApp {
         advanceAmount:  Number.parseInt(advance) || 0,
         paidAmount:     Number.parseInt(paidAmount) || 0,
         totalReceived:  Number.parseInt(totalReceived) || 0,
-        balanceAmount:  Number.parseInt(balance) || Number.parseInt(amount) || 0,        createdAt: currentDate,
+        balanceAmount:  Number.parseInt(balance) || Number.parseInt(amount) || 0,
+        imsi: imsi || null,
+        imei: imei || null,
+        createdAt: currentDate,
         completedAt: null,
         lastUpdated: new Date().toLocaleDateString('en-IN', {
           day: '2-digit',
@@ -6227,6 +6265,8 @@ class OwnerPortalApp {
       if (document.getElementById("newTrackingPaid"))          document.getElementById("newTrackingPaid").value = "";
       if (document.getElementById("newTrackingTotalReceived")) document.getElementById("newTrackingTotalReceived").value = "";
       if (document.getElementById("newTrackingBalance"))       document.getElementById("newTrackingBalance").value = "";
+      if (document.getElementById("newTrackingIMSI"))  document.getElementById("newTrackingIMSI").value = "";
+      if (document.getElementById("newTrackingIMEI"))  document.getElementById("newTrackingIMEI").value = "";
       
       this.toggleTrackingForm();
       this.renderPage("admin-tracking");
@@ -11133,6 +11173,18 @@ class OwnerPortalApp {
       const input = document.getElementById('sale_barcode_scan');
       if (input) input.value = code;
       this.addSaleItemByBarcode(code);
+      this.closeMobileCameraBarcodeScanner();
+    } else if (this.activeCameraContext === 'tracking-field-scan') {
+      const fieldId = this._pendingScanFieldId;
+      if (fieldId) {
+        const input = document.getElementById(fieldId);
+        if (input) {
+          input.value = code;
+          input.style.background = '#d1fae5';
+          setTimeout(() => { input.style.background = ''; }, 800);
+        }
+        this._pendingScanFieldId = null;
+      }
       this.closeMobileCameraBarcodeScanner();
     }
   }
