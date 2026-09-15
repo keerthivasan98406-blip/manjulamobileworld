@@ -2856,10 +2856,54 @@ class OwnerPortalApp {
                   <option value="2 Years">2 Years</option>
                 </select>
               </div>
+
+              <!-- IMSI / IMEI Numbers -->
+              <div>
+                <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">IMSI Number</label>
+                <input class="input" id="sale_imsi" placeholder="Enter IMSI number (15 digits)" maxlength="20" style="width:100%; font-family:monospace; letter-spacing:1px;">
+              </div>
+              <div>
+                <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">IMEI Number</label>
+                <input class="input" id="sale_imei" placeholder="Enter IMEI number (15 digits)" maxlength="20" style="width:100%; font-family:monospace; letter-spacing:1px;">
+              </div>
+
               <div style="grid-column: 1/-1;">
                 <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">Notes</label>
                 <textarea class="input" id="sale_notes" placeholder="Any additional notes..." rows="2" style="width:100%; resize:vertical;"></textarea>
               </div>
+
+              <!-- Device Photo Upload -->
+              <div style="grid-column: 1/-1; background:#f0f9ff; border:1.5px solid #bae6fd; border-radius:10px; padding:14px;">
+                <div style="font-size:13px; font-weight:700; color:#0369a1; margin-bottom:10px;">📷 Device & Owner Proof Photos</div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:8px;">
+                  <button type="button" onclick="document.getElementById('sale_photo_input').click()"
+                    style="background:#2563eb; color:#fff; border:none; border-radius:7px; padding:8px 16px; font-size:13px; font-weight:700; cursor:pointer;">
+                    📁 Upload Photo
+                  </button>
+                  <button type="button" onclick="app.openSaleCamera()"
+                    style="background:#7c3aed; color:#fff; border:none; border-radius:7px; padding:8px 16px; font-size:13px; font-weight:700; cursor:pointer;">
+                    📸 Take Photo
+                  </button>
+                </div>
+                <input type="file" id="sale_photo_input" accept="image/*" multiple style="display:none" onchange="app.onSalePhotoUpload(event)">
+                <div id="sale_photos_preview" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;"></div>
+              </div>
+
+              <!-- Signature Pad -->
+              <div style="grid-column: 1/-1; background:#fffbeb; border:1.5px solid #fde68a; border-radius:10px; padding:14px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                  <div style="font-size:13px; font-weight:700; color:#92400e;">✍️ Customer Signature</div>
+                  <button type="button" onclick="app.clearSaleSignature()"
+                    style="background:#dc2626; color:#fff; border:none; border-radius:6px; padding:4px 12px; font-size:12px; font-weight:700; cursor:pointer;">
+                    ✕ Clear
+                  </button>
+                </div>
+                <canvas id="sale_signature_canvas" width="500" height="120"
+                  style="width:100%; height:120px; border:2px solid #d1d5db; border-radius:8px; background:#fff; cursor:crosshair; touch-action:none;">
+                </canvas>
+                <div style="font-size:11px; color:#78350f; margin-top:4px;">Sign above with mouse or finger</div>
+              </div>
+
               <!-- Live total preview -->
               <div style="grid-column: 1/-1; background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 10px 16px; display: flex; gap: 24px; align-items: center;">
                 <span style="font-size: 13px; color: #374151;">Net Payable:</span>
@@ -4532,7 +4576,86 @@ class OwnerPortalApp {
         this.addSaleProductRow();
       }
       this.updateBillPreview();
+      // Init signature pad
+      setTimeout(() => this._initSaleSignaturePad(), 100);
+      // Reset photos
+      this._salePhotos = [];
+      const preview = document.getElementById('sale_photos_preview');
+      if (preview) preview.innerHTML = '';
     }
+  }
+
+  _initSaleSignaturePad() {
+    const canvas = document.getElementById('sale_signature_canvas');
+    if (!canvas || canvas._sigInited) return;
+    canvas._sigInited = true;
+    const ctx = canvas.getContext('2d');
+    let drawing = false;
+    let lastX = 0, lastY = 0;
+
+    const getPos = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      return [(clientX - rect.left) * scaleX, (clientY - rect.top) * scaleY];
+    };
+
+    canvas.addEventListener('mousedown',  (e) => { drawing = true; [lastX, lastY] = getPos(e); });
+    canvas.addEventListener('mousemove',  (e) => { if (!drawing) return; const [x, y] = getPos(e); ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(x, y); ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5; ctx.lineCap = 'round'; ctx.stroke(); [lastX, lastY] = [x, y]; });
+    canvas.addEventListener('mouseup',    () => { drawing = false; });
+    canvas.addEventListener('mouseleave', () => { drawing = false; });
+    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); drawing = true; [lastX, lastY] = getPos(e); }, { passive: false });
+    canvas.addEventListener('touchmove',  (e) => { e.preventDefault(); if (!drawing) return; const [x, y] = getPos(e); ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(x, y); ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5; ctx.lineCap = 'round'; ctx.stroke(); [lastX, lastY] = [x, y]; }, { passive: false });
+    canvas.addEventListener('touchend',   () => { drawing = false; });
+  }
+
+  clearSaleSignature() {
+    const canvas = document.getElementById('sale_signature_canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  onSalePhotoUpload(event) {
+    const files = Array.from(event.target.files || []);
+    if (!this._salePhotos) this._salePhotos = [];
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        this._salePhotos.push(e.target.result);
+        this._renderSalePhotosPreview();
+      };
+      reader.readAsDataURL(file);
+    });
+    event.target.value = '';
+  }
+
+  openSaleCamera() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.capture = 'environment';
+    input.onchange = (e) => this.onSalePhotoUpload(e);
+    input.click();
+  }
+
+  _renderSalePhotosPreview() {
+    const preview = document.getElementById('sale_photos_preview');
+    if (!preview) return;
+    preview.innerHTML = (this._salePhotos || []).map((src, i) => `
+      <div style="position:relative; display:inline-block;">
+        <img src="${src}" style="width:72px; height:72px; object-fit:cover; border-radius:8px; border:2px solid #93c5fd;">
+        <button type="button" onclick="app._removeSalePhoto(${i})"
+          style="position:absolute; top:-6px; right:-6px; background:#dc2626; color:#fff; border:none; border-radius:50%; width:18px; height:18px; font-size:11px; cursor:pointer; line-height:1; padding:0;">×</button>
+      </div>
+    `).join('');
+  }
+
+  _removeSalePhoto(index) {
+    if (this._salePhotos) this._salePhotos.splice(index, 1);
+    this._renderSalePhotosPreview();
   }
 
   // Generate a unique row ID
@@ -4671,7 +4794,19 @@ class OwnerPortalApp {
       discount:    totalDiscount || null,
       purchaseDate,
       warrantyPeriod: document.getElementById('sale_warrantyPeriod')?.value,
-      notes: document.getElementById('sale_notes')?.value?.trim()
+      notes: document.getElementById('sale_notes')?.value?.trim(),
+      imsi: document.getElementById('sale_imsi')?.value?.trim() || null,
+      imei: document.getElementById('sale_imei')?.value?.trim() || null,
+      proofPhotos: this._salePhotos && this._salePhotos.length > 0 ? this._salePhotos : null,
+      signature: (() => {
+        const canvas = document.getElementById('sale_signature_canvas');
+        if (!canvas) return null;
+        // Check if anything was drawn (not all transparent)
+        const ctx = canvas.getContext('2d');
+        const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+        const hasContent = data.some((v, i) => i % 4 === 3 && v > 0);
+        return hasContent ? canvas.toDataURL('image/png') : null;
+      })()
     };
 
     try {
@@ -5015,6 +5150,8 @@ class OwnerPortalApp {
   <div class="bold" style="margin-bottom:3px;">PRODUCT DETAILS</div>
   <div class="row"><span class="label">Product</span><span class="value">${sale.productName}</span></div>
   ${sale.productModel ? `<div class="row"><span class="label">Model</span><span class="value">${sale.productModel}</span></div>` : ''}
+  ${sale.imsi ? `<div class="row"><span class="label">IMSI</span><span class="value" style="font-family:monospace;">${sale.imsi}</span></div>` : ''}
+  ${sale.imei ? `<div class="row"><span class="label">IMEI</span><span class="value" style="font-family:monospace;">${sale.imei}</span></div>` : ''}
   ${sale.warrantyPeriod ? `<div class="row"><span class="label">Warranty</span><span class="value">${sale.warrantyPeriod}</span></div>` : ''}
 
   <div class="divider"></div>
@@ -5036,6 +5173,24 @@ class OwnerPortalApp {
   <div style="font-size:10px; margin: 4px 0;">
     <div class="bold">Notes:</div>
     <div>${sale.notes}</div>
+  </div>
+  <div class="divider"></div>
+  ` : ''}
+
+  ${sale.proofPhotos && sale.proofPhotos.length > 0 ? `
+  <div style="margin: 6px 0;">
+    <div class="bold" style="font-size:11px; margin-bottom:4px;">DEVICE PROOF PHOTOS</div>
+    <div style="display:flex; flex-wrap:wrap; gap:4px;">
+      ${sale.proofPhotos.map(src => `<img src="${src}" style="width:60px; height:60px; object-fit:cover; border:1px solid #ccc; border-radius:4px;">`).join('')}
+    </div>
+  </div>
+  <div class="divider"></div>
+  ` : ''}
+
+  ${sale.signature ? `
+  <div style="margin: 6px 0;">
+    <div class="bold" style="font-size:11px; margin-bottom:4px;">CUSTOMER SIGNATURE</div>
+    <img src="${sale.signature}" style="width:100%; max-width:200px; height:55px; object-fit:contain; border:1px solid #ccc; border-radius:4px; background:#fff;">
   </div>
   <div class="divider"></div>
   ` : ''}
