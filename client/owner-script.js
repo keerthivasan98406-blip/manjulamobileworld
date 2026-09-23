@@ -7998,10 +7998,7 @@ class OwnerPortalApp {
                             onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='${rowBg}'">
                           <td style="padding:10px 14px; color:#9ca3af; font-weight:600; border-right:1px solid #e2e8f0; text-align:center;">${idx + 1}</td>
                           <td style="padding:10px 14px; font-weight:700; color:#111827; border-right:1px solid #e2e8f0;">
-                            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
-                              <span>${item.partName}</span>
-                              <span style="font-size:13px; font-weight:800; color:#059669; white-space:nowrap;">${customerPrice ? `₹${customerPrice.toLocaleString('en-IN')}` : ''}</span>
-                            </div>
+                            ${item.partName}
                             ${stock <= 1 && stock > 0 ? `<span style="margin-left:6px; background:#fef2f2; color:#dc2626; font-size:10px; font-weight:800; padding:2px 7px; border-radius:4px; border:1px solid #fca5a5;">⚠️ LAST 1</span>` : ''}
                             ${stock === 0 ? `<span style="margin-left:6px; background:#fef2f2; color:#dc2626; font-size:10px; font-weight:800; padding:2px 7px; border-radius:4px; border:1px solid #fca5a5;">❌ OUT</span>` : ''}
                           </td>
