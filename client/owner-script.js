@@ -3183,10 +3183,7 @@ class OwnerPortalApp {
                             onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='${rowBg}'">
                           <td style="padding:10px 14px; color:#64748b; font-weight:600; border-right:1px solid #e2e8f0; text-align:center;">${idx + 1}</td>
                           <td style="padding:10px 14px; font-weight:700; color:#0f172a; border-right:1px solid #e2e8f0;">
-                            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
-                              <span>${this.escapeHtml(item.displayName)}</span>
-                              <span style="font-size:13px; font-weight:800; color:#059669; white-space:nowrap;">₹${customerPrice.toLocaleString('en-IN')}</span>
-                            </div>
+                            ${this.escapeHtml(item.displayName)}
                             <div style="font-size:11px; color:#64748b; font-weight:normal;">ID: ${this.escapeHtml(item.displayId)}</div>
                             ${stock <= 1 && stock > 0 ? `<span style="margin-top:2px; background:#fef2f2; color:#dc2626; font-size:10px; font-weight:800; padding:1px 6px; border-radius:4px; border:1px solid #fca5a5; display:inline-block;">⚠️ LAST 1</span>` : ''}
                             ${stock === 0 ? `<span style="margin-top:2px; background:#fef2f2; color:#dc2626; font-size:10px; font-weight:800; padding:1px 6px; border-radius:4px; border:1px solid #fca5a5; display:inline-block;">❌ OUT OF STOCK</span>` : ''}
@@ -7261,6 +7258,17 @@ class OwnerPortalApp {
       if (qrInput) {
         qrInput.value = nextId;
         this._renderFormBarcode(nextId);
+      }
+
+      // Auto-generate password: MMW + random alphanumeric mix (e.g. MMW4x7K2p)
+      const pwdInput = document.getElementById('newTrackingPassword');
+      if (pwdInput && !pwdInput.value) {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+        let suffix = '';
+        for (let i = 0; i < 6; i++) {
+          suffix += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        pwdInput.value = 'MMW' + suffix;
       }
 
       // Auto-fill Date In with today's date
