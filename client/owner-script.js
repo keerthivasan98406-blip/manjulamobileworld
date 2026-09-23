@@ -7254,12 +7254,12 @@ class OwnerPortalApp {
         this._renderFormBarcode(nextId);
       }
 
-      // Auto-generate password: MMW + random alphanumeric mix (e.g. MMW4x7K2p)
+      // Auto-generate password: MMW + 3 random alphanumeric chars = 6 total (e.g. MMW4xK)
       const pwdInput = document.getElementById('newTrackingPassword');
       if (pwdInput && !pwdInput.value) {
         const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
         let suffix = '';
-        for (let i = 0; i < 6; i++) {
+        for (let i = 0; i < 3; i++) {
           suffix += chars.charAt(Math.floor(Math.random() * chars.length));
         }
         pwdInput.value = 'MMW' + suffix;
