@@ -3307,7 +3307,6 @@ class OwnerPortalApp {
   printDisplayStockLabelDirect(barcode, name, price) {
     const barVal = (barcode || '').trim();
     const dev = (name || '').substring(0, 16);
-    const priceText = price ? `₹${Number(price).toLocaleString('en-IN')}` : '';
 
     const win = window.open('', '_blank', 'width=920,height=480');
     win.document.write(`<!DOCTYPE html>
@@ -3423,19 +3422,16 @@ class OwnerPortalApp {
       <div class="label">
         <div class="store-name">MANJULA MOBILES</div>
         <div class="dev-name">${dev}</div>
-        ${priceText ? `<div class="price-text">${priceText}</div>` : ''}
         <svg id="bc1" class="barcode-svg"></svg>
       </div>
       <div class="label">
         <div class="store-name">MANJULA MOBILES</div>
         <div class="dev-name">${dev}</div>
-        ${priceText ? `<div class="price-text">${priceText}</div>` : ''}
         <svg id="bc2" class="barcode-svg"></svg>
       </div>
       <div class="label">
         <div class="store-name">MANJULA MOBILES</div>
         <div class="dev-name">${dev}</div>
-        ${priceText ? `<div class="price-text">${priceText}</div>` : ''}
         <svg id="bc3" class="barcode-svg"></svg>
       </div>
     </div>
@@ -3872,7 +3868,6 @@ class OwnerPortalApp {
 
     const barVal = (item.barcode || item.displayId || '').trim();
     const devName = (item.displayName || '').substring(0, 24);
-    const priceText = item.customerPrice || item.price ? `₹${(item.customerPrice || item.price).toLocaleString('en-IN')}` : '';
 
     const win = window.open('', '_blank', 'width=920,height=480');
     win.document.write(`<!DOCTYPE html>
@@ -3896,7 +3891,6 @@ class OwnerPortalApp {
     <div class="title">MANJULA MOBILE WORLD</div>
     <div class="sub">${devName} (${item.displayId})</div>
     <svg id="barcodeCanvas"></svg>
-    ${priceText ? `<div class="price">${priceText}</div>` : ''}
   </div>
   <script>
     window.onload = function() {
