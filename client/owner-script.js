@@ -9834,6 +9834,7 @@ class OwnerPortalApp {
     ).map(r => ({
       productName: r.name.trim(),
       barcode: (r.barcode || '').trim(),
+      category: (r.category || 'Other').trim(),
       quantity: parseInt(r.qty) || 0,
       distributorPrice: parseFloat(r.dPrice) || 0,
       ownerPrice: parseFloat(r.oPrice) || 0,
