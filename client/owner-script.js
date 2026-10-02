@@ -1020,7 +1020,7 @@ class OwnerPortalApp {
       if (response.ok) {
         this.distributorProducts = this.distributorProducts.filter(p => p.distributorProductId !== distributorProductId);
         this.renderPage('admin-distributor-products');
-        this.showNotification('✅ Product deleted from inventory.');
+        alert('✅ Product deleted from inventory.');
       } else {
         alert('❌ Failed to delete product.');
       }
