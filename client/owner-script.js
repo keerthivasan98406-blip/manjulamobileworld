@@ -76,6 +76,13 @@ class OwnerPortalApp {
     this.purchaseBillsFilterYear = "all";
     this.viewingBillNumber = null;
     this.purchaseDraftRows = [];
+
+    // Display Page Distributor Section State
+    this.showDisplayDistributorSection = false;
+    this.displayDistributorTab = "history";
+    this.displayDistributorSearch = "";
+    this.displayDistributorFilterMonth = "all";
+    this.displayDistributorFilterYear = "all";
     
     // POS System State & Edit Bill State
     this.editingBillNumber = null;
@@ -215,6 +222,57 @@ class OwnerPortalApp {
       console.log('🗑️ Order deleted:', data.orderId);
       this.orders = this.orders.filter(o => o.orderId !== data.orderId);
       if (this.currentPage === 'admin' || this.currentPage === 'admin-orders') {
+        this.renderPage(this.currentPage);
+      }
+    });
+
+    this.socket.on('purchase-bill-added', (bill) => {
+      console.log('🧾 [OWNER PORTAL] New purchase bill added via socket:', bill);
+      const exists = (this.purchaseBills || []).find(b => String(b.billNumber) === String(bill.billNumber));
+      if (!exists) {
+        if (!this.purchaseBills) this.purchaseBills = [];
+        this.purchaseBills.unshift(bill);
+        localStorage.setItem('manjula_purchase_bills', JSON.stringify(this.purchaseBills));
+        if (this.currentPage === 'admin-display-stock' || this.currentPage === 'admin-purchase-bills' || this.currentPage === 'admin-distributor-profile') {
+          this.renderPage(this.currentPage);
+        }
+      }
+    });
+
+    this.socket.on('purchase-bill-updated', (bill) => {
+      console.log('🔄 [OWNER PORTAL] Purchase bill updated via socket:', bill);
+      if (!this.purchaseBills) return;
+      const index = this.purchaseBills.findIndex(b => String(b.billNumber) === String(bill.billNumber));
+      if (index !== -1) {
+        this.purchaseBills[index] = bill;
+        localStorage.setItem('manjula_purchase_bills', JSON.stringify(this.purchaseBills));
+        if (this.currentPage === 'admin-display-stock' || this.currentPage === 'admin-purchase-bills' || this.currentPage === 'admin-distributor-profile') {
+          this.renderPage(this.currentPage);
+        }
+      }
+    });
+
+    this.socket.on('purchase-bill-deleted', (data) => {
+      console.log('🗑️ [OWNER PORTAL] Purchase bill deleted via socket:', data.billNumber);
+      if (!this.purchaseBills) return;
+      this.purchaseBills = this.purchaseBills.filter(b => String(b.billNumber) !== String(data.billNumber));
+      localStorage.setItem('manjula_purchase_bills', JSON.stringify(this.purchaseBills));
+      if (this.currentPage === 'admin-display-stock' || this.currentPage === 'admin-purchase-bills' || this.currentPage === 'admin-distributor-profile') {
+        this.renderPage(this.currentPage);
+      }
+    });
+
+    this.socket.on('distributor-updated', (distributor) => {
+      console.log('🏢 [OWNER PORTAL] Distributor updated via socket:', distributor);
+      if (!this.distributors) this.distributors = [];
+      const index = this.distributors.findIndex(d => String(d.distributorId) === String(distributor.distributorId));
+      if (index !== -1) {
+        this.distributors[index] = distributor;
+      } else {
+        this.distributors.push(distributor);
+      }
+      localStorage.setItem('manjula_distributors', JSON.stringify(this.distributors));
+      if (this.currentPage === 'admin-display-stock' || this.currentPage === 'admin-distributors' || this.currentPage === 'admin-distributor-profile') {
         this.renderPage(this.currentPage);
       }
     });
@@ -517,6 +575,13 @@ class OwnerPortalApp {
         this.renderPage("admin-distributor-profile");
       }
       if (actionElement && actionElement.dataset.action === "open-add-purchase") {
+        if (!this.selectedDistributorId && this.distributors && this.distributors.length > 0) {
+          this.selectedDistributorId = this.distributors[0].distributorId;
+        }
+        if (!this.selectedDistributorId) {
+          this.showAddDistributorModal();
+          return;
+        }
         this.initPurchaseForm();
         this.renderPage("admin-add-distributor-purchase");
       }
@@ -604,6 +669,10 @@ class OwnerPortalApp {
       if (e.target.id === 'purchaseBillsSearchInput') {
         this.purchaseBillsSearch = e.target.value;
         this.renderPage('admin-purchase-bills');
+      }
+      if (e.target.id === 'displayDistributorSearchInput') {
+        this.displayDistributorSearch = e.target.value;
+        this.renderPage('admin-display-stock');
       }
       if (e.target.classList.contains('pur-row-input')) {
         this.handlePurchaseRowInput(e.target);
@@ -999,6 +1068,8 @@ class OwnerPortalApp {
       html += this.renderMonthlyServices()
     } else if (page === "admin-display-stock") {
       html += this.renderDisplayStock()
+    } else if (page === "admin-display-distributors") {
+      html += this.renderDisplayDistributorsPage()
     } else if (page === "admin-spare-parts") {
       html += this.renderSpareParts()
     } else if (page === "admin-distributors") {
@@ -3011,6 +3082,274 @@ class OwnerPortalApp {
     `
   }
 
+  toggleDisplayDistributorSection() {
+    this.showDisplayDistributorSection = !this.showDisplayDistributorSection;
+    this.renderPage('admin-display-stock');
+  }
+
+  setDisplayDistributorTab(tab) {
+    this.displayDistributorTab = tab;
+    this.renderPage('admin-display-distributors');
+  }
+
+  renderDisplayDistributorsPage() {
+    const search = (this.displayDistributorSearch || "").toLowerCase().trim();
+    const monthFilter = this.displayDistributorFilterMonth || "all";
+    const yearFilter = this.displayDistributorFilterYear || "all";
+
+    // Filter purchase bills/transactions — only show bills that have at least one Display-category item
+    let list = Array.isArray(this.purchaseBills) ? [...this.purchaseBills] : [];
+    list = list.filter(b => (b.items || []).some(it => (it.category || '').toLowerCase() === 'display'));
+
+    if (search) {
+      list = list.filter(b =>
+        (b.billNumber && b.billNumber.toLowerCase().includes(search)) ||
+        (b.distributorName && b.distributorName.toLowerCase().includes(search)) ||
+        (b.distributorMobile && b.distributorMobile.includes(search)) ||
+        (b.items && b.items.some(it => 
+          (it.productName && it.productName.toLowerCase().includes(search)) || 
+          (it.barcode && it.barcode.toLowerCase().includes(search))
+        ))
+      );
+    }
+
+    if (monthFilter !== "all") {
+      list = list.filter(b => b.month === monthFilter);
+    }
+    if (yearFilter !== "all") {
+      list = list.filter(b => String(b.year) === String(yearFilter));
+    }
+
+    const isHistory = this.displayDistributorTab === 'history';
+
+    return `
+      <div style="min-height:100vh; background-color:#f8fafc; color:#0f172a; padding-top:96px; padding-bottom:80px;">
+        <div class="container" style="max-width:1400px; margin:0 auto; padding:0 20px;">
+          <!-- Top Navigation Button -->
+          <div style="margin-bottom:20px;">
+            <button class="back-button" data-page="admin-display-stock" style="background:#ffffff; color:#334155; border:1px solid #cbd5e1; font-weight:700;">&#8592; Back to Display Stock Page</button>
+          </div>
+
+          <!-- Page Header & Action Controls -->
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; flex-wrap:wrap; gap:16px;">
+            <div>
+              <h1 style="font-size:32px; font-weight:800; color:#0f172a; margin-bottom:4px;">🏢 Distributor Information & Bills</h1>
+              <p style="color:#64748b; font-size:14px; margin:0;">Complete synchronized purchase history and saved bills linked directly to the Display Page</p>
+            </div>
+            
+            <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+              <!-- Tab Switcher -->
+              <div style="display:inline-flex; background:#e2e8f0; padding:4px; border-radius:10px; border:1px solid #cbd5e1;">
+                <button onclick="app.setDisplayDistributorTab('history')" 
+                  style="padding:10px 20px; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer; border:none; transition:all 0.2s; 
+                  background:${isHistory ? '#6d28d9' : 'transparent'}; color:${isHistory ? '#ffffff' : '#475569'}; box-shadow:${isHistory ? '0 2px 6px rgba(109,40,217,0.3)' : 'none'};">
+                  📦 Purchase History
+                </button>
+                <button onclick="app.setDisplayDistributorTab('saved-bills')" 
+                  style="padding:10px 20px; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer; border:none; transition:all 0.2s; 
+                  background:${!isHistory ? '#6d28d9' : 'transparent'}; color:${!isHistory ? '#ffffff' : '#475569'}; box-shadow:${!isHistory ? '0 2px 6px rgba(109,40,217,0.3)' : 'none'};">
+                  🧾 Saved Bills
+                </button>
+              </div>
+
+              <!-- Add Purchase Transaction Button -->
+              <button data-action="open-add-purchase" 
+                style="padding:12px 22px; background:linear-gradient(135deg, #10b981, #059669); color:#ffffff; border:none; border-radius:8px; font-weight:700; font-size:14px; cursor:pointer; box-shadow:0 4px 12px rgba(16,185,129,0.3); display:flex; align-items:center; gap:6px;">
+                ➕ Add Purchase Transaction
+              </button>
+            </div>
+          </div>
+
+          <!-- Search and Date Filter Bar -->
+          <div style="background:#ffffff; border:1px solid #cbd5e1; border-radius:12px; padding:16px; margin-bottom:24px; display:flex; gap:16px; flex-wrap:wrap; box-shadow:0 4px 16px rgba(0,0,0,0.03);">
+            <div style="flex:1; min-width:260px;">
+              <input type="text" id="displayDistributorSearchInput" class="input" 
+                placeholder="🔍 Search by distributor name, bill # (e.g. PUR-0001), product, barcode..." 
+                value="${this.displayDistributorSearch || ''}" 
+                style="width:100%; padding:10px 14px; background:#f8fafc; border:1px solid #cbd5e1; color:#0f172a; border-radius:8px; font-size:14px;">
+            </div>
+            
+            <div style="width:150px;">
+              <select id="displayDistributorMonthFilter" class="input" 
+                onchange="app.displayDistributorFilterMonth = this.value; app.renderPage('admin-display-distributors')" 
+                style="width:100%; padding:10px; background:#f8fafc; border:1px solid #cbd5e1; color:#0f172a; border-radius:8px; font-size:14px; font-weight:600;">
+                <option value="all" ${monthFilter === 'all' ? 'selected' : ''}>All Months</option>
+                <option value="Jan" ${monthFilter === 'Jan' ? 'selected' : ''}>January</option>
+                <option value="Feb" ${monthFilter === 'Feb' ? 'selected' : ''}>February</option>
+                <option value="Mar" ${monthFilter === 'Mar' ? 'selected' : ''}>March</option>
+                <option value="Apr" ${monthFilter === 'Apr' ? 'selected' : ''}>April</option>
+                <option value="May" ${monthFilter === 'May' ? 'selected' : ''}>May</option>
+                <option value="Jun" ${monthFilter === 'Jun' ? 'selected' : ''}>June</option>
+                <option value="Jul" ${monthFilter === 'Jul' ? 'selected' : ''}>July</option>
+                <option value="Aug" ${monthFilter === 'Aug' ? 'selected' : ''}>August</option>
+                <option value="Sep" ${monthFilter === 'Sep' ? 'selected' : ''}>September</option>
+                <option value="Oct" ${monthFilter === 'Oct' ? 'selected' : ''}>October</option>
+                <option value="Nov" ${monthFilter === 'Nov' ? 'selected' : ''}>November</option>
+                <option value="Dec" ${monthFilter === 'Dec' ? 'selected' : ''}>December</option>
+              </select>
+            </div>
+
+            <div style="width:120px;">
+              <select id="displayDistributorYearFilter" class="input" 
+                onchange="app.displayDistributorFilterYear = this.value; app.renderPage('admin-display-distributors')" 
+                style="width:100%; padding:10px; background:#f8fafc; border:1px solid #cbd5e1; color:#0f172a; border-radius:8px; font-size:14px; font-weight:600;">
+                <option value="all" ${yearFilter === 'all' ? 'selected' : ''}>All Years</option>
+                <option value="2026" ${yearFilter === '2026' ? 'selected' : ''}>2026</option>
+                <option value="2025" ${yearFilter === '2025' ? 'selected' : ''}>2025</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Tab 1: Purchase History View -->
+          ${isHistory ? `
+            <div style="background:#ffffff; border:1px solid #cbd5e1; border-radius:12px; overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,0.04);">
+              <div style="overflow-x:auto;">
+                <table style="width:100%; border-collapse:collapse; text-align:left; color:#0f172a; font-size:14px;">
+                  <thead>
+                    <tr style="background:#f1f5f9; border-bottom:2px solid #cbd5e1; color:#475569; font-weight:700; text-transform:uppercase; font-size:12px; letter-spacing:0.5px;">
+                      <th style="padding:16px 20px;">Bill #</th>
+                      <th style="padding:16px 20px;">Distributor</th>
+                      <th style="padding:16px 20px;">Date & Time</th>
+                      <th style="padding:16px 20px;">Products Details</th>
+                      <th style="padding:16px 20px; text-align:center;">Total Qty</th>
+                      <th style="padding:16px 20px; text-align:right;">Total Amount</th>
+                      <th style="padding:16px 20px; text-align:center;">Payment Status</th>
+                      <th style="padding:16px 20px; text-align:center;">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${list.length === 0 ? `
+                      <tr>
+                        <td colspan="8" style="padding:40px; text-align:center; color:#64748b; font-size:15px;">
+                          <div style="font-size:40px; margin-bottom:10px;">📦</div>
+                          No distributor purchase history found matching your search.
+                        </td>
+                      </tr>
+                    ` : list.map((b, idx) => `
+                      <tr style="border-bottom:1px solid #e2e8f0; background:${idx % 2 === 0 ? '#ffffff' : '#f8fafc'};">
+                        <td style="padding:16px 20px; font-weight:700; font-family:monospace; color:#2563eb; font-size:15px;">
+                          🧾 ${b.billNumber}
+                        </td>
+                        <td style="padding:16px 20px;">
+                          <div style="font-weight:700; color:#0f172a; font-size:15px;">🏢 ${this.escapeHtml(b.distributorName || 'Distributor')}</div>
+                          <div style="font-size:12px; color:#64748b; font-family:monospace;">📞 ${this.escapeHtml(b.distributorMobile || 'N/A')}</div>
+                        </td>
+                        <td style="padding:16px 20px; color:#334155;">
+                          <div style="font-weight:600;">${b.purchaseDate}</div>
+                          <div style="font-size:12px; color:#94a3b8;">${b.purchaseTime || ''}</div>
+                        </td>
+                        <td style="padding:16px 20px;">
+                          <div style="max-height:90px; overflow-y:auto;">
+                            ${(b.items || []).filter(it => (it.category || '').toLowerCase() === 'display').map(it => `
+                              <div style="font-size:13px; color:#1e293b; margin-bottom:3px;">
+                                • <strong>${this.escapeHtml(it.productName)}</strong> × ${it.quantity} <span style="color:#64748b;">(₹${it.distributorPrice}/unit = ₹${it.itemTotal})</span>
+                              </div>
+                            `).join('')}
+                          </div>
+                        </td>
+                        <td style="padding:16px 20px; text-align:center; font-weight:700; color:#059669;">
+                          ${b.totalQuantity} units
+                        </td>
+                        <td style="padding:16px 20px; text-align:right; font-weight:800; color:#059669; font-size:16px;">
+                          ₹${(b.totalAmount || 0).toLocaleString('en-IN')}
+                        </td>
+                        <td style="padding:16px 20px; text-align:center;">
+                          <span style="background:#d1fae5; color:#059669; border:1px solid #a7f3d0; padding:4px 12px; border-radius:999px; font-size:12px; font-weight:700;">
+                            ✓ Completed / Paid
+                          </span>
+                        </td>
+                        <td style="padding:16px 20px; text-align:center;">
+                          <button data-action="view-purchase-bill" data-bill="${b.billNumber}" 
+                            style="background:#2563eb; color:#ffffff; border:none; padding:8px 16px; border-radius:6px; font-weight:700; font-size:13px; cursor:pointer;">
+                            📄 View Bill
+                          </button>
+                        </td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ` : ''}
+
+          <!-- Tab 2: Saved Bills -->
+          ${!isHistory ? `
+            <div style="background:#ffffff; border:1px solid #cbd5e1; border-radius:12px; overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,0.04);">
+              <div style="overflow-x:auto;">
+                <table style="width:100%; border-collapse:collapse; text-align:left; color:#0f172a; font-size:14px;">
+                  <thead>
+                    <tr style="background:#f1f5f9; border-bottom:2px solid #cbd5e1; color:#475569; font-weight:700; text-transform:uppercase; font-size:12px; letter-spacing:0.5px;">
+                      <th style="padding:16px 20px;">Bill Number</th>
+                      <th style="padding:16px 20px;">Distributor Name</th>
+                      <th style="padding:16px 20px;">Contact Mobile</th>
+                      <th style="padding:16px 20px;">Saved Date</th>
+                      <th style="padding:16px 20px; text-align:center;">Products Count</th>
+                      <th style="padding:16px 20px; text-align:center;">Total Units</th>
+                      <th style="padding:16px 20px; text-align:right;">Bill Total</th>
+                      <th style="padding:16px 20px; text-align:center;">Payment Status</th>
+                      <th style="padding:16px 20px; text-align:center;">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${list.length === 0 ? `
+                      <tr>
+                        <td colspan="9" style="padding:40px; text-align:center; color:#64748b; font-size:15px;">
+                          <div style="font-size:40px; margin-bottom:10px;">🧾</div>
+                          No saved purchase bills found matching your search.
+                        </td>
+                      </tr>
+                    ` : list.map((b, idx) => `
+                      <tr style="border-bottom:1px solid #e2e8f0; background:${idx % 2 === 0 ? '#ffffff' : '#f8fafc'};">
+                        <td style="padding:16px 20px; font-weight:700; font-family:monospace; color:#2563eb; font-size:15px;">
+                          🧾 ${b.billNumber}
+                        </td>
+                        <td style="padding:16px 20px; font-weight:700; color:#0f172a;">
+                          🏢 ${this.escapeHtml(b.distributorName || 'Distributor')}
+                        </td>
+                        <td style="padding:16px 20px; font-family:monospace; color:#334155;">
+                          📞 ${this.escapeHtml(b.distributorMobile || 'N/A')}
+                        </td>
+                        <td style="padding:16px 20px; color:#334155;">
+                          ${b.purchaseDate} <span style="font-size:12px; color:#94a3b8;">(${b.purchaseTime || ''})</span>
+                        </td>
+                        <td style="padding:16px 20px; text-align:center; font-weight:700; color:#d97706;">
+                          ${b.totalProducts} items
+                        </td>
+                        <td style="padding:16px 20px; text-align:center; font-weight:700; color:#059669;">
+                          ${b.totalQuantity} units
+                        </td>
+                        <td style="padding:16px 20px; text-align:right; font-weight:800; color:#059669; font-size:16px;">
+                          ₹${(b.totalAmount || 0).toLocaleString('en-IN')}
+                        </td>
+                        <td style="padding:16px 20px; text-align:center;">
+                          <span style="background:#d1fae5; color:#059669; border:1px solid #a7f3d0; padding:4px 12px; border-radius:999px; font-size:12px; font-weight:700;">
+                            Saved / Completed
+                          </span>
+                        </td>
+                        <td style="padding:16px 20px; text-align:center;">
+                          <div style="display:flex; gap:6px; justify-content:center;">
+                            <button data-action="view-purchase-bill" data-bill="${b.billNumber}" 
+                              style="background:#2563eb; color:#ffffff; border:none; padding:6px 14px; border-radius:6px; font-weight:700; font-size:12px; cursor:pointer;">
+                              📄 View
+                            </button>
+                            <button data-action="edit-purchase-bill" data-bill="${b.billNumber}" 
+                              style="background:#d97706; color:#ffffff; border:none; padding:6px 14px; border-radius:6px; font-weight:700; font-size:12px; cursor:pointer;">
+                              ✏️ Edit
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  }
+
   renderDisplayStock() {
     const search = (this.stockSearch || '').toLowerCase().trim();
     const displayList = Array.isArray(this.displayStock) ? this.displayStock : [];
@@ -3046,6 +3385,9 @@ class OwnerPortalApp {
               <p style="color:#64748b;">Manage display inventory, barcodes, pricing & track live stock</p>
             </div>
             <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+              <button onclick="app.renderPage('admin-display-distributors')" id="btnDisplayDistributor" style="padding: 12px 20px; background: linear-gradient(135deg, #7c3aed, #6d28d9); color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer; box-shadow: 0 4px 12px rgba(109,40,217,0.3); display:flex; align-items:center; gap:8px; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
+                🏢 Distributor <span style="background:#ffffff; color:#6d28d9; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:800;">${this.purchaseBills ? this.purchaseBills.length : 0}</span>
+              </button>
               <button class="btn btn-primary" onclick="app.toggleStockForm()" style="padding:12px 24px; background:#2563eb;">+ Add Display</button>
               <button onclick="app.renderPage('admin-pos')" style="padding: 12px 20px; background:#059669; color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer;">🛒 POS Billing</button>
               <button onclick="app.exportDisplayStockPDF()" style="padding: 12px 24px; background:#0f172a; color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer;">📄 PDF</button>
@@ -9155,12 +9497,19 @@ class OwnerPortalApp {
 
   // 3. Dynamic Auto-expanding Matrix Purchase Entry Page
   renderAddDistributorPurchasePage() {
-    const distributor = this.distributors.find(d => String(d.distributorId) === String(this.selectedDistributorId));
+    let distributor = (this.distributors || []).find(d => String(d.distributorId) === String(this.selectedDistributorId));
+    if (!distributor && this.distributors && this.distributors.length > 0) {
+      this.selectedDistributorId = this.distributors[0].distributorId;
+      distributor = this.distributors[0];
+    }
+
     if (!distributor) {
       return `
         <div style="min-height: 100vh; background-color: #0f172a; color: #f8fafc; padding-top: 96px; text-align: center;">
-          <h2>Please select a distributor first</h2>
-          <button class="btn btn-primary" data-page="admin-distributors">← Back to Distributors</button>
+          <h2>No Distributors Found</h2>
+          <p style="color: #94a3b8; margin-bottom: 20px;">Please create a distributor profile first before adding a purchase transaction.</p>
+          <button class="btn btn-primary" data-action="open-add-distributor-modal">+ Add Distributor</button>
+          <button class="btn" data-page="admin-display-stock" style="margin-left:10px; background:#475569; color:#fff;">← Back to Display Stock</button>
         </div>
       `;
     }
@@ -9178,13 +9527,13 @@ class OwnerPortalApp {
           <!-- Header Bar -->
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 16px;">
             <div>
-              <button data-page="admin-distributor-profile" style="background: transparent; border: none; color: #38bdf8; cursor: pointer; font-size: 14px; font-weight: 600; margin-bottom: 6px;">
-                ← Back to ${this.escapeHtml(distributor.name)} History
+              <button data-page="admin-display-stock" style="background: transparent; border: none; color: #38bdf8; cursor: pointer; font-size: 14px; font-weight: 600; margin-bottom: 6px;">
+                ← Back to Display Stock Page
               </button>
               <h1 style="font-size: 28px; font-weight: 700; color: #ffffff; margin: 0;">➕ Add Purchase Transaction</h1>
             </div>
             <div style="display: flex; gap: 12px;">
-              <button data-page="admin-distributor-profile" class="btn" style="background: #475569; color: white; border: none; padding: 12px 20px; border-radius: 8px; font-size: 15px; cursor: pointer;">Cancel</button>
+              <button data-page="admin-display-stock" class="btn" style="background: #475569; color: white; border: none; padding: 12px 20px; border-radius: 8px; font-size: 15px; cursor: pointer;">Cancel</button>
               <button data-action="save-distributor-purchase" class="btn btn-primary" style="background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; padding: 12px 24px; font-weight: 700; border-radius: 8px; font-size: 16px; cursor: pointer; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);">
                 💾 Save & Complete Purchase
               </button>
@@ -9195,8 +9544,16 @@ class OwnerPortalApp {
           <div style="background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
             <div>
               <span style="color: #94a3b8; font-size: 13px; text-transform: uppercase; font-weight: 700;">Purchasing From:</span>
-              <div style="font-size: 22px; font-weight: 700; color: #ffffff; margin-top: 2px;">🏢 ${this.escapeHtml(distributor.name)}</div>
-              <div style="color: #38bdf8; font-family: monospace; font-size: 14px; margin-top: 2px;">📞 ${this.escapeHtml(distributor.mobile)}</div>
+              <div style="margin-top: 4px;">
+                <select onchange="app.selectedDistributorId = this.value; app.renderPage('admin-add-distributor-purchase')" 
+                  style="padding: 8px 14px; background: #0f172a; border: 1px solid #475569; color: #fff; border-radius: 8px; font-size: 16px; font-weight: 700;">
+                  ${this.distributors.map(d => `
+                    <option value="${d.distributorId}" ${String(d.distributorId) === String(distributor.distributorId) ? 'selected' : ''}>
+                      🏢 ${this.escapeHtml(d.name)} (${this.escapeHtml(d.mobile)})
+                    </option>
+                  `).join('')}
+                </select>
+              </div>
             </div>
             <div style="display: flex; align-items: center; gap: 12px;">
               <label style="color: #cbd5e1; font-weight: 600; font-size: 14px;">Purchase Date:</label>
@@ -9217,6 +9574,7 @@ class OwnerPortalApp {
                 <thead style="position: sticky; top: 0; background: #0f172a; z-index: 10; border-bottom: 2px solid #334155;">
                   <tr style="color: #94a3b8; font-weight: 700; text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px;">
                     <th style="padding: 14px 16px; width: 40px; text-align: center;">#</th>
+                    <th style="padding: 14px 16px; width: 120px;">Category</th>
                     <th style="padding: 14px 16px; min-width: 220px;">Product Name *</th>
                     <th style="padding: 14px 16px; min-width: 140px;">Barcode</th>
                     <th style="padding: 14px 16px; width: 100px; text-align: center;">Qty *</th>
@@ -9251,41 +9609,89 @@ class OwnerPortalApp {
 
   // Render Rows for Purchase Form
   renderPurchaseDraftTableRows() {
-    return this.purchaseDraftRows.map((row, idx) => `
+    const displayOptions = (this.displayStock || []).map(d =>
+      `<option value="${this.escapeHtml(d.displayName)}" data-barcode="${this.escapeHtml(d.barcode || d.displayId || '')}">${this.escapeHtml(d.displayName)}</option>`
+    ).join('');
+
+    return this.purchaseDraftRows.map((row, idx) => {
+      const cat = row.category || 'Other';
+      const isDisplay = cat === 'Display';
+      return `
       <tr data-row-id="${row.id}" style="border-bottom: 1px solid #334155;">
         <td style="padding: 10px 14px; text-align: center; color: #64748b; font-weight: 600;">${idx + 1}</td>
         <td style="padding: 8px 10px;">
-          <input type="text" class="pur-row-input" data-index="${idx}" data-field="name" value="${this.escapeHtml(row.name || '')}" placeholder="Product Name" 
-            style="width: 100%; padding: 8px 12px; background: #0f172a; border: 1px solid #475569; color: #fff; border-radius: 6px; font-size: 14px;">
+          <select class="pur-row-input" data-index="${idx}" data-field="category"
+            style="width:100%; padding:7px 10px; background:#0f172a; border:1px solid #475569; color:#a78bfa; border-radius:6px; font-size:13px; font-weight:700;">
+            <option value="Other" ${cat === 'Other' ? 'selected' : ''}>Other</option>
+            <option value="Display" ${cat === 'Display' ? 'selected' : ''}>🖥️ Display</option>
+            <option value="Spare Part" ${cat === 'Spare Part' ? 'selected' : ''}>🔩 Spare Part</option>
+          </select>
         </td>
         <td style="padding: 8px 10px;">
-          <input type="text" class="pur-row-input" data-index="${idx}" data-field="barcode" value="${this.escapeHtml(row.barcode || '')}" placeholder="Barcode / SKU" 
-            style="width: 100%; padding: 8px 12px; background: #0f172a; border: 1px solid #475569; color: #38bdf8; border-radius: 6px; font-size: 14px; font-family: monospace;">
+          ${isDisplay ? `
+            <select class="pur-row-input" data-index="${idx}" data-field="name"
+              onchange="app._onPurchaseDisplaySelect(${idx}, this)"
+              style="width:100%; padding:8px 12px; background:#0f172a; border:1px solid #7c3aed; color:#fff; border-radius:6px; font-size:13px;">
+              <option value="">-- Select Display --</option>
+              ${displayOptions}
+            </select>
+          ` : `
+            <input type="text" class="pur-row-input" data-index="${idx}" data-field="name" value="${this.escapeHtml(row.name || '')}" placeholder="Product Name"
+              style="width:100%; padding:8px 12px; background:#0f172a; border:1px solid #475569; color:#fff; border-radius:6px; font-size:14px;">
+          `}
         </td>
         <td style="padding: 8px 10px;">
-          <input type="number" min="1" class="pur-row-input" data-index="${idx}" data-field="qty" value="${row.qty || ''}" placeholder="Qty" 
-            style="width: 100%; padding: 8px 12px; background: #0f172a; border: 1px solid #475569; color: #fff; border-radius: 6px; font-size: 14px; text-align: center; font-weight: 600;">
+          <input type="text" class="pur-row-input" data-index="${idx}" data-field="barcode" value="${this.escapeHtml(row.barcode || '')}" placeholder="${isDisplay ? 'Auto-filled' : 'Barcode / SKU'}"
+            style="width:100%; padding:8px 12px; background:#0f172a; border:1px solid ${isDisplay ? '#7c3aed' : '#475569'}; color:#38bdf8; border-radius:6px; font-size:14px; font-family:monospace;"
+            ${isDisplay ? 'readonly' : ''}>
         </td>
         <td style="padding: 8px 10px;">
-          <input type="number" step="0.01" min="0" class="pur-row-input" data-index="${idx}" data-field="dPrice" value="${row.dPrice || ''}" placeholder="₹ Dist. Price" 
-            style="width: 100%; padding: 8px 12px; background: #0f172a; border: 1px solid #475569; color: #fff; border-radius: 6px; font-size: 14px;">
+          <input type="number" min="1" class="pur-row-input" data-index="${idx}" data-field="qty" value="${row.qty || ''}" placeholder="Qty"
+            style="width:100%; padding:8px 12px; background:#0f172a; border:1px solid #475569; color:#fff; border-radius:6px; font-size:14px; text-align:center; font-weight:600;">
         </td>
         <td style="padding: 8px 10px;">
-          <input type="number" step="0.01" min="0" class="pur-row-input" data-index="${idx}" data-field="oPrice" value="${row.oPrice || ''}" placeholder="₹ Owner Price" 
-            style="width: 100%; padding: 8px 12px; background: #0f172a; border: 1px solid #475569; color: #fff; border-radius: 6px; font-size: 14px;">
+          <input type="number" step="0.01" min="0" class="pur-row-input" data-index="${idx}" data-field="dPrice" value="${row.dPrice || ''}" placeholder="₹ Dist. Price"
+            style="width:100%; padding:8px 12px; background:#0f172a; border:1px solid #475569; color:#fff; border-radius:6px; font-size:14px;">
         </td>
         <td style="padding: 8px 10px;">
-          <input type="number" step="0.01" min="0" class="pur-row-input" data-index="${idx}" data-field="cPrice" value="${row.cPrice || ''}" placeholder="₹ Cust. Price" 
-            style="width: 100%; padding: 8px 12px; background: #0f172a; border: 1px solid #475569; color: #fff; border-radius: 6px; font-size: 14px;">
+          <input type="number" step="0.01" min="0" class="pur-row-input" data-index="${idx}" data-field="oPrice" value="${row.oPrice || ''}" placeholder="₹ Owner Price"
+            style="width:100%; padding:8px 12px; background:#0f172a; border:1px solid #475569; color:#fff; border-radius:6px; font-size:14px;">
+        </td>
+        <td style="padding: 8px 10px;">
+          <input type="number" step="0.01" min="0" class="pur-row-input" data-index="${idx}" data-field="cPrice" value="${row.cPrice || ''}" placeholder="₹ Cust. Price"
+            style="width:100%; padding:8px 12px; background:#0f172a; border:1px solid #475569; color:#fff; border-radius:6px; font-size:14px;">
         </td>
         <td style="padding: 8px 10px; text-align: right; font-weight: 700; color: #34d399; font-size: 15px;">
           <span id="itemTotal_${idx}">₹${(row.itemTotal || 0).toLocaleString('en-IN')}</span>
         </td>
         <td style="padding: 8px 10px; text-align: center;">
-          <button data-action="delete-purchase-row" data-index="${idx}" style="background: transparent; border: none; color: #ef4444; cursor: pointer; font-size: 16px;">🗑️</button>
+          <button data-action="delete-purchase-row" data-index="${idx}" style="background:transparent; border:none; color:#ef4444; cursor:pointer; font-size:16px;">🗑️</button>
         </td>
       </tr>
-    `).join('');
+    `}).join('');
+  }
+
+  // Auto-fill barcode when a display item is selected in purchase form
+  _onPurchaseDisplaySelect(idx, selectEl) {
+    const selectedOption = selectEl.options[selectEl.selectedIndex];
+    const barcode = selectedOption?.dataset?.barcode || '';
+    const name = selectEl.value;
+
+    if (this.purchaseDraftRows[idx]) {
+      this.purchaseDraftRows[idx].name = name;
+      this.purchaseDraftRows[idx].barcode = barcode;
+    }
+
+    // Update barcode input in the same row
+    const tr = selectEl.closest('tr');
+    if (tr) {
+      const barcodeInput = tr.querySelector('.pur-row-input[data-field="barcode"]');
+      if (barcodeInput) {
+        barcodeInput.value = barcode;
+        barcodeInput.style.background = barcode ? '#0d2a1e' : '#0f172a';
+      }
+    }
+    this.updatePurchaseSummaryDOM();
   }
 
   // Handle Input Changes on Purchase Entry Table
@@ -9295,6 +9701,15 @@ class OwnerPortalApp {
     if (isNaN(idx) || !this.purchaseDraftRows[idx]) return;
 
     this.purchaseDraftRows[idx][field] = target.value;
+
+    // If category changed, re-render the whole row to switch between dropdown/text
+    if (field === 'category') {
+      // Reset name and barcode when category changes
+      this.purchaseDraftRows[idx].name = '';
+      this.purchaseDraftRows[idx].barcode = '';
+      this.renderPage('admin-add-distributor-purchase');
+      return;
+    }
 
     // Recalculate row total
     const qty = parseInt(this.purchaseDraftRows[idx].qty) || 0;
@@ -9390,7 +9805,7 @@ class OwnerPortalApp {
   addPurchaseRow() {
     this.purchaseDraftRows.push({
       id: Date.now() + Math.random(),
-      name: '', barcode: '', qty: '', dPrice: '', oPrice: '', cPrice: '', itemTotal: 0
+      category: 'Other', name: '', barcode: '', qty: '', dPrice: '', oPrice: '', cPrice: '', itemTotal: 0
     });
     this.renderPage('admin-add-distributor-purchase');
   }
