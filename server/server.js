@@ -1779,6 +1779,7 @@ app.post('/api/distributors/:id/purchases', async (req, res) => {
         distributorProductId: distProd.distributorProductId,
         productName: pName,
         barcode: pBarcode,
+        category: (item.category || 'Other').trim(),
         quantity: qty,
         distributorPrice: dPrice,
         ownerPrice: oPrice,
