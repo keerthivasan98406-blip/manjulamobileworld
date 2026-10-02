@@ -9609,41 +9609,32 @@ class OwnerPortalApp {
 
   // Render Rows for Purchase Form
   renderPurchaseDraftTableRows() {
-    const displayOptions = (this.displayStock || []).map(d =>
-      `<option value="${this.escapeHtml(d.displayName)}" data-barcode="${this.escapeHtml(d.barcode || d.displayId || '')}">${this.escapeHtml(d.displayName)}</option>`
-    ).join('');
+    // Auto-generate barcodes for all rows that don't have one yet
+    this.purchaseDraftRows.forEach((row, idx) => {
+      if (!row.barcode) {
+        row.barcode = 'PB' + String(idx + 1).padStart(3, '0');
+      }
+    });
 
     return this.purchaseDraftRows.map((row, idx) => {
       const cat = row.category || 'Other';
-      const isDisplay = cat === 'Display';
       return `
       <tr data-row-id="${row.id}" style="border-bottom: 1px solid #334155;">
         <td style="padding: 10px 14px; text-align: center; color: #64748b; font-weight: 600;">${idx + 1}</td>
         <td style="padding: 8px 10px;">
           <select class="pur-row-input" data-index="${idx}" data-field="category"
             style="width:100%; padding:7px 10px; background:#0f172a; border:1px solid #475569; color:#a78bfa; border-radius:6px; font-size:13px; font-weight:700;">
-            <option value="Other" ${cat === 'Other' ? 'selected' : ''}>Other</option>
             <option value="Display" ${cat === 'Display' ? 'selected' : ''}>🖥️ Display</option>
-            <option value="Spare Part" ${cat === 'Spare Part' ? 'selected' : ''}>🔩 Spare Part</option>
+            <option value="Other" ${cat === 'Other' ? 'selected' : ''}>📦 Other</option>
           </select>
         </td>
         <td style="padding: 8px 10px;">
-          ${isDisplay ? `
-            <select class="pur-row-input" data-index="${idx}" data-field="name"
-              onchange="app._onPurchaseDisplaySelect(${idx}, this)"
-              style="width:100%; padding:8px 12px; background:#0f172a; border:1px solid #7c3aed; color:#fff; border-radius:6px; font-size:13px;">
-              <option value="">-- Select Display --</option>
-              ${displayOptions}
-            </select>
-          ` : `
-            <input type="text" class="pur-row-input" data-index="${idx}" data-field="name" value="${this.escapeHtml(row.name || '')}" placeholder="Product Name"
-              style="width:100%; padding:8px 12px; background:#0f172a; border:1px solid #475569; color:#fff; border-radius:6px; font-size:14px;">
-          `}
+          <input type="text" class="pur-row-input" data-index="${idx}" data-field="name" value="${this.escapeHtml(row.name || '')}" placeholder="Product Name"
+            style="width:100%; padding:8px 12px; background:#0f172a; border:1px solid ${cat === 'Display' ? '#7c3aed' : '#475569'}; color:#fff; border-radius:6px; font-size:14px;">
         </td>
         <td style="padding: 8px 10px;">
-          <input type="text" class="pur-row-input" data-index="${idx}" data-field="barcode" value="${this.escapeHtml(row.barcode || '')}" placeholder="${isDisplay ? 'Auto-filled' : 'Barcode / SKU'}"
-            style="width:100%; padding:8px 12px; background:#0f172a; border:1px solid ${isDisplay ? '#7c3aed' : '#475569'}; color:#38bdf8; border-radius:6px; font-size:14px; font-family:monospace;"
-            ${isDisplay ? 'readonly' : ''}>
+          <input type="text" class="pur-row-input" data-index="${idx}" data-field="barcode" value="${this.escapeHtml(row.barcode || '')}" placeholder="Auto-generated"
+            style="width:100%; padding:8px 12px; background:#0d1f0d; border:1px solid #16a34a; color:#4ade80; border-radius:6px; font-size:13px; font-family:monospace; font-weight:700;">
         </td>
         <td style="padding: 8px 10px;">
           <input type="number" min="1" class="pur-row-input" data-index="${idx}" data-field="qty" value="${row.qty || ''}" placeholder="Qty"
@@ -9702,11 +9693,8 @@ class OwnerPortalApp {
 
     this.purchaseDraftRows[idx][field] = target.value;
 
-    // If category changed, re-render the whole row to switch between dropdown/text
+    // If category changed, re-render the whole row to update the border color hint
     if (field === 'category') {
-      // Reset name and barcode when category changes
-      this.purchaseDraftRows[idx].name = '';
-      this.purchaseDraftRows[idx].barcode = '';
       this.renderPage('admin-add-distributor-purchase');
       return;
     }
@@ -9728,7 +9716,7 @@ class OwnerPortalApp {
     if (idx === this.purchaseDraftRows.length - 1 && target.value.trim() !== '') {
       this.purchaseDraftRows.push({
         id: Date.now() + Math.random(),
-        name: '', barcode: '', qty: '', dPrice: '', oPrice: '', cPrice: '', itemTotal: 0
+        category: 'Other', name: '', barcode: 'PB' + String(this.purchaseDraftRows.length).padStart(3, '0'), qty: '', dPrice: '', oPrice: '', cPrice: '', itemTotal: 0
       });
       // Append row to DOM without replacing tbody innerHTML (so active input doesn't lose focus!)
       const tbody = document.getElementById('distributorPurchaseTableBody');
