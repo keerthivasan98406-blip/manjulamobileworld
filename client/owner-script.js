@@ -3097,9 +3097,9 @@ class OwnerPortalApp {
     const monthFilter = this.displayDistributorFilterMonth || "all";
     const yearFilter = this.displayDistributorFilterYear || "all";
 
-    // Show ALL purchase bills on Display page (both Display and Other categories)
-    // This allows full distributor history to be visible from the Display section
-    let list = Array.isArray(this.purchaseBills) ? [...this.purchaseBills] : [];
+    // Display page: only show bills that have at least one Display-category item
+    let list = (Array.isArray(this.purchaseBills) ? [...this.purchaseBills] : [])
+      .filter(b => (b.items || []).some(it => (it.category || '').trim().toLowerCase() === 'display'));
 
     if (search) {
       list = list.filter(b =>
@@ -3240,16 +3240,11 @@ class OwnerPortalApp {
                         </td>
                         <td style="padding:16px 20px;">
                           <div style="max-height:90px; overflow-y:auto;">
-                            ${(b.items || []).map(it => {
-                              const cat = (it.category || '').trim().toLowerCase();
-                              const isDisplay = cat === 'display';
-                              return `
-                                <div style="font-size:13px; color:#1e293b; margin-bottom:3px;">
-                                  ${isDisplay ? '<span style="background:#7c3aed; color:#fff; font-size:10px; font-weight:700; padding:1px 5px; border-radius:3px; margin-right:4px;">Display</span>' : ''}
-                                  • <strong>${this.escapeHtml(it.productName)}</strong> × ${it.quantity} <span style="color:#64748b;">(₹${it.distributorPrice}/unit)</span>
-                                </div>
-                              `;
-                            }).join('')}
+                            ${(b.items || []).filter(it => (it.category || '').trim().toLowerCase() === 'display').map(it => `
+                              <div style="font-size:13px; color:#1e293b; margin-bottom:3px;">
+                                • <strong>${this.escapeHtml(it.productName)}</strong> × ${it.quantity} <span style="color:#64748b;">(₹${it.distributorPrice}/unit)</span>
+                              </div>
+                            `).join('')}
                           </div>
                         </td>
                         <td style="padding:16px 20px; text-align:center; font-weight:700; color:#059669;">
