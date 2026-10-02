@@ -190,13 +190,17 @@ const salesSchema = new mongoose.Schema({
   productItems: { type: Array, default: [] },  // multi-item support
   productModel: String,
   imeiNumber: String,
+  imsi: String,
+  imei: String,
+  proofPhotos: { type: Array, default: [] },
+  signature: String,
   saleAmount: Number,
   discount: { type: Number, default: 0 },
   purchaseDate: { type: String, required: true },
   warrantyPeriod: String,
   notes: String,
   createdAt: { type: String }
-}, { timestamps: true });
+}, { timestamps: true, strict: false });
 
 const SalesRecord = mongoose.model('SalesRecord', salesSchema);
 
@@ -284,6 +288,7 @@ const distributorPurchaseSchema = new mongoose.Schema({
     distributorProductId: String,
     productName: String,
     barcode: String,
+    category: { type: String, default: 'Other' },
     quantity: Number,
     distributorPrice: Number,
     ownerPrice: Number,
@@ -293,7 +298,7 @@ const distributorPurchaseSchema = new mongoose.Schema({
   totalProducts: { type: Number, default: 0 },
   totalQuantity: { type: Number, default: 0 },
   totalAmount: { type: Number, default: 0 }
-}, { timestamps: true });
+}, { timestamps: true, strict: false });
 
 const DistributorPurchase = mongoose.model('DistributorPurchase', distributorPurchaseSchema);
 
@@ -1809,6 +1814,12 @@ app.post('/api/distributors/:id/purchases', async (req, res) => {
     await distributor.save();
 
     console.log(`✅ Saved purchase ${billNumber} for distributor ${distributor.name} (${processedItems.length} items, total ₹${totalAmount})`);
+    
+    if (io) {
+      io.emit('purchase-bill-added', purchaseDoc);
+      io.emit('distributor-updated', distributor);
+    }
+    
     res.json({ success: true, purchase: purchaseDoc });
   } catch (error) {
     console.error('❌ Error saving purchase:', error);
@@ -1978,6 +1989,9 @@ app.put('/api/purchase-bills/:billNumber', async (req, res) => {
 
     await existingBill.save();
     console.log(`✏️ Updated purchase bill ${existingBill.billNumber}`);
+    if (io) {
+      io.emit('purchase-bill-updated', existingBill);
+    }
     res.json({ success: true, purchase: existingBill });
   } catch (error) {
     console.error('❌ Error editing purchase bill:', error);
@@ -2016,6 +2030,9 @@ app.delete('/api/purchase-bills/:billNumber', async (req, res) => {
 
     await DistributorPurchase.deleteOne({ _id: bill._id });
     console.log(`🗑️ Deleted purchase bill ${bill.billNumber}`);
+    if (io) {
+      io.emit('purchase-bill-deleted', { billNumber: bill.billNumber });
+    }
     res.json({ success: true, message: `Bill ${bill.billNumber} deleted successfully.` });
   } catch (error) {
     console.error('❌ Error deleting purchase bill:', error);

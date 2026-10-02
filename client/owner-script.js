@@ -1128,43 +1128,43 @@ class OwnerPortalApp {
           <ul class="nav nav-pills">
             ${this.isAdminLoggedIn ? `
               <li class="nav-item">
-                <a class="nav-link ${this.currentPage === 'admin' ? 'active' : ''}" data-page="admin">📊 Dashboard</a>
+                <a class="nav-link ${this.currentPage === 'admin' ? 'active' : ''}" data-page="admin">Dashboard</a>
               </li>
               <li class="nav-item">
-                <a class="nav-link ${this.currentPage === 'admin-pos' ? 'active' : ''}" data-page="admin-pos">🛒 POS</a>
+                <a class="nav-link ${this.currentPage === 'admin-pos' ? 'active' : ''}" data-page="admin-pos">POS</a>
               </li>
               <li class="nav-item">
-                <a class="nav-link ${this.currentPage === 'admin-products' ? 'active' : ''}" data-page="admin-products">📱 Products</a>
+                <a class="nav-link ${this.currentPage === 'admin-products' ? 'active' : ''}" data-page="admin-products">Products</a>
               </li>
               <li class="nav-item">
-                <a class="nav-link ${this.currentPage === 'admin-tracking' ? 'active' : ''}" data-page="admin-tracking">🔍 Tracking</a>
+                <a class="nav-link ${this.currentPage === 'admin-tracking' ? 'active' : ''}" data-page="admin-tracking">Tracking</a>
               </li>
               <li class="nav-item">
-                <a class="nav-link ${this.currentPage === 'admin-orders' ? 'active' : ''}" data-page="admin-orders">📦 Orders</a>
+                <a class="nav-link ${this.currentPage === 'admin-orders' ? 'active' : ''}" data-page="admin-orders">Orders</a>
               </li>
               <li class="nav-item">
-                <a class="nav-link ${this.currentPage === 'admin-sales' || this.currentPage === 'admin-sales-monthly' ? 'active' : ''}" data-page="admin-sales">🛍️ Sales</a>
+                <a class="nav-link ${this.currentPage === 'admin-sales' || this.currentPage === 'admin-sales-monthly' ? 'active' : ''}" data-page="admin-sales">Sales</a>
               </li>
               <li class="nav-item">
-                <a class="nav-link ${this.currentPage === 'admin-display-stock' ? 'active' : ''}" data-page="admin-display-stock">🖥️ Display</a>
+                <a class="nav-link ${this.currentPage === 'admin-display-stock' ? 'active' : ''}" data-page="admin-display-stock">Display</a>
               </li>
               <li class="nav-item">
-                <a class="nav-link ${this.currentPage === 'admin-spare-parts' ? 'active' : ''}" data-page="admin-spare-parts">🔩 Spares</a>
+                <a class="nav-link ${this.currentPage === 'admin-spare-parts' ? 'active' : ''}" data-page="admin-spare-parts">Spares</a>
               </li>
               <li class="nav-item">
-                <a class="nav-link ${this.currentPage === 'admin-distributors' || this.currentPage === 'admin-distributor-profile' || this.currentPage === 'admin-add-distributor-purchase' || this.currentPage === 'admin-edit-distributor-purchase' ? 'active' : ''}" data-page="admin-distributors">🏢 Distributors</a>
+                <a class="nav-link ${this.currentPage === 'admin-distributors' || this.currentPage === 'admin-distributor-profile' || this.currentPage === 'admin-add-distributor-purchase' || this.currentPage === 'admin-edit-distributor-purchase' ? 'active' : ''}" data-page="admin-distributors">Distributors</a>
               </li>
               <li class="nav-item">
-                <a class="nav-link ${this.currentPage === 'admin-distributor-products' ? 'active' : ''}" data-page="admin-distributor-products">📦 Dist. Items</a>
+                <a class="nav-link ${this.currentPage === 'admin-distributor-products' ? 'active' : ''}" data-page="admin-distributor-products">Dist. Items</a>
               </li>
               <li class="nav-item">
-                <a class="nav-link ${this.currentPage === 'admin-purchase-bills' || this.currentPage === 'admin-view-bill' ? 'active' : ''}" data-page="admin-purchase-bills">🧾 Bills</a>
+                <a class="nav-link ${this.currentPage === 'admin-purchase-bills' || this.currentPage === 'admin-view-bill' ? 'active' : ''}" data-page="admin-purchase-bills">Bills</a>
               </li>
               <li class="nav-item">
-                <a class="nav-link" href="index.html">🌐 Site</a>
+                <a class="nav-link" href="index.html">Site</a>
               </li>
               <li class="nav-item">
-                <a class="nav-link admin-pill" data-action="admin-logout">🚪 Logout</a>
+                <a class="nav-link admin-pill" data-action="admin-logout">Logout</a>
               </li>
             ` : `
               <li class="nav-item">
@@ -3099,7 +3099,11 @@ class OwnerPortalApp {
 
     // Filter purchase bills/transactions — only show bills that have at least one Display-category item
     let list = Array.isArray(this.purchaseBills) ? [...this.purchaseBills] : [];
-    list = list.filter(b => (b.items || []).some(it => (it.category || '').toLowerCase() === 'display'));
+    list = list.filter(b => (b.items || []).some(it => {
+      const cat = (it.category || '').trim().toLowerCase();
+      // Show if explicitly 'display', or if no category set (legacy bills)
+      return cat === 'display' || cat === '';
+    }));
 
     if (search) {
       list = list.filter(b =>
@@ -3240,11 +3244,17 @@ class OwnerPortalApp {
                         </td>
                         <td style="padding:16px 20px;">
                           <div style="max-height:90px; overflow-y:auto;">
-                            ${(b.items || []).filter(it => (it.category || '').toLowerCase() === 'display').map(it => `
-                              <div style="font-size:13px; color:#1e293b; margin-bottom:3px;">
-                                • <strong>${this.escapeHtml(it.productName)}</strong> × ${it.quantity} <span style="color:#64748b;">(₹${it.distributorPrice}/unit = ₹${it.itemTotal})</span>
-                              </div>
-                            `).join('')}
+                            ${(() => {
+                              const allItems = b.items || [];
+                              const displayItems = allItems.filter(it => (it.category || '').trim().toLowerCase() === 'display');
+                              // Show display items if any, otherwise show all (legacy bills)
+                              const toShow = displayItems.length > 0 ? displayItems : allItems;
+                              return toShow.map(it => `
+                                <div style="font-size:13px; color:#1e293b; margin-bottom:3px;">
+                                  • <strong>${this.escapeHtml(it.productName)}</strong> × ${it.quantity} <span style="color:#64748b;">(₹${it.distributorPrice}/unit = ₹${it.itemTotal})</span>
+                                </div>
+                              `).join('');
+                            })()}
                           </div>
                         </td>
                         <td style="padding:16px 20px; text-align:center; font-weight:700; color:#059669;">
