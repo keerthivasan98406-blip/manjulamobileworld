@@ -1011,6 +1011,25 @@ class OwnerPortalApp {
     }
   }
 
+  async deleteDistributorProduct(distributorProductId) {
+    if (!confirm('Delete this product from inventory? This cannot be undone.')) return;
+    try {
+      const response = await fetch(`${this.API_URL}/distributor-products/${distributorProductId}`, {
+        method: 'DELETE'
+      });
+      if (response.ok) {
+        this.distributorProducts = this.distributorProducts.filter(p => p.distributorProductId !== distributorProductId);
+        this.renderPage('admin-distributor-products');
+        this.showNotification('✅ Product deleted from inventory.');
+      } else {
+        alert('❌ Failed to delete product.');
+      }
+    } catch (error) {
+      console.error('❌ Error deleting distributor product:', error);
+      alert('❌ Network error. Could not delete product.');
+    }
+  }
+
   async loadPurchaseBillsFromStorage() {
     try {
       const response = await fetch(`${this.API_URL}/purchase-bills`);
@@ -9951,12 +9970,13 @@ class OwnerPortalApp {
                     <th style="padding: 16px 20px; text-align: right;">Distributor Price</th>
                     <th style="padding: 16px 20px; text-align: right;">Owner Price</th>
                     <th style="padding: 16px 20px; text-align: right;">Customer Price</th>
+                    <th style="padding: 16px 20px; text-align: center;">Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   ${filtered.length === 0 ? `
                     <tr>
-                      <td colspan="7" style="padding: 40px; text-align: center; color: #94a3b8;">
+                      <td colspan="8" style="padding: 40px; text-align: center; color: #94a3b8;">
                         No distributor products found in inventory. Add a distributor purchase to populate stock.
                       </td>
                     </tr>
@@ -9973,6 +9993,12 @@ class OwnerPortalApp {
                       <td style="padding: 16px 20px; text-align: right; color: #cbd5e1; font-weight: 600;">₹${(p.distributorPrice || 0).toLocaleString('en-IN')}</td>
                       <td style="padding: 16px 20px; text-align: right; color: #f59e0b; font-weight: 600;">₹${(p.ownerPrice || 0).toLocaleString('en-IN')}</td>
                       <td style="padding: 16px 20px; text-align: right; color: #34d399; font-weight: 700; font-size: 15px;">₹${(p.customerPrice || 0).toLocaleString('en-IN')}</td>
+                      <td style="padding: 16px 20px; text-align: center;">
+                        <button onclick="app.deleteDistributorProduct('${p.distributorProductId}')"
+                          style="background:#ef4444; color:#fff; border:none; border-radius:6px; padding:6px 14px; font-size:13px; font-weight:700; cursor:pointer;">
+                          🗑️ Delete
+                        </button>
+                      </td>
                     </tr>
                   `).join('')}
                 </tbody>

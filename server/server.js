@@ -1854,6 +1854,19 @@ app.put('/api/distributor-products/:id', async (req, res) => {
   }
 });
 
+// Delete Distributor Product from Inventory
+app.delete('/api/distributor-products/:id', async (req, res) => {
+  try {
+    const result = await DistributorProduct.findOneAndDelete({ distributorProductId: req.params.id });
+    if (!result) return res.status(404).json({ error: 'Distributor product not found' });
+    console.log(`🗑️ Deleted distributor product: ${result.productName}`);
+    res.json({ success: true, message: 'Product deleted from inventory' });
+  } catch (error) {
+    console.error('❌ Error deleting distributor product:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get all Purchase Bills (Global View)
 app.get('/api/purchase-bills', async (req, res) => {
   try {
