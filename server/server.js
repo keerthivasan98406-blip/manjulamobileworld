@@ -1700,6 +1700,21 @@ app.get('/api/distributors/:id/purchases', async (req, res) => {
   }
 });
 
+// Delete Distributor
+app.delete('/api/distributors/:id', async (req, res) => {
+  try {
+    const result = await Distributor.findOneAndDelete({
+      $or: [{ distributorId: req.params.id }, { _id: mongoose.Types.ObjectId.isValid(req.params.id) ? req.params.id : null }]
+    });
+    if (!result) return res.status(404).json({ error: 'Distributor not found' });
+    console.log(`🗑️ Deleted distributor: ${result.name}`);
+    res.json({ success: true, message: 'Distributor deleted' });
+  } catch (error) {
+    console.error('❌ Error deleting distributor:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Add purchase transaction for a distributor
 app.post('/api/distributors/:id/purchases', async (req, res) => {
   try {

@@ -1011,6 +1011,26 @@ class OwnerPortalApp {
     }
   }
 
+  async deleteDistributor(distributorId, name) {
+    if (!confirm(`Delete distributor "${name}"?\n\nThis will remove the distributor record but will NOT delete their purchase history or bills.`)) return;
+    try {
+      const response = await fetch(`${this.API_URL}/distributors/${distributorId}`, {
+        method: 'DELETE'
+      });
+      if (response.ok) {
+        this.distributors = this.distributors.filter(d => d.distributorId !== distributorId);
+        this.renderPage('admin-distributors');
+        alert('✅ Distributor deleted.');
+      } else {
+        const err = await response.json().catch(() => ({}));
+        alert('❌ Failed to delete: ' + (err.error || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('❌ Error deleting distributor:', error);
+      alert('❌ Network error. Could not delete distributor.');
+    }
+  }
+
   async deleteDistributorProduct(distributorProductId) {
     if (!confirm('Delete this product from inventory? This cannot be undone.')) return;
     try {
@@ -9323,10 +9343,16 @@ class OwnerPortalApp {
                       </td>
                       <td style="padding: 16px 20px; color: #cbd5e1;">${d.lastPurchaseDate || 'No purchases yet'}</td>
                       <td style="padding: 16px 20px; text-align: center;">
-                        <button class="btn btn-sm" data-action="view-distributor-history" data-id="${d.distributorId}" 
-                          style="background: #0284c7; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; font-size: 13px; cursor: pointer;">
-                          📂 View History
-                        </button>
+                        <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+                          <button class="btn btn-sm" data-action="view-distributor-history" data-id="${d.distributorId}" 
+                            style="background: #0284c7; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; font-size: 13px; cursor: pointer;">
+                            📂 View History
+                          </button>
+                          <button onclick="app.deleteDistributor('${d.distributorId}', '${(d.name||'').replace(/'/g,"\\'")}') "
+                            style="background:#ef4444; color:#fff; border:none; padding:8px 14px; border-radius:6px; font-weight:600; font-size:13px; cursor:pointer;">
+                            🗑️ Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   `).join('')}
