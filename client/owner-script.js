@@ -1277,82 +1277,121 @@ class OwnerPortalApp {
   }
  
   renderAdmin() {
+    const totalPurchaseItems = (this.purchaseBills || []).reduce((s, b) => s + (b.totalQuantity || 0), 0);
     return `
-      <div style="min-height: 100vh; background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); color: #0f172a; padding-top: 96px; padding-bottom: 80px;">
-        <div class="container" style="max-width: 1400px; margin: 0 auto; padding: 0 20px;">
-          <div style="margin-bottom: 32px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+      <div style="min-height: 100vh; background: #f0f4ff; color: #0f172a; padding-top: 80px; padding-bottom: 60px;">
+        <div style="max-width: 1300px; margin: 0 auto; padding: 0 20px;">
+
+          <!-- Header -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; flex-wrap: wrap; gap: 14px;">
             <div>
-              <h1 style="font-size: 40px; font-weight: 800; color: #0f172a; margin-bottom: 8px; letter-spacing: -0.5px;">🎯 Owner Dashboard</h1>
-              <p style="color: #475569; font-size: 16px; font-weight: 500;">Manage your POS sales, inventory, tracking, and distributor bills</p>
+              <h1 style="font-size: 34px; font-weight: 800; color: #1e293b; margin: 0; letter-spacing: -0.5px;">🎯 Owner Dashboard</h1>
+              <p style="color: #64748b; font-size: 14px; margin-top: 5px;">Manjula Mobile World — Manage everything from one place</p>
             </div>
-            <button class="btn btn-primary" data-page="admin-pos" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); border: none; padding: 14px 28px; font-size: 17px; font-weight: 700; border-radius: 12px; box-shadow: 0 10px 20px -5px rgba(37, 99, 235, 0.4); cursor: pointer; color: white;">
+            <button data-page="admin-pos" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; border: none; padding: 13px 26px; font-size: 15px; font-weight: 700; border-radius: 10px; box-shadow: 0 6px 18px rgba(37,99,235,0.35); cursor: pointer; display: flex; align-items: center; gap: 8px;">
               🛒 Open POS Billing
             </button>
           </div>
 
-          <!-- Navigation Shortcuts -->
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 36px;">
-            <button class="btn" data-page="admin-pos" style="background: #ffffff; color: #1e293b; border: 1px solid #cbd5e1; border-radius: 12px; padding: 18px; font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
-              <span style="font-size: 26px;">🛒</span>
-              <span>POS Billing</span>
-            </button>
-            <button class="btn" data-page="admin-products" style="background: #ffffff; color: #1e293b; border: 1px solid #cbd5e1; border-radius: 12px; padding: 18px; font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
-              <span style="font-size: 26px;">📦</span>
-              <span>Products Catalog</span>
-            </button>
-            <button class="btn" data-page="admin-display-stock" style="background: #ffffff; color: #1e293b; border: 1px solid #cbd5e1; border-radius: 12px; padding: 18px; font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
-              <span style="font-size: 26px;">📱</span>
-              <span>Display Stock</span>
-            </button>
-            <button class="btn" data-page="admin-spare-parts" style="background: #ffffff; color: #1e293b; border: 1px solid #cbd5e1; border-radius: 12px; padding: 18px; font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
-              <span style="font-size: 26px;">🔩</span>
-              <span>Spare Parts</span>
-            </button>
-            <button class="btn" data-page="admin-tracking" style="background: #ffffff; color: #1e293b; border: 1px solid #cbd5e1; border-radius: 12px; padding: 18px; font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
-              <span style="font-size: 26px;">🔧</span>
-              <span>Tracking</span>
-            </button>
-            <button class="btn" data-page="admin-distributors" style="background: #ffffff; color: #1e293b; border: 1px solid #cbd5e1; border-radius: 12px; padding: 18px; font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
-              <span style="font-size: 26px;">🏢</span>
-              <span>Distributors</span>
-            </button>
-            <button class="btn" data-page="admin-purchase-bills" style="background: #ffffff; color: #1e293b; border: 1px solid #cbd5e1; border-radius: 12px; padding: 18px; font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
-              <span style="font-size: 26px;">🧾</span>
-              <span>Purchase Bills</span>
-            </button>
-            <button class="btn" data-page="admin-sales" style="background: #ffffff; color: #1e293b; border: 1px solid #cbd5e1; border-radius: 12px; padding: 18px; font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
-              <span style="font-size: 26px;">🛍️</span>
-              <span>Sales Records</span>
-            </button>
-            <button class="btn" data-page="admin-owner-products" style="background: linear-gradient(135deg, #eff6ff, #dbeafe); color: #1e40af; border: 2px solid #3b82f6; border-radius: 12px; padding: 18px; font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 12px rgba(59,130,246,0.15); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
-              <span style="font-size: 26px;">📋</span>
-              <span>Owner Products</span>
-            </button>
+          <!-- Stats Row -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; margin-bottom: 30px;">
+            <div data-page="admin-products" style="background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 14px; padding: 20px 16px; text-align: center; cursor: pointer; box-shadow: 0 4px 14px rgba(37,99,235,0.25); transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='none'">
+              <div style="font-size: 30px; font-weight: 900; color: #fff;">${this.products.length}</div>
+              <div style="color: #bfdbfe; font-size: 12px; font-weight: 600; margin-top: 3px;">📦 Products</div>
+            </div>
+            <div data-page="admin-display-stock" style="background: linear-gradient(135deg, #10b981, #059669); border-radius: 14px; padding: 20px 16px; text-align: center; cursor: pointer; box-shadow: 0 4px 14px rgba(16,185,129,0.25); transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='none'">
+              <div style="font-size: 30px; font-weight: 900; color: #fff;">${this.displayStock.length}</div>
+              <div style="color: #a7f3d0; font-size: 12px; font-weight: 600; margin-top: 3px;">📱 Display Stock</div>
+            </div>
+            <div data-page="admin-spare-parts" style="background: linear-gradient(135deg, #f59e0b, #d97706); border-radius: 14px; padding: 20px 16px; text-align: center; cursor: pointer; box-shadow: 0 4px 14px rgba(245,158,11,0.25); transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='none'">
+              <div style="font-size: 30px; font-weight: 900; color: #fff;">${this.sparePartsStock.length}</div>
+              <div style="color: #fde68a; font-size: 12px; font-weight: 600; margin-top: 3px;">🔩 Spare Parts</div>
+            </div>
+            <div data-page="admin-distributors" style="background: linear-gradient(135deg, #8b5cf6, #6d28d9); border-radius: 14px; padding: 20px 16px; text-align: center; cursor: pointer; box-shadow: 0 4px 14px rgba(139,92,246,0.25); transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='none'">
+              <div style="font-size: 30px; font-weight: 900; color: #fff;">${this.distributors.length}</div>
+              <div style="color: #ddd6fe; font-size: 12px; font-weight: 600; margin-top: 3px;">🏢 Distributors</div>
+            </div>
+            <div data-page="admin-purchase-bills" style="background: linear-gradient(135deg, #ef4444, #dc2626); border-radius: 14px; padding: 20px 16px; text-align: center; cursor: pointer; box-shadow: 0 4px 14px rgba(239,68,68,0.25); transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='none'">
+              <div style="font-size: 30px; font-weight: 900; color: #fff;">${this.purchaseBills.length}</div>
+              <div style="color: #fecaca; font-size: 12px; font-weight: 600; margin-top: 3px;">🧾 Purchase Bills</div>
+            </div>
+            <div data-page="admin-owner-products" style="background: linear-gradient(135deg, #06b6d4, #0891b2); border-radius: 14px; padding: 20px 16px; text-align: center; cursor: pointer; box-shadow: 0 4px 14px rgba(6,182,212,0.25); transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='none'">
+              <div style="font-size: 30px; font-weight: 900; color: #fff;">${totalPurchaseItems}</div>
+              <div style="color: #a5f3fc; font-size: 12px; font-weight: 600; margin-top: 3px;">📋 Owner Products</div>
+            </div>
           </div>
 
-          <!-- Modern Colorful Metrics Cards -->
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 36px;">
-            <div style="background: linear-gradient(135deg, #eff6ff, #dbeafe); border: 1px solid #bfdbfe; border-radius: 16px; padding: 24px; text-align: center; box-shadow: 0 4px 14px rgba(59, 130, 246, 0.1);">
-              <div style="font-size: 36px; font-weight: 800; color: #1d4ed8; margin-bottom: 4px;">${this.products.length}</div>
-              <div style="color: #1e40af; font-size: 14px; font-weight: 600;">Main Products</div>
-            </div>
-            <div style="background: linear-gradient(135deg, #f0fdf4, #dcfce7); border: 1px solid #bbf7d0; border-radius: 16px; padding: 24px; text-align: center; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.1);">
-              <div style="font-size: 36px; font-weight: 800; color: #15803d; margin-bottom: 4px;">${this.displayStock.length}</div>
-              <div style="color: #166534; font-size: 14px; font-weight: 600;">Display Stock Items</div>
-            </div>
-            <div style="background: linear-gradient(135deg, #fff7ed, #ffedd5); border: 1px solid #fed7aa; border-radius: 16px; padding: 24px; text-align: center; box-shadow: 0 4px 14px rgba(245, 158, 11, 0.1);">
-              <div style="font-size: 36px; font-weight: 800; color: #c2410c; margin-bottom: 4px;">${this.sparePartsStock.length}</div>
-              <div style="color: #9a3412; font-size: 14px; font-weight: 600;">Spare Part Items</div>
-            </div>
-            <div style="background: linear-gradient(135deg, #faf5ff, #f3e8ff); border: 1px solid #e9d5ff; border-radius: 16px; padding: 24px; text-align: center; box-shadow: 0 4px 14px rgba(139, 92, 246, 0.1);">
-              <div style="font-size: 36px; font-weight: 800; color: #6b21a8; margin-bottom: 4px;">${this.distributors.length}</div>
-              <div style="color: #581c87; font-size: 14px; font-weight: 600;">Distributors</div>
-            </div>
-            <div style="background: linear-gradient(135deg, #fef2f2, #ffe4e6); border: 1px solid #fecdd3; border-radius: 16px; padding: 24px; text-align: center; box-shadow: 0 4px 14px rgba(225, 29, 72, 0.1);">
-              <div style="font-size: 36px; font-weight: 800; color: #be123c; margin-bottom: 4px;">${this.purchaseBills.length}</div>
-              <div style="color: #9f1239; font-size: 14px; font-weight: 600;">Purchase Bills</div>
-            </div>
+          <!-- Quick Access Grid — 3 columns × 4 rows = 12 buttons, all ordered -->
+          <div style="margin-bottom: 10px;">
+            <h2 style="font-size: 16px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px;">⚡ Quick Access</h2>
           </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; margin-bottom: 20px;">
+
+            <!-- Row 1: Sales & Billing -->
+            <button data-page="admin-pos" style="background: #ffffff; color: #1e293b; border: 2px solid #bfdbfe; border-radius: 14px; padding: 18px 12px; font-size: 14px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-3px)';this.style.borderColor='#3b82f6'" onmouseout="this.style.transform='none';this.style.borderColor='#bfdbfe'">
+              <span style="font-size: 32px;">🛒</span>
+              <span>POS Billing</span>
+            </button>
+
+            <button data-page="admin-sales" style="background: #ffffff; color: #1e293b; border: 2px solid #bbf7d0; border-radius: 14px; padding: 18px 12px; font-size: 14px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-3px)';this.style.borderColor='#10b981'" onmouseout="this.style.transform='none';this.style.borderColor='#bbf7d0'">
+              <span style="font-size: 32px;">🛍️</span>
+              <span>Sales Records</span>
+            </button>
+
+            <button data-page="admin-orders" style="background: #ffffff; color: #1e293b; border: 2px solid #fed7aa; border-radius: 14px; padding: 18px 12px; font-size: 14px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-3px)';this.style.borderColor='#f59e0b'" onmouseout="this.style.transform='none';this.style.borderColor='#fed7aa'">
+              <span style="font-size: 32px;">📋</span>
+              <span>Orders</span>
+            </button>
+
+            <button data-page="admin-tracking" style="background: #ffffff; color: #1e293b; border: 2px solid #fecdd3; border-radius: 14px; padding: 18px 12px; font-size: 14px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-3px)';this.style.borderColor='#ef4444'" onmouseout="this.style.transform='none';this.style.borderColor='#fecdd3'">
+              <span style="font-size: 32px;">🔧</span>
+              <span>Tracking</span>
+            </button>
+
+            <!-- Row 2: Inventory -->
+            <button data-page="admin-products" style="background: #ffffff; color: #1e293b; border: 2px solid #bfdbfe; border-radius: 14px; padding: 18px 12px; font-size: 14px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-3px)';this.style.borderColor='#3b82f6'" onmouseout="this.style.transform='none';this.style.borderColor='#bfdbfe'">
+              <span style="font-size: 32px;">📦</span>
+              <span>Products</span>
+            </button>
+
+            <button data-page="admin-display-stock" style="background: #ffffff; color: #1e293b; border: 2px solid #bbf7d0; border-radius: 14px; padding: 18px 12px; font-size: 14px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-3px)';this.style.borderColor='#10b981'" onmouseout="this.style.transform='none';this.style.borderColor='#bbf7d0'">
+              <span style="font-size: 32px;">📱</span>
+              <span>Display Stock</span>
+            </button>
+
+            <button data-page="admin-spare-parts" style="background: #ffffff; color: #1e293b; border: 2px solid #fed7aa; border-radius: 14px; padding: 18px 12px; font-size: 14px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-3px)';this.style.borderColor='#f59e0b'" onmouseout="this.style.transform='none';this.style.borderColor='#fed7aa'">
+              <span style="font-size: 32px;">🔩</span>
+              <span>Spare Parts</span>
+            </button>
+
+            <button data-page="admin-owner-products" style="background: #ffffff; color: #1e293b; border: 2px solid #a5f3fc; border-radius: 14px; padding: 18px 12px; font-size: 14px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-3px)';this.style.borderColor='#06b6d4'" onmouseout="this.style.transform='none';this.style.borderColor='#a5f3fc'">
+              <span style="font-size: 32px;">📋</span>
+              <span>Owner Products</span>
+            </button>
+
+            <!-- Row 3: Distributors & Bills -->
+            <button data-page="admin-distributors" style="background: #ffffff; color: #1e293b; border: 2px solid #ddd6fe; border-radius: 14px; padding: 18px 12px; font-size: 14px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-3px)';this.style.borderColor='#8b5cf6'" onmouseout="this.style.transform='none';this.style.borderColor='#ddd6fe'">
+              <span style="font-size: 32px;">🏢</span>
+              <span>Distributors</span>
+            </button>
+
+            <button data-page="admin-distributor-products" style="background: #ffffff; color: #1e293b; border: 2px solid #ddd6fe; border-radius: 14px; padding: 18px 12px; font-size: 14px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-3px)';this.style.borderColor='#8b5cf6'" onmouseout="this.style.transform='none';this.style.borderColor='#ddd6fe'">
+              <span style="font-size: 32px;">🏬</span>
+              <span>Dist. Items</span>
+            </button>
+
+            <button data-page="admin-purchase-bills" style="background: #ffffff; color: #1e293b; border: 2px solid #fecdd3; border-radius: 14px; padding: 18px 12px; font-size: 14px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-3px)';this.style.borderColor='#ef4444'" onmouseout="this.style.transform='none';this.style.borderColor='#fecdd3'">
+              <span style="font-size: 32px;">🧾</span>
+              <span>Purchase Bills</span>
+            </button>
+
+            <button data-page="admin-services" style="background: #ffffff; color: #1e293b; border: 2px solid #bfdbfe; border-radius: 14px; padding: 18px 12px; font-size: 14px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-3px)';this.style.borderColor='#3b82f6'" onmouseout="this.style.transform='none';this.style.borderColor='#bfdbfe'">
+              <span style="font-size: 32px;">🛠️</span>
+              <span>Services</span>
+            </button>
+
+          </div>
+
         </div>
       </div>
     `;
