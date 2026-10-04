@@ -1278,143 +1278,115 @@ class OwnerPortalApp {
  
   renderAdmin() {
     const totalPurchaseItems = (this.purchaseBills || []).reduce((s, b) => s + (b.totalQuantity || 0), 0);
-
-    const cardStyle = (bg, shadow) => `background: ${bg}; border: none; border-radius: 16px; padding: 22px 14px; font-size: 14px; font-weight: 700; color: #ffffff; display: flex; flex-direction: column; align-items: center; gap: 8px; box-shadow: ${shadow}; cursor: pointer; transition: transform 0.18s, box-shadow 0.18s; text-align: center;`;
-
     return `
-      <div style="min-height: 100vh; background: linear-gradient(135deg, #f0f4ff 0%, #faf5ff 100%); color: #0f172a; padding-top: 80px; padding-bottom: 60px;">
+      <div style="min-height: 100vh; background: #f0f4ff; color: #0f172a; padding-top: 80px; padding-bottom: 60px;">
         <div style="max-width: 1300px; margin: 0 auto; padding: 0 20px;">
 
           <!-- Header -->
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; flex-wrap: wrap; gap: 14px;">
             <div>
-              <h1 style="font-size: 30px; font-weight: 900; color: #1e293b; margin: 0;">🎯 Owner Dashboard</h1>
-              <p style="color: #64748b; font-size: 13px; margin-top: 5px;">Manjula Mobile World — Manage everything from one place</p>
+              <h1 style="font-size: 34px; font-weight: 800; color: #1e293b; margin: 0; letter-spacing: -0.5px;">🎯 Owner Dashboard</h1>
+              <p style="color: #64748b; font-size: 14px; margin-top: 5px;">Manjula Mobile World — Manage everything from one place</p>
             </div>
-            <button data-page="admin-pos" style="background: linear-gradient(135deg, #2563eb, #4f46e5); color: #fff; border: none; padding: 13px 26px; font-size: 15px; font-weight: 700; border-radius: 12px; box-shadow: 0 6px 20px rgba(37,99,235,0.4); cursor: pointer; display: flex; align-items: center; gap: 8px;">
+            <button data-page="admin-pos" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; border: none; padding: 13px 26px; font-size: 15px; font-weight: 700; border-radius: 10px; box-shadow: 0 6px 18px rgba(37,99,235,0.35); cursor: pointer; display: flex; align-items: center; gap: 8px;">
               🛒 Open POS Billing
             </button>
           </div>
 
-          <!-- Stats Tiles — 6 clickable colored tiles -->
-          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; margin-bottom: 30px;">
-
-            <div data-page="admin-products" style="${cardStyle('linear-gradient(135deg,#3b82f6,#2563eb)', '0 6px 18px rgba(37,99,235,0.3)')}" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 10px 24px rgba(37,99,235,0.4)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 6px 18px rgba(37,99,235,0.3)'">
-              <span style="font-size: 34px;">📦</span>
-              <span style="font-size: 28px; font-weight: 900; line-height:1;">${this.products.length}</span>
-              <span style="font-size: 12px; opacity: 0.9;">Products</span>
+          <!-- Stats Row -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; margin-bottom: 30px;">
+            <div data-page="admin-products" style="background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 14px; padding: 20px 16px; text-align: center; cursor: pointer; box-shadow: 0 4px 14px rgba(37,99,235,0.25); transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='none'">
+              <div style="font-size: 30px; font-weight: 900; color: #fff;">${this.products.length}</div>
+              <div style="color: #bfdbfe; font-size: 12px; font-weight: 600; margin-top: 3px;">📦 Products</div>
             </div>
-
-            <div data-page="admin-display-stock" style="${cardStyle('linear-gradient(135deg,#10b981,#059669)', '0 6px 18px rgba(16,185,129,0.3)')}" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'">
-              <span style="font-size: 34px;">📱</span>
-              <span style="font-size: 28px; font-weight: 900; line-height:1;">${this.displayStock.length}</span>
-              <span style="font-size: 12px; opacity: 0.9;">Display Stock</span>
+            <div data-page="admin-display-stock" style="background: linear-gradient(135deg, #10b981, #059669); border-radius: 14px; padding: 20px 16px; text-align: center; cursor: pointer; box-shadow: 0 4px 14px rgba(16,185,129,0.25); transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='none'">
+              <div style="font-size: 30px; font-weight: 900; color: #fff;">${this.displayStock.length}</div>
+              <div style="color: #a7f3d0; font-size: 12px; font-weight: 600; margin-top: 3px;">📱 Display Stock</div>
             </div>
-
-            <div data-page="admin-spare-parts" style="${cardStyle('linear-gradient(135deg,#f59e0b,#d97706)', '0 6px 18px rgba(245,158,11,0.3)')}" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'">
-              <span style="font-size: 34px;">🔩</span>
-              <span style="font-size: 28px; font-weight: 900; line-height:1;">${this.sparePartsStock.length}</span>
-              <span style="font-size: 12px; opacity: 0.9;">Spare Parts</span>
+            <div data-page="admin-spare-parts" style="background: linear-gradient(135deg, #f59e0b, #d97706); border-radius: 14px; padding: 20px 16px; text-align: center; cursor: pointer; box-shadow: 0 4px 14px rgba(245,158,11,0.25); transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='none'">
+              <div style="font-size: 30px; font-weight: 900; color: #fff;">${this.sparePartsStock.length}</div>
+              <div style="color: #fde68a; font-size: 12px; font-weight: 600; margin-top: 3px;">🔩 Spare Parts</div>
             </div>
-
-            <div data-page="admin-distributors" style="${cardStyle('linear-gradient(135deg,#8b5cf6,#6d28d9)', '0 6px 18px rgba(139,92,246,0.3)')}" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'">
-              <span style="font-size: 34px;">🏢</span>
-              <span style="font-size: 28px; font-weight: 900; line-height:1;">${this.distributors.length}</span>
-              <span style="font-size: 12px; opacity: 0.9;">Distributors</span>
+            <div data-page="admin-distributors" style="background: linear-gradient(135deg, #8b5cf6, #6d28d9); border-radius: 14px; padding: 20px 16px; text-align: center; cursor: pointer; box-shadow: 0 4px 14px rgba(139,92,246,0.25); transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='none'">
+              <div style="font-size: 30px; font-weight: 900; color: #fff;">${this.distributors.length}</div>
+              <div style="color: #ddd6fe; font-size: 12px; font-weight: 600; margin-top: 3px;">🏢 Distributors</div>
             </div>
-
-            <div data-page="admin-purchase-bills" style="${cardStyle('linear-gradient(135deg,#ef4444,#dc2626)', '0 6px 18px rgba(239,68,68,0.3)')}" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'">
-              <span style="font-size: 34px;">🧾</span>
-              <span style="font-size: 28px; font-weight: 900; line-height:1;">${this.purchaseBills.length}</span>
-              <span style="font-size: 12px; opacity: 0.9;">Purchase Bills</span>
+            <div data-page="admin-purchase-bills" style="background: linear-gradient(135deg, #ef4444, #dc2626); border-radius: 14px; padding: 20px 16px; text-align: center; cursor: pointer; box-shadow: 0 4px 14px rgba(239,68,68,0.25); transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='none'">
+              <div style="font-size: 30px; font-weight: 900; color: #fff;">${this.purchaseBills.length}</div>
+              <div style="color: #fecaca; font-size: 12px; font-weight: 600; margin-top: 3px;">🧾 Purchase Bills</div>
             </div>
-
-            <div data-page="admin-owner-products" style="${cardStyle('linear-gradient(135deg,#06b6d4,#0891b2)', '0 6px 18px rgba(6,182,212,0.3)')}" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'">
-              <span style="font-size: 34px;">📋</span>
-              <span style="font-size: 28px; font-weight: 900; line-height:1;">${totalPurchaseItems}</span>
-              <span style="font-size: 12px; opacity: 0.9;">Owner Products</span>
+            <div data-page="admin-owner-products" style="background: linear-gradient(135deg, #06b6d4, #0891b2); border-radius: 14px; padding: 20px 16px; text-align: center; cursor: pointer; box-shadow: 0 4px 14px rgba(6,182,212,0.25); transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='none'">
+              <div style="font-size: 30px; font-weight: 900; color: #fff;">${totalPurchaseItems}</div>
+              <div style="color: #a5f3fc; font-size: 12px; font-weight: 600; margin-top: 3px;">📋 Owner Products</div>
             </div>
-
           </div>
 
-          <!-- Section Label -->
-          <div style="margin-bottom: 14px; display: flex; align-items: center; gap: 10px;">
-            <span style="font-size: 13px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px;">⚡ Quick Access</span>
-            <div style="flex:1; height:1px; background:#e2e8f0;"></div>
+          <!-- Quick Access Grid — 3 columns × 4 rows = 12 buttons, all ordered -->
+          <div style="margin-bottom: 10px;">
+            <h2 style="font-size: 16px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px;">⚡ Quick Access</h2>
           </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; margin-bottom: 20px;">
 
-          <!-- Quick Access — 4 columns, each with full colored background -->
-          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px;">
-
-            <!-- POS Billing — Blue -->
-            <button data-page="admin-pos" style="${cardStyle('linear-gradient(135deg,#3b82f6,#2563eb)', '0 4px 14px rgba(37,99,235,0.25)')}" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'">
-              <span style="font-size: 36px;">🛒</span>
+            <!-- Row 1: Sales & Billing -->
+            <button data-page="admin-pos" style="background: linear-gradient(135deg, #dbeafe, #bfdbfe); color: #1e40af; border: none; border-radius: 14px; padding: 20px 12px; font-size: 14px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 8px; box-shadow: 0 3px 12px rgba(59,130,246,0.2); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 20px rgba(59,130,246,0.35)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 3px 12px rgba(59,130,246,0.2)'">
+              <span style="font-size: 34px;">🛒</span>
               <span>POS Billing</span>
             </button>
 
-            <!-- Sales Records — Emerald -->
-            <button data-page="admin-sales" style="${cardStyle('linear-gradient(135deg,#10b981,#059669)', '0 4px 14px rgba(16,185,129,0.25)')}" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'">
-              <span style="font-size: 36px;">🛍️</span>
+            <button data-page="admin-sales" style="background: linear-gradient(135deg, #dcfce7, #bbf7d0); color: #166534; border: none; border-radius: 14px; padding: 20px 12px; font-size: 14px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 8px; box-shadow: 0 3px 12px rgba(16,185,129,0.2); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 20px rgba(16,185,129,0.35)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 3px 12px rgba(16,185,129,0.2)'">
+              <span style="font-size: 34px;">🛍️</span>
               <span>Sales Records</span>
             </button>
 
-            <!-- Orders — Amber -->
-            <button data-page="admin-orders" style="${cardStyle('linear-gradient(135deg,#f59e0b,#d97706)', '0 4px 14px rgba(245,158,11,0.25)')}" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'">
-              <span style="font-size: 36px;">📋</span>
+            <button data-page="admin-orders" style="background: linear-gradient(135deg, #ffedd5, #fed7aa); color: #9a3412; border: none; border-radius: 14px; padding: 20px 12px; font-size: 14px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 8px; box-shadow: 0 3px 12px rgba(245,158,11,0.2); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 20px rgba(245,158,11,0.35)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 3px 12px rgba(245,158,11,0.2)'">
+              <span style="font-size: 34px;">📋</span>
               <span>Orders</span>
             </button>
 
-            <!-- Tracking — Rose -->
-            <button data-page="admin-tracking" style="${cardStyle('linear-gradient(135deg,#f43f5e,#e11d48)', '0 4px 14px rgba(244,63,94,0.25)')}" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'">
-              <span style="font-size: 36px;">🔧</span>
+            <button data-page="admin-tracking" style="background: linear-gradient(135deg, #fee2e2, #fecaca); color: #991b1b; border: none; border-radius: 14px; padding: 20px 12px; font-size: 14px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 8px; box-shadow: 0 3px 12px rgba(239,68,68,0.2); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 20px rgba(239,68,68,0.35)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 3px 12px rgba(239,68,68,0.2)'">
+              <span style="font-size: 34px;">🔧</span>
               <span>Tracking</span>
             </button>
 
-            <!-- Products — Indigo -->
-            <button data-page="admin-products" style="${cardStyle('linear-gradient(135deg,#6366f1,#4f46e5)', '0 4px 14px rgba(99,102,241,0.25)')}" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'">
-              <span style="font-size: 36px;">📦</span>
+            <!-- Row 2: Inventory -->
+            <button data-page="admin-products" style="background: linear-gradient(135deg, #e0e7ff, #c7d2fe); color: #3730a3; border: none; border-radius: 14px; padding: 20px 12px; font-size: 14px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 8px; box-shadow: 0 3px 12px rgba(99,102,241,0.2); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 20px rgba(99,102,241,0.35)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 3px 12px rgba(99,102,241,0.2)'">
+              <span style="font-size: 34px;">📦</span>
               <span>Products</span>
             </button>
 
-            <!-- Display Stock — Teal -->
-            <button data-page="admin-display-stock" style="${cardStyle('linear-gradient(135deg,#14b8a6,#0d9488)', '0 4px 14px rgba(20,184,166,0.25)')}" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'">
-              <span style="font-size: 36px;">📱</span>
+            <button data-page="admin-display-stock" style="background: linear-gradient(135deg, #d1fae5, #a7f3d0); color: #065f46; border: none; border-radius: 14px; padding: 20px 12px; font-size: 14px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 8px; box-shadow: 0 3px 12px rgba(5,150,105,0.2); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 20px rgba(5,150,105,0.35)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 3px 12px rgba(5,150,105,0.2)'">
+              <span style="font-size: 34px;">📱</span>
               <span>Display Stock</span>
             </button>
 
-            <!-- Spare Parts — Orange -->
-            <button data-page="admin-spare-parts" style="${cardStyle('linear-gradient(135deg,#fb923c,#ea580c)', '0 4px 14px rgba(251,146,60,0.25)')}" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'">
-              <span style="font-size: 36px;">🔩</span>
+            <button data-page="admin-spare-parts" style="background: linear-gradient(135deg, #fef9c3, #fef08a); color: #713f12; border: none; border-radius: 14px; padding: 20px 12px; font-size: 14px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 8px; box-shadow: 0 3px 12px rgba(234,179,8,0.2); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 20px rgba(234,179,8,0.35)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 3px 12px rgba(234,179,8,0.2)'">
+              <span style="font-size: 34px;">🔩</span>
               <span>Spare Parts</span>
             </button>
 
-            <!-- Owner Products — Cyan -->
-            <button data-page="admin-owner-products" style="${cardStyle('linear-gradient(135deg,#06b6d4,#0891b2)', '0 4px 14px rgba(6,182,212,0.25)')}" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'">
-              <span style="font-size: 36px;">📋</span>
+            <button data-page="admin-owner-products" style="background: linear-gradient(135deg, #cffafe, #a5f3fc); color: #164e63; border: none; border-radius: 14px; padding: 20px 12px; font-size: 14px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 8px; box-shadow: 0 3px 12px rgba(6,182,212,0.2); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 20px rgba(6,182,212,0.35)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 3px 12px rgba(6,182,212,0.2)'">
+              <span style="font-size: 34px;">📋</span>
               <span>Owner Products</span>
             </button>
 
-            <!-- Distributors — Violet -->
-            <button data-page="admin-distributors" style="${cardStyle('linear-gradient(135deg,#a78bfa,#7c3aed)', '0 4px 14px rgba(167,139,250,0.25)')}" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'">
-              <span style="font-size: 36px;">🏢</span>
+            <!-- Row 3: Distributors & Bills -->
+            <button data-page="admin-distributors" style="background: linear-gradient(135deg, #ede9fe, #ddd6fe); color: #4c1d95; border: none; border-radius: 14px; padding: 20px 12px; font-size: 14px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 8px; box-shadow: 0 3px 12px rgba(139,92,246,0.2); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 20px rgba(139,92,246,0.35)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 3px 12px rgba(139,92,246,0.2)'">
+              <span style="font-size: 34px;">🏢</span>
               <span>Distributors</span>
             </button>
 
-            <!-- Dist. Items — Purple -->
-            <button data-page="admin-distributor-products" style="${cardStyle('linear-gradient(135deg,#c084fc,#a855f7)', '0 4px 14px rgba(192,132,252,0.25)')}" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'">
-              <span style="font-size: 36px;">🏬</span>
+            <button data-page="admin-distributor-products" style="background: linear-gradient(135deg, #fce7f3, #fbcfe8); color: #831843; border: none; border-radius: 14px; padding: 20px 12px; font-size: 14px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 8px; box-shadow: 0 3px 12px rgba(236,72,153,0.2); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 20px rgba(236,72,153,0.35)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 3px 12px rgba(236,72,153,0.2)'">
+              <span style="font-size: 34px;">🏬</span>
               <span>Dist. Items</span>
             </button>
 
-            <!-- Purchase Bills — Red -->
-            <button data-page="admin-purchase-bills" style="${cardStyle('linear-gradient(135deg,#f87171,#ef4444)', '0 4px 14px rgba(248,113,113,0.25)')}" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'">
-              <span style="font-size: 36px;">🧾</span>
+            <button data-page="admin-purchase-bills" style="background: linear-gradient(135deg, #ffe4e6, #fecdd3); color: #881337; border: none; border-radius: 14px; padding: 20px 12px; font-size: 14px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 8px; box-shadow: 0 3px 12px rgba(244,63,94,0.2); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 20px rgba(244,63,94,0.35)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 3px 12px rgba(244,63,94,0.2)'">
+              <span style="font-size: 34px;">🧾</span>
               <span>Purchase Bills</span>
             </button>
 
-            <!-- Services — Sky -->
-            <button data-page="admin-services" style="${cardStyle('linear-gradient(135deg,#38bdf8,#0ea5e9)', '0 4px 14px rgba(56,189,248,0.25)')}" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='none'">
-              <span style="font-size: 36px;">🛠️</span>
+            <button data-page="admin-services" style="background: linear-gradient(135deg, #ecfeff, #cffafe); color: #155e75; border: none; border-radius: 14px; padding: 20px 12px; font-size: 14px; font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 8px; box-shadow: 0 3px 12px rgba(14,165,233,0.2); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 20px rgba(14,165,233,0.35)'" onmouseout="this.style.transform='none';this.style.boxShadow='0 3px 12px rgba(14,165,233,0.2)'">
+              <span style="font-size: 34px;">🛠️</span>
               <span>Services</span>
             </button>
 
