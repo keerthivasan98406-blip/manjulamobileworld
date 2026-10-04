@@ -77,6 +77,11 @@ class OwnerPortalApp {
     this.viewingBillNumber = null;
     this.purchaseDraftRows = [];
 
+    // Owner Products Page State
+    this.ownerProductsSearch = "";
+    this.ownerProductsCatFilter = "all";
+    this.ownerProductsDistFilter = "all";
+
     // Display Page Distributor Section State
     this.showDisplayDistributorSection = false;
     this.displayDistributorTab = "history";
@@ -1131,6 +1136,8 @@ class OwnerPortalApp {
       html += this.renderAddProductForm()
     } else if (page === "admin-edit-product") {
       html += this.renderEditProductForm()
+    } else if (page === "admin-owner-products") {
+      html += this.renderOwnerProductsPage()
     }
 
     html += this.renderFooter()
@@ -1195,6 +1202,9 @@ class OwnerPortalApp {
               </li>
               <li class="nav-item">
                 <a class="nav-link ${this.currentPage === 'admin-distributor-products' ? 'active' : ''}" data-page="admin-distributor-products">Dist. Items</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link ${this.currentPage === 'admin-owner-products' ? 'active' : ''}" data-page="admin-owner-products">Owner Prods</a>
               </li>
               <li class="nav-item">
                 <a class="nav-link ${this.currentPage === 'admin-purchase-bills' || this.currentPage === 'admin-view-bill' ? 'active' : ''}" data-page="admin-purchase-bills">Bills</a>
@@ -1313,6 +1323,10 @@ class OwnerPortalApp {
             <button class="btn" data-page="admin-sales" style="background: #ffffff; color: #1e293b; border: 1px solid #cbd5e1; border-radius: 12px; padding: 18px; font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
               <span style="font-size: 26px;">🛍️</span>
               <span>Sales Records</span>
+            </button>
+            <button class="btn" data-page="admin-owner-products" style="background: linear-gradient(135deg, #eff6ff, #dbeafe); color: #1e40af; border: 2px solid #3b82f6; border-radius: 12px; padding: 18px; font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 4px 12px rgba(59,130,246,0.15); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
+              <span style="font-size: 26px;">📋</span>
+              <span>Owner Products</span>
             </button>
           </div>
 
@@ -9619,7 +9633,7 @@ class OwnerPortalApp {
                 <thead style="position: sticky; top: 0; background: #0f172a; z-index: 10; border-bottom: 2px solid #334155;">
                   <tr style="color: #94a3b8; font-weight: 700; text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px;">
                     <th style="padding: 14px 16px; width: 40px; text-align: center;">#</th>
-                    <th style="padding: 14px 16px; width: 120px;">Category</th>
+                    <th style="padding: 14px 16px; width: 70px; text-align: center;" title="Tick ✅ = Display category">🖥️ Disp</th>
                     <th style="padding: 14px 16px; min-width: 220px;">Product Name *</th>
                     <th style="padding: 14px 16px; min-width: 140px;">Barcode</th>
                     <th style="padding: 14px 16px; width: 100px; text-align: center;">Qty *</th>
@@ -9663,15 +9677,16 @@ class OwnerPortalApp {
 
     return this.purchaseDraftRows.map((row, idx) => {
       const cat = row.category || 'Other';
+      const isDisplay = (cat === 'Display');
       return `
-      <tr data-row-id="${row.id}" style="border-bottom: 1px solid #334155;">
+      <tr data-row-id="${row.id}" style="border-bottom: 1px solid #334155; background: ${isDisplay ? 'rgba(124,58,237,0.08)' : 'transparent'};">
         <td style="padding: 10px 14px; text-align: center; color: #64748b; font-weight: 600;">${idx + 1}</td>
-        <td style="padding: 8px 10px;">
-          <select class="pur-row-input" data-index="${idx}" data-field="category"
-            style="width:100%; padding:7px 10px; background:#0f172a; border:1px solid #475569; color:#a78bfa; border-radius:6px; font-size:13px; font-weight:700;">
-            <option value="Display" ${cat === 'Display' ? 'selected' : ''}>🖥️ Display</option>
-            <option value="Other" ${cat === 'Other' ? 'selected' : ''}>📦 Other</option>
-          </select>
+        <td style="padding: 8px 10px; text-align: center;">
+          <button onclick="app.togglePurchaseRowDisplay(${idx})"
+            title="${isDisplay ? 'Display (click to unset)' : 'Other (click to set as Display)'}"
+            style="width:36px; height:36px; border-radius:8px; border:2px solid ${isDisplay ? '#7c3aed' : '#475569'}; background:${isDisplay ? 'linear-gradient(135deg,#7c3aed,#5b21b6)' : '#0f172a'}; color:#fff; font-size:18px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; transition:all 0.2s;">
+            ${isDisplay ? '✅' : '⬜'}
+          </button>
         </td>
         <td style="padding: 8px 10px;">
           <input type="text" class="pur-row-input" data-index="${idx}" data-field="name" value="${this.escapeHtml(row.name || '')}" placeholder="Product Name"
@@ -9936,6 +9951,195 @@ class OwnerPortalApp {
       console.error('❌ Error saving purchase:', error);
       alert("Network error. Failed to save purchase.");
     }
+  }
+
+  // Toggle Display category tick in purchase form row
+  togglePurchaseRowDisplay(idx) {
+    if (!this.purchaseDraftRows[idx]) return;
+    const current = this.purchaseDraftRows[idx].category || 'Other';
+    this.purchaseDraftRows[idx].category = (current === 'Display') ? 'Other' : 'Display';
+    this.renderPage('admin-add-distributor-purchase');
+  }
+
+  // Owner Products Page — all products from all purchase bills
+  renderOwnerProductsPage() {
+    // Collect every line item from every purchase bill
+    const allItems = [];
+    (this.purchaseBills || []).forEach(bill => {
+      (bill.items || []).forEach(item => {
+        allItems.push({
+          billNumber: bill.billNumber,
+          distributorName: bill.distributorName || '',
+          distributorMobile: bill.distributorMobile || '',
+          purchaseDate: bill.purchaseDate || '',
+          productName: item.productName || '',
+          barcode: item.barcode || '',
+          category: item.category || 'Other',
+          quantity: item.quantity || 0,
+          distributorPrice: item.distributorPrice || 0,
+          ownerPrice: item.ownerPrice || 0,
+          customerPrice: item.customerPrice || 0,
+          itemTotal: item.itemTotal || (item.quantity * item.distributorPrice) || 0
+        });
+      });
+    });
+
+    const search = (this.ownerProductsSearch || '').toLowerCase();
+    const catFilter = this.ownerProductsCatFilter || 'all';
+    const distFilter = this.ownerProductsDistFilter || 'all';
+
+    let filtered = allItems;
+    if (search) {
+      filtered = filtered.filter(i =>
+        i.productName.toLowerCase().includes(search) ||
+        i.barcode.toLowerCase().includes(search) ||
+        i.billNumber.toLowerCase().includes(search) ||
+        i.distributorName.toLowerCase().includes(search)
+      );
+    }
+    if (catFilter !== 'all') {
+      filtered = filtered.filter(i => i.category === catFilter);
+    }
+    if (distFilter !== 'all') {
+      filtered = filtered.filter(i => i.distributorName === distFilter);
+    }
+
+    const uniqueDistributors = [...new Set(allItems.map(i => i.distributorName).filter(Boolean))];
+    const grandTotal = filtered.reduce((s, i) => s + i.itemTotal, 0);
+    const totalQty = filtered.reduce((s, i) => s + i.quantity, 0);
+
+    return `
+      <div style="min-height: 100vh; background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); color: #0f172a; padding-top: 96px; padding-bottom: 80px;">
+        <div class="container" style="max-width: 1400px; margin: 0 auto; padding: 0 20px;">
+
+          <!-- Header -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
+            <div>
+              <button data-page="admin" style="background: transparent; border: none; color: #2563eb; cursor: pointer; font-size: 14px; font-weight: 600; margin-bottom: 8px;">← Back to Dashboard</button>
+              <h1 style="font-size: 32px; font-weight: 800; color: #0f172a; margin: 0;">📋 Owner Products</h1>
+              <p style="color: #64748b; font-size: 14px; margin-top: 4px;">All products from all purchase transactions — ${allItems.length} total entries</p>
+            </div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+              <span style="background: #dbeafe; color: #1e40af; padding: 8px 16px; border-radius: 8px; font-weight: 700; font-size: 14px;">
+                ${filtered.length} items shown
+              </span>
+            </div>
+          </div>
+
+          <!-- Filters -->
+          <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 20px; display: flex; gap: 14px; flex-wrap: wrap; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+            <div style="flex: 1; min-width: 200px;">
+              <input type="text" id="ownerProductsSearch" placeholder="🔍 Search product name, barcode, bill#, distributor..."
+                value="${this.ownerProductsSearch || ''}"
+                oninput="app.ownerProductsSearch = this.value; app.renderPage('admin-owner-products')"
+                style="width: 100%; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; color: #0f172a; background: #f8fafc;">
+            </div>
+            <select onchange="app.ownerProductsCatFilter = this.value; app.renderPage('admin-owner-products')"
+              style="padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: #f8fafc; color: #0f172a; font-weight: 600;">
+              <option value="all" ${catFilter === 'all' ? 'selected' : ''}>All Categories</option>
+              <option value="Display" ${catFilter === 'Display' ? 'selected' : ''}>🖥️ Display Only</option>
+              <option value="Other" ${catFilter === 'Other' ? 'selected' : ''}>📦 Other Only</option>
+            </select>
+            <select onchange="app.ownerProductsDistFilter = this.value; app.renderPage('admin-owner-products')"
+              style="padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: #f8fafc; color: #0f172a; font-weight: 600;">
+              <option value="all" ${distFilter === 'all' ? 'selected' : ''}>All Distributors</option>
+              ${uniqueDistributors.map(d => `<option value="${this.escapeHtml(d)}" ${distFilter === d ? 'selected' : ''}>${this.escapeHtml(d)}</option>`).join('')}
+            </select>
+          </div>
+
+          <!-- Summary Cards -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 24px;">
+            <div style="background: linear-gradient(135deg, #eff6ff, #dbeafe); border: 1px solid #bfdbfe; border-radius: 12px; padding: 18px; text-align: center;">
+              <div style="font-size: 28px; font-weight: 800; color: #1d4ed8;">${allItems.length}</div>
+              <div style="color: #1e40af; font-size: 13px; font-weight: 600;">Total Entries</div>
+            </div>
+            <div style="background: linear-gradient(135deg, #f0fdf4, #dcfce7); border: 1px solid #bbf7d0; border-radius: 12px; padding: 18px; text-align: center;">
+              <div style="font-size: 28px; font-weight: 800; color: #15803d;">${totalQty}</div>
+              <div style="color: #166534; font-size: 13px; font-weight: 600;">Total Qty</div>
+            </div>
+            <div style="background: linear-gradient(135deg, #faf5ff, #f3e8ff); border: 1px solid #e9d5ff; border-radius: 12px; padding: 18px; text-align: center;">
+              <div style="font-size: 28px; font-weight: 800; color: #6b21a8;">${allItems.filter(i => i.category === 'Display').length}</div>
+              <div style="color: #581c87; font-size: 13px; font-weight: 600;">Display Items</div>
+            </div>
+            <div style="background: linear-gradient(135deg, #fff7ed, #ffedd5); border: 1px solid #fed7aa; border-radius: 12px; padding: 18px; text-align: center;">
+              <div style="font-size: 26px; font-weight: 800; color: #c2410c;">₹${grandTotal.toLocaleString('en-IN')}</div>
+              <div style="color: #9a3412; font-size: 13px; font-weight: 600;">Total Value</div>
+            </div>
+            <div style="background: linear-gradient(135deg, #fef2f2, #ffe4e6); border: 1px solid #fecdd3; border-radius: 12px; padding: 18px; text-align: center;">
+              <div style="font-size: 28px; font-weight: 800; color: #be123c;">${this.purchaseBills.length}</div>
+              <div style="color: #9f1239; font-size: 13px; font-weight: 600;">Bills</div>
+            </div>
+          </div>
+
+          <!-- Products Table -->
+          <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.04);">
+            <div style="overflow-x: auto;">
+              <table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; color: #0f172a;">
+                <thead>
+                  <tr style="background: #0f172a; color: #ffffff; font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px;">
+                    <th style="padding: 14px 16px; width: 40px; text-align: center;">#</th>
+                    <th style="padding: 14px 16px; min-width: 200px;">Product Name</th>
+                    <th style="padding: 14px 16px; width: 110px;">Barcode</th>
+                    <th style="padding: 14px 16px; width: 80px; text-align: center;">Category</th>
+                    <th style="padding: 14px 16px; width: 70px; text-align: center;">Qty</th>
+                    <th style="padding: 14px 16px; width: 110px; text-align: right;">Dist. Price</th>
+                    <th style="padding: 14px 16px; width: 110px; text-align: right;">Owner Price</th>
+                    <th style="padding: 14px 16px; width: 110px; text-align: right;">Cust. Price</th>
+                    <th style="padding: 14px 16px; width: 110px; text-align: right;">Item Total</th>
+                    <th style="padding: 14px 16px; min-width: 130px;">Distributor</th>
+                    <th style="padding: 14px 16px; width: 120px;">Bill #</th>
+                    <th style="padding: 14px 16px; width: 110px;">Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${filtered.length === 0 ? `
+                    <tr>
+                      <td colspan="12" style="padding: 60px; text-align: center; color: #64748b;">
+                        <div style="font-size: 40px; margin-bottom: 12px;">📦</div>
+                        <div style="font-size: 16px; font-weight: 600;">${allItems.length === 0 ? 'No purchase transactions yet. Add a purchase to see products here.' : 'No products match the current filters.'}</div>
+                      </td>
+                    </tr>
+                  ` : filtered.map((item, idx) => {
+                    const isDisplay = item.category === 'Display';
+                    const rowBg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
+                    return `
+                    <tr style="border-bottom: 1px solid #e2e8f0; background: ${rowBg};" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='${rowBg}'">
+                      <td style="padding: 12px 16px; text-align: center; color: #94a3b8; font-weight: 600;">${idx + 1}</td>
+                      <td style="padding: 12px 16px; font-weight: 700; color: #0f172a;">${this.escapeHtml(item.productName)}</td>
+                      <td style="padding: 12px 16px; font-family: monospace; color: #2563eb; font-weight: 600; font-size: 12px;">${this.escapeHtml(item.barcode) || '<span style="color:#94a3b8;">—</span>'}</td>
+                      <td style="padding: 12px 16px; text-align: center;">
+                        <span style="background: ${isDisplay ? 'rgba(124,58,237,0.12)' : 'rgba(100,116,139,0.12)'}; color: ${isDisplay ? '#7c3aed' : '#64748b'}; border: 1px solid ${isDisplay ? '#7c3aed' : '#cbd5e1'}; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700;">
+                          ${isDisplay ? '🖥️ Display' : '📦 Other'}
+                        </span>
+                      </td>
+                      <td style="padding: 12px 16px; text-align: center; font-weight: 700; color: #0f172a;">${item.quantity}</td>
+                      <td style="padding: 12px 16px; text-align: right; color: #475569;">₹${item.distributorPrice.toLocaleString('en-IN')}</td>
+                      <td style="padding: 12px 16px; text-align: right; color: #d97706; font-weight: 600;">₹${item.ownerPrice.toLocaleString('en-IN')}</td>
+                      <td style="padding: 12px 16px; text-align: right; color: #059669; font-weight: 700;">₹${item.customerPrice.toLocaleString('en-IN')}</td>
+                      <td style="padding: 12px 16px; text-align: right; font-weight: 800; color: #0f172a;">₹${item.itemTotal.toLocaleString('en-IN')}</td>
+                      <td style="padding: 12px 16px; color: #334155; font-weight: 600;">🏢 ${this.escapeHtml(item.distributorName)}</td>
+                      <td style="padding: 12px 16px; font-family: monospace; color: #2563eb; font-size: 12px;">${this.escapeHtml(item.billNumber)}</td>
+                      <td style="padding: 12px 16px; color: #64748b; font-size: 12px;">${this.escapeHtml(item.purchaseDate)}</td>
+                    </tr>
+                  `}).join('')}
+                </tbody>
+                ${filtered.length > 0 ? `
+                <tfoot>
+                  <tr style="background: #0f172a; color: #ffffff; font-weight: 800;">
+                    <td colspan="4" style="padding: 14px 16px;">TOTAL (${filtered.length} items)</td>
+                    <td style="padding: 14px 16px; text-align: center;">${totalQty}</td>
+                    <td colspan="3" style="padding: 14px 16px;"></td>
+                    <td style="padding: 14px 16px; text-align: right; color: #34d399; font-size: 15px;">₹${grandTotal.toLocaleString('en-IN')}</td>
+                    <td colspan="3" style="padding: 14px 16px;"></td>
+                  </tr>
+                </tfoot>` : ''}
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    `;
   }
 
   // 4. Distributor Products Inventory Page (Completely Separate Inventory)
