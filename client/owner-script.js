@@ -10050,15 +10050,26 @@ class OwnerPortalApp {
   }
 
   // Toggle Display category tick in purchase form row
-  togglePurchaseRowDisplay(idx) {
+  async togglePurchaseRowDisplay(idx) {
     if (!this.purchaseDraftRows[idx]) return;
     const current = this.purchaseDraftRows[idx].category || 'Other';
     const isNowDisplay = (current !== 'Display');
     this.purchaseDraftRows[idx].category = isNowDisplay ? 'Display' : 'Other';
 
-    // When setting to Display, auto-assign the next Display Stock barcode
+    // When setting to Display, fetch FRESH data from server to get real max barcode
     if (isNowDisplay) {
-      // Calculate what the next barcode would be, accounting for already-assigned ones in this form
+      try {
+        // Always fetch from server — this.displayStock may be stale or incomplete
+        const res = await fetch(`${this.API_URL}/display-stock`);
+        if (res.ok) {
+          this.displayStock = await res.json();
+          console.log(`📦 Refreshed display stock: ${this.displayStock.length} items`);
+        }
+      } catch (e) {
+        console.warn('Could not refresh display stock:', e);
+      }
+
+      // Find highest M-number across ALL display stock items
       let maxNum = 0;
       (this.displayStock || []).forEach(d => {
         const bc = (d.barcode || d.displayId || '').trim();
@@ -10068,7 +10079,8 @@ class OwnerPortalApp {
           if (!isNaN(num) && num > maxNum) maxNum = num;
         }
       });
-      // Also account for barcodes already assigned in other Display rows of this form
+
+      // Also account for Display rows already ticked in this same form
       this.purchaseDraftRows.forEach((row, i) => {
         if (i !== idx && row.category === 'Display' && row.barcode) {
           const m = row.barcode.match(/^M(\d+)$/i);
@@ -10078,7 +10090,9 @@ class OwnerPortalApp {
           }
         }
       });
+
       this.purchaseDraftRows[idx].barcode = 'M' + String(maxNum + 1).padStart(3, '0');
+      console.log(`✅ Display barcode: M${String(maxNum + 1).padStart(3,'0')} (max was M${String(maxNum).padStart(3,'0')})`);
     } else {
       // Switching back to Other — reset barcode to PB format
       this.purchaseDraftRows[idx].barcode = 'PB' + String(idx + 1).padStart(3, '0');
