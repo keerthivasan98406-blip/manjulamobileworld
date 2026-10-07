@@ -1403,22 +1403,93 @@ app.get('/api/display-stock', async (req, res) => {
   }
 });
 
+// Returns the next available M-barcode number by scanning ALL display stock records
+app.get('/api/display-stock/next-barcode', async (req, res) => {
+  try {
+    const allItems = await DisplayStock.find({}, { barcode: 1, displayId: 1 }).lean();
+    let maxNum = 0;
+
+    allItems.forEach(item => {
+      const bc  = (item.barcode   || '').trim();
+      const did = (item.displayId || '').trim();
+      // Plain M-number: M121
+      const m1 = bc.match(/^M(\d+)$/i);
+      if (m1) { const n = parseInt(m1[1], 10); if (!isNaN(n) && n > maxNum) maxNum = n; }
+      // DS-M-number: DS-M121
+      const m2 = did.match(/^DS-M(\d+)$/i) || bc.match(/^DS-M(\d+)$/i);
+      if (m2) { const n = parseInt(m2[1], 10); if (!isNaN(n) && n > maxNum) maxNum = n; }
+    });
+
+    // Items without an M-barcode are displayed as M001, M002... by position in the UI.
+    // So the effective max is at least the total count of all items.
+    if (allItems.length > maxNum) maxNum = allItems.length;
+
+    const next = 'M' + String(maxNum + 1).padStart(3, '0');
+    res.json({ next, maxNum });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Backfill missing barcodes for all display stock items (one-time migration)
+// Assigns M001, M002... in creation order (by stockItemId timestamp) to items with no barcode
+app.post('/api/display-stock/backfill-barcodes', async (req, res) => {
+  try {
+    // Get all items sorted by creation order (stockItemId contains timestamp STK-<ms>)
+    const allItems = await DisplayStock.find().sort({ createdAt: 1 }).lean();
+
+    // Find the current max M-number from items that already have one
+    let maxNum = 0;
+    allItems.forEach(item => {
+      const bc  = (item.barcode || '').trim();
+      const did = (item.displayId || '').trim();
+      const m1 = bc.match(/^M(\d+)$/i);
+      if (m1) { const n = parseInt(m1[1], 10); if (!isNaN(n) && n > maxNum) maxNum = n; }
+      const m2 = did.match(/^DS-M(\d+)$/i) || bc.match(/^DS-M(\d+)$/i);
+      if (m2) { const n = parseInt(m2[1], 10); if (!isNaN(n) && n > maxNum) maxNum = n; }
+    });
+
+    // Assign sequential barcodes to items missing them, starting after current max
+    let updated = 0;
+    for (const item of allItems) {
+      const bc = (item.barcode || '').trim();
+      if (!bc) {
+        maxNum++;
+        const newBarcode = 'M' + String(maxNum).padStart(3, '0');
+        await DisplayStock.updateOne(
+          { stockItemId: item.stockItemId },
+          { $set: { barcode: newBarcode } }
+        );
+        updated++;
+      }
+    }
+
+    res.json({ success: true, updated, message: `Backfilled ${updated} items with M-barcodes` });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post('/api/display-stock', async (req, res) => {
   try {
     const stockItemId = 'STK-' + Date.now();
     let barcode = (req.body.barcode || '').trim();
 
     if (!barcode) {
-      const allItems = await DisplayStock.find();
+      const allItems = await DisplayStock.find({}, { barcode: 1, displayId: 1 }).lean();
       let maxNum = 0;
       allItems.forEach(item => {
-        const bc = (item.barcode || item.displayId || '').trim();
-        const match = bc.match(/^M(\d+)$/i);
-        if (match) {
-          const num = parseInt(match[1], 10);
-          if (!isNaN(num) && num > maxNum) maxNum = num;
-        }
+        const bc = (item.barcode || '').trim();
+        const did = (item.displayId || '').trim();
+        // Match plain M-number: M121
+        const matchBc = bc.match(/^M(\d+)$/i);
+        if (matchBc) { const n = parseInt(matchBc[1], 10); if (!isNaN(n) && n > maxNum) maxNum = n; }
+        // Match DS-M-number: DS-M121
+        const matchDid = did.match(/^DS-M(\d+)$/i) || bc.match(/^DS-M(\d+)$/i);
+        if (matchDid) { const n = parseInt(matchDid[1], 10); if (!isNaN(n) && n > maxNum) maxNum = n; }
       });
+      // Items without M-barcode are shown as M001, M002... by position — treat total count as floor
+      if (allItems.length > maxNum) maxNum = allItems.length;
       barcode = 'M' + String(maxNum + 1).padStart(3, '0');
     }
 

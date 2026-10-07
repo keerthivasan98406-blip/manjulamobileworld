@@ -3430,6 +3430,22 @@ class OwnerPortalApp {
   renderDisplayStock() {
     const search = (this.stockSearch || '').toLowerCase().trim();
     const displayList = Array.isArray(this.displayStock) ? this.displayStock : [];
+
+    // Build a stable barcode map: items sorted by creation time (stockItemId has timestamp STK-<ms>)
+    // Always assign M001, M002... in creation order — this is the canonical barcode for display.
+    // We ignore the stored barcode value entirely so wrong barcodes (saved as M003 instead of M122)
+    // are corrected visually without needing DB changes.
+    const sortedByCreation = [...displayList].sort((a, b) => {
+      const tsA = parseInt((a.stockItemId || '').replace('STK-', '')) || 0;
+      const tsB = parseInt((b.stockItemId || '').replace('STK-', '')) || 0;
+      return tsA - tsB; // oldest first → M001, newest last → M122
+    });
+    const barcodeMap = new Map();
+    sortedByCreation.forEach((item, i) => {
+      const id = item.stockItemId || item._id;
+      barcodeMap.set(id, 'M' + String(i + 1).padStart(3, '0'));
+    });
+
     const filtered = displayList.filter(d =>
       (d && d.displayName && d.displayName.toLowerCase().includes(search)) ||
       (d && d.displayId && d.displayId.toLowerCase().includes(search)) ||
@@ -3578,7 +3594,7 @@ class OwnerPortalApp {
                       const stock = Number(item.stock) || 0;
                       const ownerPrice = Number(item.ownerPrice || item.price) || 0;
                       const customerPrice = Number(item.customerPrice || item.price) || 0;
-                      const barVal = (item.barcode && item.barcode.trim()) ? item.barcode.trim() : ('M' + String(idx + 1).padStart(3, '0'));
+                      const barVal = barcodeMap.get(item.stockItemId || item._id) || (item.barcode || '').trim() || ('M' + String(idx + 1).padStart(3, '0'));
                       const stockColor  = stock === 0 ? '#dc2626' : stock <= 1 ? '#dc2626' : stock <= 3 ? '#d97706' : '#16a34a';
                       const stockBg     = stock === 0 ? '#fef2f2' : stock <= 1 ? '#fef2f2' : stock <= 3 ? '#fffbeb' : '#f0fdf4';
                       const rowBg       = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
@@ -3689,9 +3705,25 @@ class OwnerPortalApp {
       const isVisible = f.style.display !== 'none';
       f.style.display = isVisible ? 'none' : 'block';
       if (!isVisible) {
-        setTimeout(() => {
-          this._renderDisplayStockFormBarcode(document.getElementById('stk_barcode')?.value);
-        }, 50);
+        // Fetch the authoritative next M-barcode from server
+        fetch(`${this.API_URL}/display-stock/next-barcode`)
+          .then(res => res.ok ? res.json() : null)
+          .then(data => {
+            const nextBarcode = data ? data.next : this._generateNextDisplayBarcode();
+            const barcodeField = document.getElementById('stk_barcode');
+            if (barcodeField) {
+              barcodeField.value = nextBarcode;
+              this._renderDisplayStockFormBarcode(nextBarcode);
+            }
+          })
+          .catch(() => {
+            const nextBarcode = this._generateNextDisplayBarcode();
+            const barcodeField = document.getElementById('stk_barcode');
+            if (barcodeField) {
+              barcodeField.value = nextBarcode;
+              this._renderDisplayStockFormBarcode(nextBarcode);
+            }
+          });
       }
     }
   }
@@ -3974,17 +4006,26 @@ class OwnerPortalApp {
     }
   }
 
-  _generateNextDisplayBarcode() {
+  _generateNextDisplayBarcode(offset = 0) {
     let maxNum = 0;
     (this.displayStock || []).forEach(d => {
-      const bc = (d.barcode || d.displayId || '').trim();
-      const match = bc.match(/^M(\d+)$/i);
-      if (match) {
-        const num = parseInt(match[1], 10);
+      // Check barcode field first, then displayId — handle both "M121" and "DS-M121" formats
+      const bc = (d.barcode || '').trim();
+      const did = (d.displayId || '').trim();
+      // Match plain M-number: M121
+      const matchBc = bc.match(/^M(\d+)$/i);
+      if (matchBc) {
+        const num = parseInt(matchBc[1], 10);
+        if (!isNaN(num) && num > maxNum) maxNum = num;
+      }
+      // Match DS-M-number: DS-M121
+      const matchDid = did.match(/^DS-M(\d+)$/i) || bc.match(/^DS-M(\d+)$/i);
+      if (matchDid) {
+        const num = parseInt(matchDid[1], 10);
         if (!isNaN(num) && num > maxNum) maxNum = num;
       }
     });
-    return 'M' + String(maxNum + 1).padStart(3, '0');
+    return 'M' + String(maxNum + 1 + offset).padStart(3, '0');
   }
 
   async saveDisplayStock() {
@@ -9965,12 +10006,12 @@ class OwnerPortalApp {
               // This ensures the barcode is always the last number in the list
               let maxNum = 0;
               (this.displayStock || []).forEach(d => {
-                const bc = (d.barcode || d.displayId || '').trim();
-                const m = bc.match(/^M(\d+)$/i);
-                if (m) {
-                  const n = parseInt(m[1], 10);
-                  if (!isNaN(n) && n > maxNum) maxNum = n;
-                }
+                const bc = (d.barcode || '').trim();
+                const did = (d.displayId || '').trim();
+                const mBc = bc.match(/^M(\d+)$/i);
+                if (mBc) { const n = parseInt(mBc[1], 10); if (!isNaN(n) && n > maxNum) maxNum = n; }
+                const mDid = did.match(/^DS-M(\d+)$/i) || bc.match(/^DS-M(\d+)$/i);
+                if (mDid) { const n = parseInt(mDid[1], 10); if (!isNaN(n) && n > maxNum) maxNum = n; }
               });
               const barcode = 'M' + String(maxNum + 1).padStart(3, '0');
               const displayId = 'DS-' + barcode;
@@ -10038,43 +10079,35 @@ class OwnerPortalApp {
     const isNowDisplay = (current !== 'Display');
     this.purchaseDraftRows[idx].category = isNowDisplay ? 'Display' : 'Other';
 
-    // When setting to Display, fetch FRESH data from server to get real max barcode
     if (isNowDisplay) {
       try {
-        // Always fetch from server — this.displayStock may be stale or incomplete
-        const res = await fetch(`${this.API_URL}/display-stock`);
+        // Fetch the authoritative next M-barcode directly from the server
+        const res = await fetch(`${this.API_URL}/display-stock/next-barcode`);
         if (res.ok) {
-          this.displayStock = await res.json();
-          console.log(`📦 Refreshed display stock: ${this.displayStock.length} items`);
+          const data = await res.json();
+          let maxNum = data.maxNum || 0;
+
+          // Also account for Display rows already ticked in THIS same form
+          this.purchaseDraftRows.forEach((row, i) => {
+            if (i !== idx && row.category === 'Display' && row.barcode) {
+              const m = row.barcode.match(/^M(\d+)$/i);
+              if (m) {
+                const n = parseInt(m[1], 10);
+                if (!isNaN(n) && n > maxNum) maxNum = n;
+              }
+            }
+          });
+
+          this.purchaseDraftRows[idx].barcode = 'M' + String(maxNum + 1).padStart(3, '0');
+          console.log(`✅ Display barcode assigned: ${this.purchaseDraftRows[idx].barcode} (DB max was M${String(data.maxNum).padStart(3,'0')})`);
+        } else {
+          // Fallback: use in-memory scan if endpoint fails
+          this.purchaseDraftRows[idx].barcode = this._generateNextDisplayBarcode();
         }
       } catch (e) {
-        console.warn('Could not refresh display stock:', e);
+        console.warn('Could not fetch next barcode from server:', e);
+        this.purchaseDraftRows[idx].barcode = this._generateNextDisplayBarcode();
       }
-
-      // Find highest M-number across ALL display stock items
-      let maxNum = 0;
-      (this.displayStock || []).forEach(d => {
-        const bc = (d.barcode || d.displayId || '').trim();
-        const match = bc.match(/^M(\d+)$/i);
-        if (match) {
-          const num = parseInt(match[1], 10);
-          if (!isNaN(num) && num > maxNum) maxNum = num;
-        }
-      });
-
-      // Also account for Display rows already ticked in this same form
-      this.purchaseDraftRows.forEach((row, i) => {
-        if (i !== idx && row.category === 'Display' && row.barcode) {
-          const m = row.barcode.match(/^M(\d+)$/i);
-          if (m) {
-            const n = parseInt(m[1], 10);
-            if (!isNaN(n) && n > maxNum) maxNum = n;
-          }
-        }
-      });
-
-      this.purchaseDraftRows[idx].barcode = 'M' + String(maxNum + 1).padStart(3, '0');
-      console.log(`✅ Display barcode: M${String(maxNum + 1).padStart(3,'0')} (max was M${String(maxNum).padStart(3,'0')})`);
     } else {
       // Switching back to Other — reset barcode to PB format
       this.purchaseDraftRows[idx].barcode = 'PB' + String(idx + 1).padStart(3, '0');
