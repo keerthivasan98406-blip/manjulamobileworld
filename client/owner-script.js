@@ -1996,19 +1996,8 @@ class OwnerPortalApp {
           </div>
         </div>
 
-        <!-- IMSI / IMEI — Optional -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
-          <div class="form-field">
-            <label class="form-label">IMSI Number <span style="font-size:11px; color:#94a3b8; font-weight:400;">(Optional)</span></label>
-            <div style="display:flex; gap:6px; align-items:center;">
-              <input type="text" class="input" placeholder="15-digit IMSI" id="newTrackingIMSI"
-                maxlength="20" style="flex:1; font-family:monospace; letter-spacing:1px;">
-              <button type="button" onclick="app._scanToTrackingField('newTrackingIMSI')"
-                style="background:#4f46e5; color:#fff; border:none; border-radius:6px; padding:7px 10px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;">
-                📷
-              </button>
-            </div>
-          </div>
+        <!-- IMEI — Optional -->
+        <div style="display: grid; grid-template-columns: 1fr; gap: 16px; margin-bottom: 16px;">
           <div class="form-field">
             <label class="form-label">IMEI Number <span style="font-size:11px; color:#94a3b8; font-weight:400;">(Optional)</span></label>
             <div style="display:flex; gap:6px; align-items:center;">
@@ -3063,11 +3052,7 @@ class OwnerPortalApp {
                 </select>
               </div>
 
-              <!-- IMSI / IMEI Numbers -->
-              <div>
-                <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">IMSI Number <span style="font-weight:400; color:#9ca3af;">(Optional)</span></label>
-                <input class="input" id="sale_imsi" placeholder="15-digit IMSI number" maxlength="20" style="width:100%; font-family:monospace; letter-spacing:1px;">
-              </div>
+              <!-- IMEI Number -->
               <div>
                 <label style="font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 4px;">IMEI Number <span style="font-weight:400; color:#9ca3af;">(Optional)</span></label>
                 <input class="input" id="sale_imei" placeholder="15-digit IMEI number" maxlength="20" style="width:100%; font-family:monospace; letter-spacing:1px;">
@@ -5346,7 +5331,7 @@ class OwnerPortalApp {
       purchaseDate,
       warrantyPeriod: document.getElementById('sale_warrantyPeriod')?.value,
       notes: document.getElementById('sale_notes')?.value?.trim(),
-      imsi: document.getElementById('sale_imsi')?.value?.trim() || null,
+      imsi: null,
       imei: document.getElementById('sale_imei')?.value?.trim() || null,
       proofPhotos: this._salePhotos && this._salePhotos.length > 0 ? this._salePhotos : null,
       signature: (() => {
@@ -5701,7 +5686,6 @@ class OwnerPortalApp {
   <div class="bold" style="margin-bottom:3px;">PRODUCT DETAILS</div>
   <div class="row"><span class="label">Product</span><span class="value">${sale.productName}</span></div>
   ${sale.productModel ? `<div class="row"><span class="label">Model</span><span class="value">${sale.productModel}</span></div>` : ''}
-  ${sale.imsi ? `<div class="row"><span class="label">IMSI</span><span class="value" style="font-family:monospace;">${sale.imsi}</span></div>` : ''}
   ${sale.imei ? `<div class="row"><span class="label">IMEI</span><span class="value" style="font-family:monospace;">${sale.imei}</span></div>` : ''}
   ${sale.warrantyPeriod ? `<div class="row"><span class="label">Warranty</span><span class="value">${sale.warrantyPeriod}</span></div>` : ''}
 
@@ -6612,7 +6596,6 @@ class OwnerPortalApp {
     const paidAmount    = document.getElementById("newTrackingPaid")?.value?.trim();
     const totalReceived = document.getElementById("newTrackingTotalReceived")?.value?.trim();
     const balance       = document.getElementById("newTrackingBalance")?.value?.trim();
-    const imsi          = document.getElementById("newTrackingIMSI")?.value?.trim() || '';
     const imei          = document.getElementById("newTrackingIMEI")?.value?.trim() || '';
     if (!qrId || !password || !customer || !device || !issue || !amount) {
       alert("Please fill all required fields: QR ID, Password, Customer Name, Device Model, Issue Description, and Full Price");
@@ -6655,7 +6638,7 @@ class OwnerPortalApp {
         paidAmount:     Number.parseInt(paidAmount) || 0,
         totalReceived:  Number.parseInt(totalReceived) || 0,
         balanceAmount:  Number.parseInt(balance) || Number.parseInt(amount) || 0,
-        imsi: imsi || null,
+        imsi: null,
         imei: imei || null,
         createdAt: currentDate,
         completedAt: null,
@@ -6690,7 +6673,6 @@ class OwnerPortalApp {
       if (document.getElementById("newTrackingPaid"))          document.getElementById("newTrackingPaid").value = "";
       if (document.getElementById("newTrackingTotalReceived")) document.getElementById("newTrackingTotalReceived").value = "";
       if (document.getElementById("newTrackingBalance"))       document.getElementById("newTrackingBalance").value = "";
-      if (document.getElementById("newTrackingIMSI"))  document.getElementById("newTrackingIMSI").value = "";
       if (document.getElementById("newTrackingIMEI"))  document.getElementById("newTrackingIMEI").value = "";
       
       this.toggleTrackingForm();
