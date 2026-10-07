@@ -9970,6 +9970,54 @@ class OwnerPortalApp {
       if (response.ok && result.success) {
         alert(`✅ Purchase Saved Successfully!\n\nBill Number: ${result.purchase.billNumber}\nTotal Items: ${result.purchase.totalProducts}\nGrand Total: ₹${result.purchase.totalAmount.toLocaleString('en-IN')}`);
         
+        // Auto-create Display Stock entries for Display-category items
+        const displayItems = validItems.filter(item => item.category === 'Display');
+        if (displayItems.length > 0) {
+          console.log(`📱 Auto-adding ${displayItems.length} Display item(s) to Display Stock...`);
+          for (const item of displayItems) {
+            try {
+              // Generate next barcode at the time of saving (use item's barcode if it's M-format)
+              const barcode = item.barcode && /^M\d+$/i.test(item.barcode)
+                ? item.barcode
+                : this._generateNextDisplayBarcode();
+
+              // Assign a unique displayId
+              const displayId = 'DS-' + barcode;
+
+              const stockData = {
+                displayName:  item.productName,
+                displayId:    displayId,
+                barcode:      barcode,
+                stock:        item.quantity,
+                ownerPrice:   item.ownerPrice || null,
+                customerPrice: item.customerPrice || null,
+                price:        item.customerPrice || item.ownerPrice || null,
+                history: [{ change: item.quantity, stockAfter: item.quantity, date: new Date().toLocaleDateString('en-IN'), note: `From purchase bill ${result.purchase.billNumber}` }]
+              };
+
+              const dsRes = await fetch(`${this.API_URL}/display-stock`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(stockData)
+              });
+
+              if (dsRes.ok) {
+                const saved = await dsRes.json();
+                if (!this.displayStock) this.displayStock = [];
+                this.displayStock.push(saved);
+                this.displayStock.sort((a, b) =>
+                  (a.displayName || '').toLowerCase().localeCompare((b.displayName || '').toLowerCase())
+                );
+                console.log(`✅ Added to Display Stock: ${item.productName} (${barcode})`);
+              } else {
+                console.warn(`⚠️ Failed to add ${item.productName} to Display Stock`);
+              }
+            } catch (err) {
+              console.error(`❌ Error adding ${item.productName} to Display Stock:`, err);
+            }
+          }
+        }
+
         // Clear draft rows
         this.initPurchaseForm();
         
@@ -9996,16 +10044,47 @@ class OwnerPortalApp {
   togglePurchaseRowDisplay(idx) {
     if (!this.purchaseDraftRows[idx]) return;
     const current = this.purchaseDraftRows[idx].category || 'Other';
-    this.purchaseDraftRows[idx].category = (current === 'Display') ? 'Other' : 'Display';
+    const isNowDisplay = (current !== 'Display');
+    this.purchaseDraftRows[idx].category = isNowDisplay ? 'Display' : 'Other';
+
+    // When setting to Display, auto-assign the next Display Stock barcode
+    if (isNowDisplay) {
+      // Calculate what the next barcode would be, accounting for already-assigned ones in this form
+      let maxNum = 0;
+      (this.displayStock || []).forEach(d => {
+        const bc = (d.barcode || d.displayId || '').trim();
+        const match = bc.match(/^M(\d+)$/i);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (!isNaN(num) && num > maxNum) maxNum = num;
+        }
+      });
+      // Also account for barcodes already assigned in other Display rows of this form
+      this.purchaseDraftRows.forEach((row, i) => {
+        if (i !== idx && row.category === 'Display' && row.barcode) {
+          const m = row.barcode.match(/^M(\d+)$/i);
+          if (m) {
+            const n = parseInt(m[1], 10);
+            if (!isNaN(n) && n > maxNum) maxNum = n;
+          }
+        }
+      });
+      this.purchaseDraftRows[idx].barcode = 'M' + String(maxNum + 1).padStart(3, '0');
+    } else {
+      // Switching back to Other — reset barcode to PB format
+      this.purchaseDraftRows[idx].barcode = 'PB' + String(idx + 1).padStart(3, '0');
+    }
+
     this.renderPage('admin-add-distributor-purchase');
   }
 
   // Owner Products Page — all products from all purchase bills
   renderOwnerProductsPage() {
-    // Collect every line item from every purchase bill
+    // Collect every line item from every purchase bill — EXCLUDE Display items (they go to Display Stock)
     const allItems = [];
     (this.purchaseBills || []).forEach(bill => {
       (bill.items || []).forEach(item => {
+        if ((item.category || 'Other') === 'Display') return; // Display items → Display Stock, not here
         allItems.push({
           billNumber: bill.billNumber,
           distributorName: bill.distributorName || '',
@@ -10056,7 +10135,7 @@ class OwnerPortalApp {
             <div>
               <button data-page="admin" style="background: transparent; border: none; color: #2563eb; cursor: pointer; font-size: 14px; font-weight: 600; margin-bottom: 8px;">← Back to Dashboard</button>
               <h1 style="font-size: 32px; font-weight: 800; color: #0f172a; margin: 0;">📋 Owner Products</h1>
-              <p style="color: #64748b; font-size: 14px; margin-top: 4px;">All products from all purchase transactions — ${allItems.length} total entries</p>
+              <p style="color: #64748b; font-size: 14px; margin-top: 4px;">All <strong>non-Display</strong> products from purchase transactions — ${allItems.length} total entries</p>
             </div>
             <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
               <span style="background: #dbeafe; color: #1e40af; padding: 8px 16px; border-radius: 8px; font-weight: 700; font-size: 14px;">
@@ -10076,7 +10155,6 @@ class OwnerPortalApp {
             <select onchange="app.ownerProductsCatFilter = this.value; app.renderPage('admin-owner-products')"
               style="padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: #f8fafc; color: #0f172a; font-weight: 600;">
               <option value="all" ${catFilter === 'all' ? 'selected' : ''}>All Categories</option>
-              <option value="Display" ${catFilter === 'Display' ? 'selected' : ''}>🖥️ Display Only</option>
               <option value="Other" ${catFilter === 'Other' ? 'selected' : ''}>📦 Other Only</option>
             </select>
             <select onchange="app.ownerProductsDistFilter = this.value; app.renderPage('admin-owner-products')"
