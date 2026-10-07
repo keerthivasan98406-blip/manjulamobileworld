@@ -9974,14 +9974,23 @@ class OwnerPortalApp {
         const displayItems = validItems.filter(item => item.category === 'Display');
         if (displayItems.length > 0) {
           console.log(`📱 Auto-adding ${displayItems.length} Display item(s) to Display Stock...`);
+          // Reload latest display stock to get accurate max barcode
+          await this.loadDisplayStockFromStorage().catch(() => {});
+
           for (const item of displayItems) {
             try {
-              // Generate next barcode at the time of saving (use item's barcode if it's M-format)
-              const barcode = item.barcode && /^M\d+$/i.test(item.barcode)
-                ? item.barcode
-                : this._generateNextDisplayBarcode();
-
-              // Assign a unique displayId
+              // Always compute the next barcode from the CURRENT Display Stock max at save time
+              // This ensures the barcode is always the last number in the list
+              let maxNum = 0;
+              (this.displayStock || []).forEach(d => {
+                const bc = (d.barcode || d.displayId || '').trim();
+                const m = bc.match(/^M(\d+)$/i);
+                if (m) {
+                  const n = parseInt(m[1], 10);
+                  if (!isNaN(n) && n > maxNum) maxNum = n;
+                }
+              });
+              const barcode = 'M' + String(maxNum + 1).padStart(3, '0');
               const displayId = 'DS-' + barcode;
 
               const stockData = {
