@@ -3804,8 +3804,8 @@ class OwnerPortalApp {
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: flex-start;
-      padding: 3mm 0.5mm 0 0.5mm;
+      justify-content: center;
+      padding: 1mm 0.5mm;
       overflow: hidden;
       gap: 0;
     }
@@ -3836,7 +3836,7 @@ class OwnerPortalApp {
     }
     svg.barcode-svg {
       width: 31mm !important;
-      height: 12mm !important;
+      height: 11mm !important;
       display: block;
     }
     .btn-bar {
@@ -3897,11 +3897,11 @@ class OwnerPortalApp {
     function renderBarcodes() {
       const opts = {
         format: 'CODE128',
-        width: 1.5,
-        height: 30,
+        width: 0.8,
+        height: 28,
         displayValue: true,
-        fontSize: 10,
-        margin: 2,
+        fontSize: 9,
+        margin: 1,
         background: '#ffffff',
         lineColor: '#000000',
         font: 'monospace',
