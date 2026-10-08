@@ -3757,14 +3757,14 @@ class OwnerPortalApp {
 
   printDisplayStockLabelDirect(barcode, name, price) {
     const barVal = (barcode || '').trim();
-    const dev = (name || '').substring(0, 16);
+    const dev    = (name || '').substring(0, 16).toUpperCase();
 
     const win = window.open('', '_blank', 'width=920,height=480');
     win.document.write(`<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Display Stock Label - ${barVal}</title>
+  <title>Label - ${barVal}</title>
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
@@ -3804,116 +3804,182 @@ class OwnerPortalApp {
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      padding: 1mm 0.5mm;
+      justify-content: flex-start;
+      padding: 4.5mm 0.5mm 0 0.5mm;
       overflow: hidden;
       gap: 0;
     }
     .label:last-child { border-right: none; }
-    .store-name {
-      font-size: 6pt;
-      font-weight: 900;
-      letter-spacing: 0.3px;
+    .shop {
+      font-size: 7.5pt;
+      font-weight: 800;
+      text-align: center;
       color: #000;
-      text-transform: uppercase;
-      margin-bottom: 1px;
+      line-height: 1.2;
+      letter-spacing: 0.3px;
       white-space: nowrap;
+      margin-bottom: 0.8mm;
     }
-    .dev-name {
-      font-size: 5.5pt;
+    svg.bc, canvas.bc {
+      display: block;
+      max-width: 31mm;
+      width: 31mm;
+      margin: 0 auto;
+    }
+    .barnum {
+      font-size: 7pt;
+      font-weight: 700;
+      color: #000;
+      letter-spacing: 1px;
+      text-align: center;
+      margin-top: 0.5mm;
+      margin-bottom: 0.4mm;
+    }
+    .device {
+      font-size: 7.5pt;
       font-weight: 800;
       color: #000;
+      text-align: center;
       white-space: nowrap;
       overflow: hidden;
-      max-width: 32mm;
-      margin-bottom: 1px;
+      text-overflow: ellipsis;
+      max-width: 31mm;
+      text-transform: uppercase;
+      letter-spacing: 0.2px;
     }
-    .price-text {
-      font-size: 6pt;
-      font-weight: 900;
-      color: #000;
-      margin-bottom: 1px;
-    }
-    svg.barcode-svg {
-      width: 31mm !important;
-      height: 11mm !important;
-      display: block;
-    }
-    .btn-bar {
-      display: flex;
-      gap: 12px;
-      margin-top: 8px;
-    }
-    .btn {
-      padding: 10px 24px;
+    .print-btn {
+      padding: 12px 44px;
+      background: #1e293b;
+      color: #fff;
+      border: none;
       border-radius: 8px;
-      font-size: 14px;
+      font-size: 15px;
       font-weight: 700;
       cursor: pointer;
-      border: none;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+      margin-top: 8px;
     }
-    .btn-print { background: #2563eb; color: #fff; }
-    .btn-close { background: #e2e8f0; color: #334155; }
+    .print-btn:hover { background: #0f172a; }
     @media print {
-      body { background: none; padding: 0; min-height: 0; }
-      h2, .hint, .btn-bar { display: none !important; }
-      .scale-wrap { zoom: 1 !important; margin: 0 !important; }
-      .strip { border: none !important; }
-      .label { border-right: none !important; }
-      @page { size: 101.5mm 25mm; margin: 0; }
+      @page { size: 25mm 101.5mm portrait; margin: 0; }
+      html, body { width: 25mm; height: 101.5mm; margin: 0; padding: 0; overflow: hidden; background: #fff; }
+      body * { visibility: hidden; }
+      .print-strip, .print-strip * { visibility: visible; }
+      .print-strip {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 25mm !important;
+        height: 101.5mm !important;
+        position: absolute;
+        top: 0; left: 0;
+      }
+      .label {
+        width: 25mm !important;
+        height: 33.83mm !important;
+        border-right: none !important;
+        position: relative !important;
+        overflow: hidden !important;
+      }
+      .label-inner {
+        width: 33.83mm !important;
+        height: 25mm !important;
+        position: absolute !important;
+        top: 4.415mm !important;
+        left: -4.415mm !important;
+        transform: rotate(90deg);
+        transform-origin: center !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        padding: 4.5mm 0.5mm 0 0.5mm !important;
+        box-sizing: border-box !important;
+      }
+      h2, .hint, .print-btn, .scale-wrap { display: none !important; }
     }
   </style>
 </head>
 <body>
-  <h2>🏷️ Display Stock Barcode Sticker Label (101.5mm × 25mm)</h2>
-  <div class="hint">Preview shown at <strong>200% scale</strong> for clarity. Click <strong>Print Labels</strong> to print onto your 3-up sticker roll.</div>
+  <h2>🏷️ Barcode Sticker Label (101.5mm × 25mm)</h2>
+  <div class="hint">Paper: <strong>101.5 mm × 25 mm</strong> &nbsp;|&nbsp; 3 labels per strip</div>
 
   <div class="scale-wrap">
     <div class="strip">
       <div class="label">
-        <div class="store-name">MANJULA MOBILES</div>
-        <div class="dev-name">${dev}</div>
-        <svg id="bc1" class="barcode-svg"></svg>
+        <div class="shop">MANJULA MOBILES</div>
+        <canvas class="bc" id="bc1"></canvas>
+        <div class="barnum">${barVal}</div>
+        <div class="device">${dev}</div>
       </div>
       <div class="label">
-        <div class="store-name">MANJULA MOBILES</div>
-        <div class="dev-name">${dev}</div>
-        <svg id="bc2" class="barcode-svg"></svg>
+        <div class="shop">MANJULA MOBILES</div>
+        <canvas class="bc" id="bc2"></canvas>
+        <div class="barnum">${barVal}</div>
+        <div class="device">${dev}</div>
       </div>
       <div class="label">
-        <div class="store-name">MANJULA MOBILES</div>
-        <div class="dev-name">${dev}</div>
-        <svg id="bc3" class="barcode-svg"></svg>
+        <div class="shop">MANJULA MOBILES</div>
+        <canvas class="bc" id="bc3"></canvas>
+        <div class="barnum">${barVal}</div>
+        <div class="device">${dev}</div>
       </div>
     </div>
   </div>
 
-  <div class="btn-bar">
-    <button class="btn btn-print" onclick="window.print()">🖨️ Print Labels</button>
-    <button class="btn btn-close" onclick="window.close()">Close Window</button>
+  <button class="print-btn" onclick="window.print()">🖨️ Print Labels</button>
+
+  <!-- Hidden print-only strip (exact size) -->
+  <div class="print-strip" style="display:none;">
+    <div class="label">
+      <div class="label-inner">
+        <div class="shop">MANJULA MOBILES</div>
+        <canvas class="bc" id="bcp1"></canvas>
+        <div class="barnum">${barVal}</div>
+        <div class="device">${dev}</div>
+      </div>
+    </div>
+    <div class="label">
+      <div class="label-inner">
+        <div class="shop">MANJULA MOBILES</div>
+        <canvas class="bc" id="bcp2"></canvas>
+        <div class="barnum">${barVal}</div>
+        <div class="device">${dev}</div>
+      </div>
+    </div>
+    <div class="label">
+      <div class="label-inner">
+        <div class="shop">MANJULA MOBILES</div>
+        <canvas class="bc" id="bcp3"></canvas>
+        <div class="barnum">${barVal}</div>
+        <div class="device">${dev}</div>
+      </div>
+    </div>
   </div>
 
   <script>
+    window.onload = function() {
+      if (typeof JsBarcode === 'undefined') { setTimeout(renderBarcodes, 800); } else { renderBarcodes(); }
+    };
     function renderBarcodes() {
-      const opts = {
-        format: 'CODE128',
-        width: 0.8,
-        height: 28,
-        displayValue: true,
-        fontSize: 9,
-        margin: 1,
-        background: '#ffffff',
-        lineColor: '#000000',
-        font: 'monospace',
-        fontOptions: 'bold'
-      };
-      if (typeof JsBarcode !== 'undefined') {
-        try { JsBarcode('#bc1', '${barVal}', opts); } catch(e){}
-        try { JsBarcode('#bc2', '${barVal}', opts); } catch(e){}
-        try { JsBarcode('#bc3', '${barVal}', opts); } catch(e){}
-      }
+      try {
+        var opts = {
+          format: 'CODE128',
+          width: 2,
+          height: 35,
+          displayValue: false,
+          margin: 8,
+          background: '#ffffff',
+          lineColor: '#000000'
+        };
+        ['bc1','bc2','bc3','bcp1','bcp2','bcp3'].forEach(function(id){
+          var canvas = document.getElementById(id);
+          if (!canvas) return;
+          JsBarcode(canvas, '${barVal}', opts);
+          canvas.style.width  = '31mm';
+          canvas.style.height = 'auto';
+        });
+      } catch(e) { console.error('Barcode error:', e); }
     }
-    window.onload = renderBarcodes;
   <\/script>
 </body>
 </html>`);
