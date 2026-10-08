@@ -3964,7 +3964,7 @@ class OwnerPortalApp {
       try {
         var opts = {
           format: 'CODE128',
-          width: 2,
+          width: 3,
           height: 35,
           displayValue: false,
           margin: 8,
@@ -7646,11 +7646,11 @@ class OwnerPortalApp {
     function renderBarcodes() {
       try {
         /* Render barcode at high resolution then stretch to fill label width.
-           width:2 gives thinner bars with clear gaps.
+           width:3 gives wider bars with clear gaps — fewer lines, less crowded.
            We then force the canvas CSS width to fill the full label (31mm ≈ 117px at 96dpi). */
         var opts = {
           format: 'CODE128',
-          width: 2,
+          width: 3,
           height: 35,
           displayValue: false,
           margin: 8,
@@ -9317,7 +9317,7 @@ class OwnerPortalApp {
       try {
         var opts = {
           format: 'CODE128',
-          width: 2,
+          width: 3,
           height: 35,
           displayValue: false,
           margin: 8,
