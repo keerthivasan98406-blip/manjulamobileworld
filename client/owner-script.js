@@ -9740,6 +9740,9 @@ class OwnerPortalApp {
     return this.purchaseDraftRows.map((row, idx) => {
       const cat = row.category || 'Other';
       const isDisplay = (cat === 'Display');
+      const barVal = (row.barcode || '').trim();
+      const nameVal = (row.name || '').replace(/'/g, "\\'");
+      const cPrice = row.cPrice || '';
       return `
       <tr data-row-id="${row.id}" style="border-bottom: 1px solid #334155; background: ${isDisplay ? 'rgba(124,58,237,0.08)' : 'transparent'};">
         <td style="padding: 10px 14px; text-align: center; color: #64748b; font-weight: 600;">${idx + 1}</td>
@@ -9778,7 +9781,23 @@ class OwnerPortalApp {
           <span id="itemTotal_${idx}">₹${(row.itemTotal || 0).toLocaleString('en-IN')}</span>
         </td>
         <td style="padding: 8px 10px; text-align: center;">
-          <button data-action="delete-purchase-row" data-index="${idx}" style="background:transparent; border:none; color:#ef4444; cursor:pointer; font-size:16px;">🗑️</button>
+          <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+            ${barVal ? `
+              <div style="display:flex; gap:4px; justify-content:center; margin-bottom:2px;">
+                <button type="button" onclick="app.printDisplayStockLabelDirect('${barVal}', '${nameVal}', '${cPrice}')"
+                  title="Print Browser Label"
+                  style="background:#1e293b; color:#e2e8f0; border:1px solid #475569; border-radius:5px; padding:3px 8px; font-size:11px; font-weight:700; cursor:pointer; white-space:nowrap;">
+                  🏷️ Print
+                </button>
+                <button type="button" onclick="app.printDisplayStockTSCLabelDirect('${barVal}', '${nameVal}', '${cPrice}')"
+                  title="Print TSC Label"
+                  style="background:#ea580c; color:#fff; border:none; border-radius:5px; padding:3px 8px; font-size:11px; font-weight:700; cursor:pointer; white-space:nowrap;">
+                  🖶 TSC
+                </button>
+              </div>
+            ` : ''}
+            <button data-action="delete-purchase-row" data-index="${idx}" style="background:transparent; border:none; color:#ef4444; cursor:pointer; font-size:16px;">🗑️</button>
+          </div>
         </td>
       </tr>
     `}).join('');
