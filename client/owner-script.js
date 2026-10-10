@@ -59,6 +59,8 @@ class OwnerPortalApp {
     this.stockTotalValueUnlocked = false;
     this.spareTotalValueUnlocked = false;
     this.newTrackingSpares = []; // spare parts used in current tracking entry
+    this._fullProductSearch = '';
+    this._fullProductHighlight = null;
     
     // Distributor System State
     this.distributors = [];
@@ -1139,6 +1141,8 @@ class OwnerPortalApp {
       html += this.renderEditProductForm()
     } else if (page === "admin-owner-products") {
       html += this.renderOwnerProductsPage()
+    } else if (page === "admin-full-products") {
+      html += this.renderFullProductPage()
     }
 
     html += this.renderFooter()
@@ -1206,6 +1210,9 @@ class OwnerPortalApp {
               </li>
               <li class="nav-item">
                 <a class="nav-link ${this.currentPage === 'admin-owner-products' ? 'active' : ''}" data-page="admin-owner-products">Owner Prods</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link ${this.currentPage === 'admin-full-products' ? 'active' : ''}" data-page="admin-full-products">All Products</a>
               </li>
               <li class="nav-item">
                 <a class="nav-link ${this.currentPage === 'admin-purchase-bills' || this.currentPage === 'admin-view-bill' ? 'active' : ''}" data-page="admin-purchase-bills">Bills</a>
@@ -10426,6 +10433,176 @@ class OwnerPortalApp {
     }
 
     this.renderPage('admin-add-distributor-purchase');
+  }
+
+  // ── Full Product of the Shop page ────────────────────────────────────────
+  renderFullProductPage() {
+    const search = (this._fullProductSearch || '').toLowerCase().trim();
+
+    // Aggregate from ALL three sources — deduplicated by barcode
+    const seen = new Set();
+    const rows = [];
+
+    const addRow = (name, barcode, source) => {
+      const key = (barcode || '').trim().toLowerCase();
+      const nameClean = (name || '').trim();
+      if (!nameClean) return;
+      const dedupKey = key || (nameClean.toLowerCase() + '::' + source);
+      if (seen.has(dedupKey)) return;
+      seen.add(dedupKey);
+      rows.push({ name: nameClean, barcode: (barcode || '').trim(), source });
+    };
+
+    // 1. Display Stock
+    (this.displayStock || []).forEach(d => addRow(d.displayName, d.barcode || d.displayId, 'Display'));
+
+    // 2. Spare Parts
+    (this.sparePartsStock || []).forEach(s => addRow(s.partName, s.partId, 'Spare'));
+
+    // 3. Distributor Products (owner inventory)
+    (this.distributorProducts || []).forEach(p => addRow(p.productName, p.barcode, 'Purchase'));
+
+    // 4. Purchase bill line items (for non-Display, non-duplicate items)
+    (this.purchaseBills || []).forEach(bill => {
+      (bill.items || []).forEach(item => {
+        if ((item.category || '') === 'Display') return; // already in displayStock
+        addRow(item.productName, item.barcode, 'Bill');
+      });
+    });
+
+    // Apply search filter
+    const filtered = rows.filter(r =>
+      !search ||
+      r.name.toLowerCase().includes(search) ||
+      r.barcode.toLowerCase().includes(search)
+    );
+
+    // Highlighted scan result
+    const highlight = this._fullProductHighlight || null;
+
+    return `
+      <div style="min-height:100vh; background:#0f172a; color:#f8fafc; padding-top:80px; padding-bottom:40px;">
+        <div style="max-width:900px; margin:0 auto; padding:0 16px;">
+
+          <!-- Header -->
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:24px;">
+            <div>
+              <h1 style="font-size:22px; font-weight:800; color:#f8fafc; margin:0;">📦 Full Product of the Shop</h1>
+              <p style="color:#94a3b8; font-size:13px; margin:4px 0 0 0;">All products from Display, Spare Parts & Purchase records — ${rows.length} total, ${filtered.length} shown</p>
+            </div>
+            <button data-page="admin" style="background:#334155; color:#f8fafc; border:none; border-radius:8px; padding:9px 18px; font-size:13px; font-weight:600; cursor:pointer;">← Back</button>
+          </div>
+
+          <!-- Scan / Search Bar -->
+          <div style="background:#1e293b; border:1px solid #334155; border-radius:12px; padding:20px; margin-bottom:20px;">
+            <label style="font-size:13px; font-weight:700; color:#38bdf8; display:block; margin-bottom:10px;">🔍 Scan Barcode or Search Product</label>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <input id="fullProductScanInput" type="text"
+                placeholder="Scan barcode or type product name..."
+                value="${this.escapeHtml(this._fullProductSearch || '')}"
+                oninput="app._fullProductSearch = this.value; app.renderPage('admin-full-products');"
+                onkeydown="if(event.key==='Enter'){event.preventDefault(); app._fullProductScanEnter();}"
+                style="flex:1; min-width:200px; padding:10px 14px; background:#0f172a; border:1px solid #475569; color:#fff; border-radius:8px; font-size:14px; font-family:monospace;"
+                autocomplete="off" autofocus>
+              <button type="button" onclick="app._fullProductSearch=''; app._fullProductHighlight=null; app.renderPage('admin-full-products');"
+                style="background:#475569; color:#fff; border:none; border-radius:8px; padding:10px 16px; font-size:13px; font-weight:700; cursor:pointer;">✕ Clear</button>
+            </div>
+            ${highlight ? `
+              <div style="margin-top:12px; background:rgba(16,185,129,0.12); border:1px solid #10b981; border-radius:8px; padding:12px 16px; display:flex; align-items:center; gap:12px;">
+                <span style="font-size:20px;">✅</span>
+                <div>
+                  <div style="font-weight:800; color:#34d399; font-size:15px;">${this.escapeHtml(highlight.name)}</div>
+                  <div style="color:#94a3b8; font-size:12px; font-family:monospace;">Barcode: <strong style="color:#f8fafc;">${this.escapeHtml(highlight.barcode || '—')}</strong> &nbsp;·&nbsp; ${this.escapeHtml(highlight.source)}</div>
+                </div>
+              </div>` : ''}
+          </div>
+
+          <!-- Product Table -->
+          <div style="background:#1e293b; border:1px solid #334155; border-radius:12px; overflow:hidden;">
+            <div style="overflow-x:auto;">
+              <table style="width:100%; border-collapse:collapse; font-size:14px;">
+                <thead>
+                  <tr style="background:#0f172a; color:#94a3b8; font-size:11px; text-transform:uppercase; letter-spacing:0.5px;">
+                    <th style="padding:12px 16px; text-align:left; width:40px;">#</th>
+                    <th style="padding:12px 16px; text-align:left;">Product Name</th>
+                    <th style="padding:12px 16px; text-align:left; width:160px;">Barcode</th>
+                    <th style="padding:12px 16px; text-align:left; width:90px;">Source</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${filtered.length === 0 ? `
+                    <tr><td colspan="4" style="padding:40px; text-align:center; color:#64748b;">
+                      ${search ? `No products matching "<strong style="color:#f8fafc;">${this.escapeHtml(search)}</strong>"` : 'No products found.'}
+                    </td></tr>
+                  ` : filtered.map((r, i) => {
+                    const isHighlighted = highlight && r.barcode && r.barcode === highlight.barcode;
+                    const rowBg = isHighlighted ? 'rgba(16,185,129,0.1)' : (i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)');
+                    const srcColor = r.source === 'Display' ? '#a78bfa' : r.source === 'Spare' ? '#34d399' : '#38bdf8';
+                    return `
+                      <tr style="background:${rowBg}; border-bottom:1px solid #1e293b;">
+                        <td style="padding:10px 16px; color:#64748b;">${i + 1}</td>
+                        <td style="padding:10px 16px; font-weight:600; color:#f8fafc;">${this.escapeHtml(r.name)}</td>
+                        <td style="padding:10px 16px; font-family:monospace; color:#4ade80; font-weight:700;">${this.escapeHtml(r.barcode || '—')}</td>
+                        <td style="padding:10px 16px;"><span style="background:rgba(255,255,255,0.06); color:${srcColor}; font-size:11px; font-weight:700; padding:2px 7px; border-radius:4px;">${r.source}</span></td>
+                      </tr>`;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+            <div style="padding:12px 16px; background:#0f172a; color:#64748b; font-size:12px; border-top:1px solid #334155;">
+              Showing ${filtered.length} of ${rows.length} products &nbsp;·&nbsp; Sources: Display Stock, Spare Parts, Purchase Records
+            </div>
+          </div>
+
+        </div>
+      </div>
+    `;
+  }
+
+  _fullProductScanEnter() {
+    const q = (this._fullProductSearch || '').trim().toLowerCase();
+    if (!q) return;
+
+    // Find matching product across all sources
+    let found = null;
+
+    for (const d of (this.displayStock || [])) {
+      if ((d.barcode || '').toLowerCase() === q || (d.displayId || '').toLowerCase() === q || (d.displayName || '').toLowerCase().includes(q)) {
+        found = { name: d.displayName, barcode: d.barcode || d.displayId, source: 'Display' };
+        break;
+      }
+    }
+    if (!found) {
+      for (const s of (this.sparePartsStock || [])) {
+        if ((s.partId || '').toLowerCase() === q || (s.partName || '').toLowerCase().includes(q)) {
+          found = { name: s.partName, barcode: s.partId, source: 'Spare' };
+          break;
+        }
+      }
+    }
+    if (!found) {
+      for (const p of (this.distributorProducts || [])) {
+        if ((p.barcode || '').toLowerCase() === q || (p.productName || '').toLowerCase().includes(q)) {
+          found = { name: p.productName, barcode: p.barcode, source: 'Purchase' };
+          break;
+        }
+      }
+    }
+
+    this._fullProductHighlight = found;
+    this.renderPage('admin-full-products');
+
+    // Scroll to highlighted row if found
+    if (found) {
+      setTimeout(() => {
+        const rows = document.querySelectorAll('#app table tbody tr');
+        rows.forEach(row => {
+          if (row.children[2]?.textContent?.trim() === found.barcode) {
+            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        });
+      }, 100);
+    }
   }
 
   // Owner Products Page — all products from all purchase bills
