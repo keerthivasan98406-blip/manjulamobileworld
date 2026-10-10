@@ -58,6 +58,7 @@ class OwnerPortalApp {
     this.customCategories = JSON.parse(localStorage.getItem('manjula_custom_categories') || '[]');
     this.stockTotalValueUnlocked = false;
     this.spareTotalValueUnlocked = false;
+    this.newTrackingSpares = []; // spare parts used in current tracking entry
     
     // Distributor System State
     this.distributors = [];
@@ -2107,6 +2108,42 @@ class OwnerPortalApp {
             <option value="Completed">🎉 Completed</option>
             <option value="Delivered">🚀 Delivered</option>
           </select>
+        </div>
+
+        <!-- ── Spare Parts Used ── -->
+        <div style="margin-bottom: 24px; background: rgba(15,23,42,0.6); border: 1px solid #334155; border-radius: 10px; padding: 16px;">
+          <label style="font-size:13px; font-weight:700; color:#38bdf8; display:block; margin-bottom:10px;">🔩 Spare Parts Used (Optional)</label>
+
+          <!-- Scan / type barcode input -->
+          <div style="display:flex; gap:8px; margin-bottom:10px;">
+            <input type="text" id="sparePartScanInput"
+              placeholder="Scan or type spare part barcode / name..."
+              style="flex:1; padding:9px 12px; background:#0f172a; border:1px solid #475569; color:#fff; border-radius:7px; font-size:13px; font-family:monospace;"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();app.addSparePartToTracking();}"
+            >
+            <button type="button" onclick="app.addSparePartToTracking()"
+              style="background:#0ea5e9; color:#fff; border:none; border-radius:7px; padding:9px 16px; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap;">
+              ➕ Add
+            </button>
+          </div>
+
+          <!-- Scanned parts list -->
+          <div id="sparePartsUsedList">
+            ${(this.newTrackingSpares || []).length === 0
+              ? `<div style="color:#64748b; font-size:12px; text-align:center; padding:8px 0;">No spare parts added yet. Scan a barcode above.</div>`
+              : (this.newTrackingSpares || []).map((sp, i) => `
+                <div style="display:flex; align-items:center; justify-content:space-between; background:#1e293b; border-radius:6px; padding:8px 12px; margin-bottom:6px;">
+                  <div>
+                    <span style="color:#f8fafc; font-weight:700; font-size:13px;">${this.escapeHtml(sp.partName)}</span>
+                    <span style="color:#94a3b8; font-size:11px; margin-left:8px;">ID: ${this.escapeHtml(sp.partId || '')}</span>
+                    <span style="color:#34d399; font-size:11px; margin-left:8px;">Stock: ${sp.stock}</span>
+                  </div>
+                  <button type="button" onclick="app.removeSparePartFromTracking(${i})"
+                    style="background:transparent; border:none; color:#ef4444; font-size:16px; cursor:pointer; padding:0 4px;">🗑️</button>
+                </div>
+              `).join('')
+            }
+          </div>
         </div>
 
         <div style="display: flex; gap: 12px;">
@@ -6685,6 +6722,70 @@ class OwnerPortalApp {
     }
   }
 
+  // ── Spare Parts Used in Tracking ──────────────────────────────────────────
+
+  addSparePartToTracking() {
+    const input = document.getElementById('sparePartScanInput');
+    const query = (input?.value || '').trim().toLowerCase();
+    if (!query) return;
+
+    // Search by partId (barcode) first, then partName
+    const match = (this.sparePartsStock || []).find(sp =>
+      (sp.partId || '').toLowerCase() === query ||
+      (sp.partId || '').toLowerCase().includes(query) ||
+      (sp.partName || '').toLowerCase().includes(query)
+    );
+
+    const list = document.getElementById('sparePartsUsedList');
+
+    const showMsg = (text, color) => {
+      if (!list) return;
+      const msg = document.createElement('div');
+      msg.style.cssText = `color:${color};font-size:12px;padding:4px 0;`;
+      msg.textContent = text;
+      list.prepend(msg);
+      setTimeout(() => msg.remove(), 3000);
+    };
+
+    if (!match) { showMsg(`⚠️ No spare part found for: "${input.value.trim()}"`, '#f87171'); input.value = ''; return; }
+    if ((match.stock || 0) <= 0) { showMsg(`⚠️ "${match.partName}" is out of stock!`, '#f97316'); input.value = ''; return; }
+    if ((this.newTrackingSpares || []).find(sp => sp.partItemId === match.partItemId)) {
+      showMsg(`ℹ️ "${match.partName}" already added.`, '#facc15'); input.value = ''; return;
+    }
+
+    if (!this.newTrackingSpares) this.newTrackingSpares = [];
+    this.newTrackingSpares.push({ partItemId: match.partItemId, partName: match.partName, partId: match.partId, stock: match.stock });
+    input.value = '';
+    this._renderSparePartsUsedList();
+    input.focus();
+  }
+
+  removeSparePartFromTracking(idx) {
+    if (!this.newTrackingSpares) return;
+    this.newTrackingSpares.splice(idx, 1);
+    this._renderSparePartsUsedList();
+  }
+
+  _renderSparePartsUsedList() {
+    const list = document.getElementById('sparePartsUsedList');
+    if (!list) return;
+    if (!this.newTrackingSpares || this.newTrackingSpares.length === 0) {
+      list.innerHTML = '<div style="color:#64748b; font-size:12px; text-align:center; padding:8px 0;">No spare parts added yet. Scan a barcode above.</div>';
+      return;
+    }
+    list.innerHTML = this.newTrackingSpares.map((sp, i) => `
+      <div style="display:flex; align-items:center; justify-content:space-between; background:#1e293b; border-radius:6px; padding:8px 12px; margin-bottom:6px;">
+        <div>
+          <span style="color:#f8fafc; font-weight:700; font-size:13px;">${this.escapeHtml(sp.partName)}</span>
+          <span style="color:#94a3b8; font-size:11px; margin-left:8px;">ID: ${this.escapeHtml(sp.partId || '')}</span>
+          <span style="color:#34d399; font-size:11px; margin-left:8px;">Stock: ${sp.stock}</span>
+        </div>
+        <button type="button" onclick="app.removeSparePartFromTracking(${i})"
+          style="background:transparent; border:none; color:#ef4444; font-size:16px; cursor:pointer; padding:0 4px;">🗑️</button>
+      </div>
+    `).join('');
+  }
+
   // Tracking Management Methods
   async saveNewTracking() {
     const qrId = document.getElementById("newTrackingQRId")?.value?.trim();
@@ -6763,6 +6864,34 @@ class OwnerPortalApp {
       
       // 2. Show SUCCESS popup immediately
       alert("✅ Tracking record created successfully!\n\nQR ID: " + qrId + "\nPassword: " + password + "\nAmount: ₹" + amount + "\n\nShare these details with your customer for tracking.");
+
+      // 2b. Deduct stock for each spare part used
+      if (this.newTrackingSpares && this.newTrackingSpares.length > 0) {
+        for (const sp of this.newTrackingSpares) {
+          try {
+            const spItem = (this.sparePartsStock || []).find(s => s.partItemId === sp.partItemId);
+            if (spItem && spItem.stock > 0) {
+              const newStock = spItem.stock - 1;
+              const historyEntry = {
+                change: -1,
+                stockAfter: newStock,
+                date: new Date().toLocaleDateString('en-IN'),
+                note: `Used in service: ${qrId}`
+              };
+              await fetch(`${this.API_URL}/spare-parts/${spItem.partItemId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ stock: newStock, historyEntry })
+              });
+              spItem.stock = newStock; // update local cache
+              console.log(`✅ Deducted 1 from spare: ${sp.partName} → new stock: ${newStock}`);
+            }
+          } catch (spErr) {
+            console.warn(`⚠️ Failed to deduct stock for ${sp.partName}:`, spErr);
+          }
+        }
+        this.newTrackingSpares = [];
+      }
       
       // 3. Clear form and render page immediately
       document.getElementById("newTrackingQRId").value = "";
@@ -7769,6 +7898,8 @@ class OwnerPortalApp {
     const isHidden = form.style.display === 'none';
     form.style.display = isHidden ? 'block' : 'none';
     if (isHidden) {
+      // Reset spare parts list each time form opens
+      this.newTrackingSpares = [];
       // Auto-generate next QR ID starting from 01518
       const nextId = this._generateNextQRId();
       const qrInput = document.getElementById('newTrackingQRId');
