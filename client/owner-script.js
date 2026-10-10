@@ -2017,7 +2017,7 @@ class OwnerPortalApp {
           <label style="font-size:13px; font-weight:700; color:#38bdf8; display:block; margin-bottom:10px;">🔩 Spare Parts Used (Optional)</label>
           <div style="display:flex; gap:8px; margin-bottom:10px;">
             <input type="text" id="sparePartScanInput"
-              placeholder="Scan or type spare part barcode / name..."
+              placeholder="Scan or type spare part / display barcode or name..."
               style="flex:1; padding:9px 12px; background:#0f172a; border:1px solid #475569; color:#fff; border-radius:7px; font-size:13px; font-family:monospace;"
               onkeydown="if(event.key==='Enter'){event.preventDefault();app.addSparePartToTracking();}">
             <button type="button" onclick="app.addSparePartToTracking()"
@@ -2027,7 +2027,7 @@ class OwnerPortalApp {
           </div>
           <div id="sparePartsUsedList">
             ${(this.newTrackingSpares || []).length === 0
-              ? `<div style="color:#64748b; font-size:12px; text-align:center; padding:8px 0;">No spare parts added yet. Scan a barcode above.</div>`
+              ? `<div style="color:#64748b; font-size:12px; text-align:center; padding:8px 0;">No items added yet. Scan a barcode above.</div>`
               : (this.newTrackingSpares || []).map((sp, i) => `
                 <div style="display:flex; align-items:center; justify-content:space-between; background:#1e293b; border-radius:6px; padding:8px 12px; margin-bottom:6px;">
                   <div>
@@ -6724,12 +6724,27 @@ class OwnerPortalApp {
     const query = (input?.value || '').trim().toLowerCase();
     if (!query) return;
 
-    // Search by partId (barcode) first, then partName
-    const match = (this.sparePartsStock || []).find(sp =>
+    // Search spare parts first, then display stock
+    let match = null;
+    let matchType = null;
+
+    const sparePart = (this.sparePartsStock || []).find(sp =>
       (sp.partId || '').toLowerCase() === query ||
       (sp.partId || '').toLowerCase().includes(query) ||
       (sp.partName || '').toLowerCase().includes(query)
     );
+    if (sparePart) { match = sparePart; matchType = 'spare'; }
+
+    if (!match) {
+      const displayItem = (this.displayStock || []).find(d =>
+        (d.barcode || '').toLowerCase() === query ||
+        (d.barcode || '').toLowerCase().includes(query) ||
+        (d.displayId || '').toLowerCase() === query ||
+        (d.displayId || '').toLowerCase().includes(query) ||
+        (d.displayName || '').toLowerCase().includes(query)
+      );
+      if (displayItem) { match = displayItem; matchType = 'display'; }
+    }
 
     const list = document.getElementById('sparePartsUsedList');
 
@@ -6742,14 +6757,25 @@ class OwnerPortalApp {
       setTimeout(() => msg.remove(), 3000);
     };
 
-    if (!match) { showMsg(`⚠️ No spare part found for: "${input.value.trim()}"`, '#f87171'); input.value = ''; return; }
-    if ((match.stock || 0) <= 0) { showMsg(`⚠️ "${match.partName}" is out of stock!`, '#f97316'); input.value = ''; return; }
-    if ((this.newTrackingSpares || []).find(sp => sp.partItemId === match.partItemId)) {
-      showMsg(`ℹ️ "${match.partName}" already added.`, '#facc15'); input.value = ''; return;
+    const itemName = matchType === 'display' ? (match?.displayName) : (match?.partName);
+    const itemId   = matchType === 'display' ? (match?.stockItemId) : (match?.partItemId);
+    const itemCode = matchType === 'display' ? (match?.barcode || match?.displayId) : (match?.partId);
+    const itemStock = match?.stock || 0;
+
+    if (!match) { showMsg(`⚠️ No item found for: "${input.value.trim()}"`, '#f87171'); input.value = ''; return; }
+    if (itemStock <= 0) { showMsg(`⚠️ "${itemName}" is out of stock!`, '#f97316'); input.value = ''; return; }
+    if ((this.newTrackingSpares || []).find(sp => sp.itemId === itemId)) {
+      showMsg(`ℹ️ "${itemName}" already added.`, '#facc15'); input.value = ''; return;
     }
 
     if (!this.newTrackingSpares) this.newTrackingSpares = [];
-    this.newTrackingSpares.push({ partItemId: match.partItemId, partName: match.partName, partId: match.partId, stock: match.stock });
+    this.newTrackingSpares.push({
+      itemId,
+      partName: itemName,
+      partId: itemCode,
+      stock: itemStock,
+      type: matchType   // 'spare' or 'display'
+    });
     input.value = '';
     this._renderSparePartsUsedList();
     input.focus();
@@ -6765,15 +6791,16 @@ class OwnerPortalApp {
     const list = document.getElementById('sparePartsUsedList');
     if (!list) return;
     if (!this.newTrackingSpares || this.newTrackingSpares.length === 0) {
-      list.innerHTML = '<div style="color:#64748b; font-size:12px; text-align:center; padding:8px 0;">No spare parts added yet. Scan a barcode above.</div>';
+      list.innerHTML = '<div style="color:#64748b; font-size:12px; text-align:center; padding:8px 0;">No items added yet. Scan a barcode above.</div>';
       return;
     }
     list.innerHTML = this.newTrackingSpares.map((sp, i) => `
       <div style="display:flex; align-items:center; justify-content:space-between; background:#1e293b; border-radius:6px; padding:8px 12px; margin-bottom:6px;">
         <div>
           <span style="color:#f8fafc; font-weight:700; font-size:13px;">${this.escapeHtml(sp.partName)}</span>
-          <span style="color:#94a3b8; font-size:11px; margin-left:8px;">ID: ${this.escapeHtml(sp.partId || '')}</span>
-          <span style="color:#34d399; font-size:11px; margin-left:8px;">Stock: ${sp.stock}</span>
+          <span style="background:${sp.type==='display'?'#0e4a2a':'#1e3a5f'}; color:${sp.type==='display'?'#34d399':'#38bdf8'}; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px; margin-left:6px;">${sp.type==='display'?'🖥️ Display':'🔩 Spare'}</span>
+          <span style="color:#94a3b8; font-size:11px; margin-left:6px;">ID: ${this.escapeHtml(sp.partId || '')}</span>
+          <span style="color:#34d399; font-size:11px; margin-left:6px;">Stock: ${sp.stock}</span>
         </div>
         <button type="button" onclick="app.removeSparePartFromTracking(${i})"
           style="background:transparent; border:none; color:#ef4444; font-size:16px; cursor:pointer; padding:0 4px;">🗑️</button>
@@ -6860,26 +6887,38 @@ class OwnerPortalApp {
       // 2. Show SUCCESS popup immediately
       alert("✅ Tracking record created successfully!\n\nQR ID: " + qrId + "\nPassword: " + password + "\nAmount: ₹" + amount + "\n\nShare these details with your customer for tracking.");
 
-      // 2b. Deduct stock for each spare part used
+      // 2b. Deduct stock for each spare part / display item used
       if (this.newTrackingSpares && this.newTrackingSpares.length > 0) {
         for (const sp of this.newTrackingSpares) {
           try {
-            const spItem = (this.sparePartsStock || []).find(s => s.partItemId === sp.partItemId);
-            if (spItem && spItem.stock > 0) {
-              const newStock = spItem.stock - 1;
-              const historyEntry = {
-                change: -1,
-                stockAfter: newStock,
-                date: new Date().toLocaleDateString('en-IN'),
-                note: `Used in service: ${qrId}`
-              };
-              await fetch(`${this.API_URL}/spare-parts/${spItem.partItemId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ stock: newStock, historyEntry })
-              });
-              spItem.stock = newStock; // update local cache
-              console.log(`✅ Deducted 1 from spare: ${sp.partName} → new stock: ${newStock}`);
+            if (sp.type === 'display') {
+              // Deduct from display stock
+              const dispItem = (this.displayStock || []).find(d => d.stockItemId === sp.itemId);
+              if (dispItem && dispItem.stock > 0) {
+                const newStock = dispItem.stock - 1;
+                const historyEntry = { change: -1, stockAfter: newStock, date: new Date().toLocaleDateString('en-IN'), note: `Used in service: ${qrId}` };
+                await fetch(`${this.API_URL}/display-stock/${dispItem.stockItemId}`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ stock: newStock, historyEntry })
+                });
+                dispItem.stock = newStock;
+                console.log(`✅ Deducted 1 from display: ${sp.partName} → new stock: ${newStock}`);
+              }
+            } else {
+              // Deduct from spare parts stock
+              const spItem = (this.sparePartsStock || []).find(s => s.partItemId === sp.itemId);
+              if (spItem && spItem.stock > 0) {
+                const newStock = spItem.stock - 1;
+                const historyEntry = { change: -1, stockAfter: newStock, date: new Date().toLocaleDateString('en-IN'), note: `Used in service: ${qrId}` };
+                await fetch(`${this.API_URL}/spare-parts/${spItem.partItemId}`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ stock: newStock, historyEntry })
+                });
+                spItem.stock = newStock;
+                console.log(`✅ Deducted 1 from spare: ${sp.partName} → new stock: ${newStock}`);
+              }
             }
           } catch (spErr) {
             console.warn(`⚠️ Failed to deduct stock for ${sp.partName}:`, spErr);
