@@ -61,6 +61,8 @@ class OwnerPortalApp {
     this.newTrackingSpares = []; // spare parts used in current tracking entry
     this._fullProductSearch = '';
     this._fullProductHighlight = null;
+    this._fullProductNotFound = null;
+    this.shopProducts = [];
     
     // Distributor System State
     this.distributors = [];
@@ -371,6 +373,10 @@ class OwnerPortalApp {
         this.loadPurchaseBillsFromStorage().catch(err => {
           console.log('⚠️ Purchase bills load failed:', err.message);
           this.purchaseBills = [];
+        }),
+        this.loadShopProductsFromStorage().catch(err => {
+          console.log('⚠️ Shop products load failed:', err.message);
+          this.shopProducts = [];
         })
       ]);
       
@@ -724,6 +730,20 @@ class OwnerPortalApp {
             e.target.classList.contains('input')) {
           e.preventDefault();
         }
+        // USB barcode scanner: when Enter fired on a purchase row barcode field, auto-lookup
+        if (e.target.classList.contains('pur-row-input') && e.target.dataset.field === 'barcode') {
+          e.preventDefault();
+          const idx = parseInt(e.target.dataset.index);
+          const code = e.target.value.trim();
+          if (code && !isNaN(idx)) {
+            this._applyPurchaseRowScan(idx, code);
+          }
+        }
+        // USB scanner on Full Products page scan input
+        if (e.target.id === 'fullProductScanInput') {
+          e.preventDefault();
+          this._fullProductScanEnter();
+        }
       }
     })
 
@@ -986,6 +1006,21 @@ class OwnerPortalApp {
       console.error('❌ Error loading spare parts:', error);
       this.sparePartsStock = [];
       this.spareParts = [];
+    }
+  }
+
+  async loadShopProductsFromStorage() {
+    try {
+      const response = await fetch(`${this.API_URL}/shop-products`);
+      if (response.ok) {
+        this.shopProducts = await response.json();
+        console.log('✅ Loaded shop products from database:', this.shopProducts.length);
+      } else {
+        this.shopProducts = [];
+      }
+    } catch (error) {
+      console.error('❌ Error loading shop products:', error);
+      this.shopProducts = [];
     }
   }
 
@@ -10116,21 +10151,37 @@ class OwnerPortalApp {
     this.renderPage('admin-add-distributor-purchase');
   }
 
-  // Scan barcode for a specific purchase row — opens prompt or camera, then looks up in all sources
+  // Scan barcode for a specific purchase row
+  // On mobile: opens camera scanner
+  // On PC: focuses the barcode input field so USB scanner can type directly into it
   async scanBarcodeForPurchaseRow(idx) {
     if (!this.purchaseDraftRows[idx]) return;
 
-    // Use camera scanner if available, otherwise prompt
-    if (typeof this.openMobileCameraBarcodeScanner === 'function') {
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+    if (isMobile && typeof this.openMobileCameraBarcodeScanner === 'function') {
       this.activeCameraContext = `purchase-row-${idx}`;
       this.openMobileCameraBarcodeScanner(`purchase-row-${idx}`);
       return;
     }
 
-    // Fallback: text prompt
-    const scanned = window.prompt(`Row ${idx + 1}: Scan or type barcode / product name`);
-    if (!scanned || !scanned.trim()) return;
-    this._applyPurchaseRowScan(idx, scanned.trim());
+    // PC: focus the barcode input in the row so USB scanner types directly into it
+    // Find the barcode input for this row in the DOM
+    const rows = document.querySelectorAll('#distributorPurchaseTableBody tr');
+    if (rows[idx]) {
+      const barcodeInput = rows[idx].querySelector('.pur-row-input[data-field="barcode"]');
+      if (barcodeInput) {
+        barcodeInput.focus();
+        barcodeInput.select();
+        // Show a brief visual hint on the input
+        barcodeInput.style.border = '2px solid #4f46e5';
+        barcodeInput.style.boxShadow = '0 0 8px rgba(79,70,229,0.6)';
+        setTimeout(() => {
+          barcodeInput.style.border = '1px solid #16a34a';
+          barcodeInput.style.boxShadow = '';
+        }, 2000);
+      }
+    }
   }
 
   // Called by camera scanner result when context is purchase-row-N
@@ -10551,7 +10602,7 @@ class OwnerPortalApp {
   renderFullProductPage() {
     const search = (this._fullProductSearch || '').toLowerCase().trim();
 
-    // Aggregate from ALL three sources — deduplicated by barcode
+    // Aggregate from ALL sources — deduplicated by barcode
     const seen = new Set();
     const rows = [];
 
@@ -10565,74 +10616,105 @@ class OwnerPortalApp {
       rows.push({ name: nameClean, barcode: (barcode || '').trim(), source });
     };
 
-    // 1. Display Stock
+    // 1. Shop Products (manually added via this page)
+    (this.shopProducts || []).forEach(p => addRow(p.productName, p.barcode, 'Manual'));
+    // 2. Display Stock
     (this.displayStock || []).forEach(d => addRow(d.displayName, d.barcode || d.displayId, 'Display'));
-
-    // 2. Spare Parts
+    // 3. Spare Parts
     (this.sparePartsStock || []).forEach(s => addRow(s.partName, s.partId, 'Spare'));
-
-    // 3. Distributor Products (owner inventory)
+    // 4. Distributor Products
     (this.distributorProducts || []).forEach(p => addRow(p.productName, p.barcode, 'Purchase'));
-
-    // 4. Purchase bill line items (for non-Display, non-duplicate items)
+    // 5. Purchase bill line items
     (this.purchaseBills || []).forEach(bill => {
       (bill.items || []).forEach(item => {
-        if ((item.category || '') === 'Display') return; // already in displayStock
+        if ((item.category || '') === 'Display') return;
         addRow(item.productName, item.barcode, 'Bill');
       });
     });
 
-    // Apply search filter
     const filtered = rows.filter(r =>
       !search ||
       r.name.toLowerCase().includes(search) ||
       r.barcode.toLowerCase().includes(search)
     );
 
-    // Highlighted scan result
     const highlight = this._fullProductHighlight || null;
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
     return `
       <div style="min-height:100vh; background:#0f172a; color:#f8fafc; padding-top:80px; padding-bottom:40px;">
-        <div style="max-width:900px; margin:0 auto; padding:0 16px;">
+        <div style="max-width:960px; margin:0 auto; padding:0 16px;">
 
           <!-- Header -->
-          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:24px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:20px;">
             <div>
               <h1 style="font-size:22px; font-weight:800; color:#f8fafc; margin:0;">📦 Full Product of the Shop</h1>
-              <p style="color:#94a3b8; font-size:13px; margin:4px 0 0 0;">All products from Display, Spare Parts & Purchase records — ${rows.length} total, ${filtered.length} shown</p>
+              <p style="color:#94a3b8; font-size:13px; margin:4px 0 0 0;">${rows.length} total products &nbsp;·&nbsp; ${filtered.length} shown</p>
             </div>
             <button data-page="admin" style="background:#334155; color:#f8fafc; border:none; border-radius:8px; padding:9px 18px; font-size:13px; font-weight:600; cursor:pointer;">← Back</button>
           </div>
 
-          <!-- Scan / Search Bar -->
-          <div style="background:#1e293b; border:1px solid #334155; border-radius:12px; padding:20px; margin-bottom:20px;">
-            <label style="font-size:13px; font-weight:700; color:#38bdf8; display:block; margin-bottom:10px;">🔍 Scan Barcode or Search Product</label>
+          <!-- Barcode Scanner Bar — USB scanner types here and presses Enter -->
+          <div style="background:#1e293b; border:1.5px solid #334155; border-radius:12px; padding:18px 20px; margin-bottom:16px;">
+            <label style="font-size:12px; font-weight:700; color:#38bdf8; display:block; margin-bottom:8px;">
+              ${isMobile ? '📷 Camera Scan or Search' : '🔫 USB Barcode Scanner / Search'} &nbsp;
+              <span style="color:#64748b; font-weight:400;">${isMobile ? 'Type or use camera' : 'Click box, scan barcode — auto-searches on Enter'}</span>
+            </label>
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
               <input id="fullProductScanInput" type="text"
-                placeholder="Scan barcode or type product name..."
+                placeholder="${isMobile ? 'Type or scan barcode / product name...' : 'Click here, then scan with USB scanner...'}"
                 value="${this.escapeHtml(this._fullProductSearch || '')}"
                 oninput="app._fullProductSearch = this.value; app.renderPage('admin-full-products');"
                 onkeydown="if(event.key==='Enter'){event.preventDefault(); app._fullProductScanEnter();}"
-                style="flex:1; min-width:200px; padding:10px 14px; background:#0f172a; border:1px solid #475569; color:#fff; border-radius:8px; font-size:14px; font-family:monospace;"
-                autocomplete="off" autofocus>
+                style="flex:1; min-width:200px; padding:11px 14px; background:#0f172a; border:2px solid #38bdf8; color:#fff; border-radius:8px; font-size:14px; font-family:monospace; outline:none;"
+                autocomplete="off">
+              ${isMobile ? `
+              <button type="button" onclick="app.activeCameraContext='full-products'; app.openMobileCameraBarcodeScanner('full-products');"
+                style="background:#4f46e5; color:#fff; border:none; border-radius:8px; padding:11px 16px; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap;">📷 Camera</button>
+              ` : ''}
               <button type="button" onclick="app._fullProductSearch=''; app._fullProductHighlight=null; app.renderPage('admin-full-products');"
-                style="background:#475569; color:#fff; border:none; border-radius:8px; padding:10px 16px; font-size:13px; font-weight:700; cursor:pointer;">✕ Clear</button>
+                style="background:#475569; color:#fff; border:none; border-radius:8px; padding:11px 16px; font-size:13px; font-weight:700; cursor:pointer;">✕</button>
             </div>
             ${highlight ? `
-              <div style="margin-top:12px; background:rgba(16,185,129,0.12); border:1px solid #10b981; border-radius:8px; padding:12px 16px; display:flex; align-items:center; gap:12px;">
-                <span style="font-size:20px;">✅</span>
+              <div style="margin-top:10px; background:rgba(16,185,129,0.12); border:1px solid #10b981; border-radius:8px; padding:10px 14px; display:flex; align-items:center; gap:10px;">
+                <span style="font-size:18px;">✅</span>
                 <div>
                   <div style="font-weight:800; color:#34d399; font-size:15px;">${this.escapeHtml(highlight.name)}</div>
                   <div style="color:#94a3b8; font-size:12px; font-family:monospace;">Barcode: <strong style="color:#f8fafc;">${this.escapeHtml(highlight.barcode || '—')}</strong> &nbsp;·&nbsp; ${this.escapeHtml(highlight.source)}</div>
                 </div>
-              </div>` : ''}
+              </div>` : (this._fullProductNotFound ? `
+              <div style="margin-top:10px; background:rgba(239,68,68,0.1); border:1px solid #ef4444; border-radius:8px; padding:10px 14px; display:flex; align-items:center; gap:10px;">
+                <span>⚠️</span>
+                <div style="color:#fca5a5; font-size:13px;">Not found in database: <strong>${this.escapeHtml(this._fullProductNotFound)}</strong> — add it below</div>
+              </div>` : '')}
+          </div>
+
+          <!-- New Entry Form -->
+          <div style="background:#1e293b; border:1px solid #334155; border-radius:12px; padding:18px 20px; margin-bottom:20px;">
+            <div style="font-size:13px; font-weight:700; color:#f59e0b; margin-bottom:12px;">➕ Add New Product Entry</div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+              <div style="flex:2; min-width:160px;">
+                <label style="font-size:11px; color:#94a3b8; display:block; margin-bottom:4px;">Product Name *</label>
+                <input id="newShopProductName" type="text" placeholder="e.g. Samsung A54 OLED"
+                  style="width:100%; padding:9px 12px; background:#0f172a; border:1px solid #475569; color:#fff; border-radius:7px; font-size:13px;">
+              </div>
+              <div style="flex:1; min-width:130px;">
+                <label style="font-size:11px; color:#94a3b8; display:block; margin-bottom:4px;">Barcode *</label>
+                <input id="newShopProductBarcode" type="text" placeholder="e.g. M122"
+                  style="width:100%; padding:9px 12px; background:#0f172a; border:1px solid #475569; color:#fff; border-radius:7px; font-size:13px; font-family:monospace;">
+              </div>
+              <button type="button" onclick="app.saveNewShopProduct()"
+                style="background:#10b981; color:#fff; border:none; border-radius:7px; padding:10px 18px; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap;">
+                💾 Save
+              </button>
+            </div>
+            <p style="color:#64748b; font-size:11px; margin:8px 0 0 0;">Tip: You can also scan a barcode directly into the Barcode field above using your USB scanner.</p>
           </div>
 
           <!-- Product Table -->
           <div style="background:#1e293b; border:1px solid #334155; border-radius:12px; overflow:hidden;">
             <div style="overflow-x:auto;">
-              <table style="width:100%; border-collapse:collapse; font-size:14px;">
+              <table style="width:100%; border-collapse:collapse; font-size:14px;" id="fullProductTable">
                 <thead>
                   <tr style="background:#0f172a; color:#94a3b8; font-size:11px; text-transform:uppercase; letter-spacing:0.5px;">
                     <th style="padding:12px 16px; text-align:left; width:40px;">#</th>
@@ -10649,9 +10731,9 @@ class OwnerPortalApp {
                   ` : filtered.map((r, i) => {
                     const isHighlighted = highlight && r.barcode && r.barcode === highlight.barcode;
                     const rowBg = isHighlighted ? 'rgba(16,185,129,0.1)' : (i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)');
-                    const srcColor = r.source === 'Display' ? '#a78bfa' : r.source === 'Spare' ? '#34d399' : '#38bdf8';
+                    const srcColor = r.source === 'Manual' ? '#f59e0b' : r.source === 'Display' ? '#a78bfa' : r.source === 'Spare' ? '#34d399' : '#38bdf8';
                     return `
-                      <tr style="background:${rowBg}; border-bottom:1px solid #1e293b;">
+                      <tr style="background:${rowBg}; border-bottom:1px solid #1e293b;" id="fp-row-${i}">
                         <td style="padding:10px 16px; color:#64748b;">${i + 1}</td>
                         <td style="padding:10px 16px; font-weight:600; color:#f8fafc;">${this.escapeHtml(r.name)}</td>
                         <td style="padding:10px 16px; font-family:monospace; color:#4ade80; font-weight:700;">${this.escapeHtml(r.barcode || '—')}</td>
@@ -10662,7 +10744,7 @@ class OwnerPortalApp {
               </table>
             </div>
             <div style="padding:12px 16px; background:#0f172a; color:#64748b; font-size:12px; border-top:1px solid #334155;">
-              Showing ${filtered.length} of ${rows.length} products &nbsp;·&nbsp; Sources: Display Stock, Spare Parts, Purchase Records
+              ${filtered.length} of ${rows.length} products &nbsp;·&nbsp; Sources: Manual, Display, Spare Parts, Purchase Records
             </div>
           </div>
 
@@ -10675,45 +10757,65 @@ class OwnerPortalApp {
     const q = (this._fullProductSearch || '').trim().toLowerCase();
     if (!q) return;
 
-    // Find matching product across all sources
     let found = null;
 
-    for (const d of (this.displayStock || [])) {
-      if ((d.barcode || '').toLowerCase() === q || (d.displayId || '').toLowerCase() === q || (d.displayName || '').toLowerCase().includes(q)) {
-        found = { name: d.displayName, barcode: d.barcode || d.displayId, source: 'Display' };
-        break;
-      }
-    }
-    if (!found) {
-      for (const s of (this.sparePartsStock || [])) {
-        if ((s.partId || '').toLowerCase() === q || (s.partName || '').toLowerCase().includes(q)) {
-          found = { name: s.partName, barcode: s.partId, source: 'Spare' };
-          break;
-        }
-      }
-    }
-    if (!found) {
-      for (const p of (this.distributorProducts || [])) {
-        if ((p.barcode || '').toLowerCase() === q || (p.productName || '').toLowerCase().includes(q)) {
-          found = { name: p.productName, barcode: p.barcode, source: 'Purchase' };
-          break;
-        }
-      }
-    }
+    // Search all sources by barcode (exact first) then name
+    const sources = [
+      ...(this.shopProducts || []).map(p => ({ name: p.productName, barcode: p.barcode, source: 'Manual' })),
+      ...(this.displayStock || []).map(d => ({ name: d.displayName, barcode: d.barcode || d.displayId, source: 'Display' })),
+      ...(this.sparePartsStock || []).map(s => ({ name: s.partName, barcode: s.partId, source: 'Spare' })),
+      ...(this.distributorProducts || []).map(p => ({ name: p.productName, barcode: p.barcode, source: 'Purchase' })),
+    ];
 
-    this._fullProductHighlight = found;
+    // Exact barcode match first
+    found = sources.find(s => (s.barcode || '').toLowerCase() === q);
+    // Then name contains
+    if (!found) found = sources.find(s => (s.name || '').toLowerCase().includes(q));
+
+    this._fullProductHighlight = found || null;
+    this._fullProductNotFound = found ? null : (this._fullProductSearch || '').trim();
     this.renderPage('admin-full-products');
 
-    // Scroll to highlighted row if found
     if (found) {
       setTimeout(() => {
-        const rows = document.querySelectorAll('#app table tbody tr');
-        rows.forEach(row => {
-          if (row.children[2]?.textContent?.trim() === found.barcode) {
+        const rows = document.querySelectorAll('#fullProductTable tbody tr');
+        for (const row of rows) {
+          if ((row.children[2]?.textContent?.trim() || '') === found.barcode) {
             row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            break;
           }
-        });
+        }
+        // Re-focus scan input
+        const inp = document.getElementById('fullProductScanInput');
+        if (inp) { inp.focus(); inp.select(); }
       }, 100);
+    }
+  }
+
+  async saveNewShopProduct() {
+    const name = document.getElementById('newShopProductName')?.value?.trim();
+    const barcode = document.getElementById('newShopProductBarcode')?.value?.trim();
+    if (!name || !barcode) { alert('Please enter both Product Name and Barcode.'); return; }
+
+    try {
+      const res = await fetch(`${this.API_URL}/shop-products`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productName: name, barcode })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        if (!this.shopProducts) this.shopProducts = [];
+        this.shopProducts.unshift(data.item);
+        alert(`✅ Saved: ${name} (${barcode})`);
+        this.renderPage('admin-full-products');
+      } else if (res.status === 409) {
+        alert(`⚠️ Barcode "${barcode}" already exists as: ${data.existing?.productName}`);
+      } else {
+        alert('❌ Failed: ' + (data.error || 'Unknown error'));
+      }
+    } catch (e) {
+      alert('❌ Network error: ' + e.message);
     }
   }
 
@@ -12605,6 +12707,10 @@ class OwnerPortalApp {
       const idx = parseInt(this.activeCameraContext.replace('purchase-row-', ''), 10);
       this.closeMobileCameraBarcodeScanner();
       this._applyPurchaseRowScan(idx, code);
+    } else if (this.activeCameraContext === 'full-products') {
+      this._fullProductSearch = code;
+      this.closeMobileCameraBarcodeScanner();
+      this._fullProductScanEnter();
     }
   }
 

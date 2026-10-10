@@ -247,6 +247,14 @@ const sparePartsSchema = new mongoose.Schema({
 
 const SpareParts = mongoose.model('SpareParts', sparePartsSchema);
 
+// Shop Product Schema — standalone barcode+name registry for "Full Product of the Shop" page
+const shopProductSchema = new mongoose.Schema({
+  shopProductId: { type: String, required: true, unique: true },
+  productName:   { type: String, required: true, trim: true },
+  barcode:       { type: String, required: true, unique: true, trim: true }
+}, { timestamps: true });
+const ShopProduct = mongoose.model('ShopProduct', shopProductSchema);
+
 // Distributor Schema
 const distributorSchema = new mongoose.Schema({
   distributorId: { type: String, required: true, unique: true },
@@ -1685,6 +1693,48 @@ app.patch('/api/spare-parts/:partItemId', async (req, res) => {
 app.delete('/api/spare-parts/:partItemId', async (req, res) => {
   try {
     await SpareParts.findOneAndDelete({ partItemId: req.params.partItemId });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ===== SHOP PRODUCTS ROUTES (Full Product of the Shop page) =====
+
+app.get('/api/shop-products', async (req, res) => {
+  try {
+    const items = await ShopProduct.find().sort({ createdAt: -1 });
+    res.json(items);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/shop-products', async (req, res) => {
+  try {
+    const { productName, barcode } = req.body;
+    if (!productName || !productName.trim()) return res.status(400).json({ error: 'Product name is required' });
+    if (!barcode || !barcode.trim()) return res.status(400).json({ error: 'Barcode is required' });
+
+    // Check duplicate barcode
+    const existing = await ShopProduct.findOne({ barcode: barcode.trim() });
+    if (existing) return res.status(409).json({ error: 'Barcode already exists', existing });
+
+    const item = new ShopProduct({
+      shopProductId: 'SP-' + Date.now(),
+      productName: productName.trim(),
+      barcode: barcode.trim()
+    });
+    await item.save();
+    res.json({ success: true, item });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/shop-products/:shopProductId', async (req, res) => {
+  try {
+    await ShopProduct.findOneAndDelete({ shopProductId: req.params.shopProductId });
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
