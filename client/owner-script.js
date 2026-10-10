@@ -2012,6 +2012,37 @@ class OwnerPortalApp {
           </div>
         </div>
 
+        <!-- ── Spare Parts Used ── -->
+        <div style="margin-bottom: 24px; background: rgba(15,23,42,0.6); border: 1px solid #334155; border-radius: 10px; padding: 16px;">
+          <label style="font-size:13px; font-weight:700; color:#38bdf8; display:block; margin-bottom:10px;">🔩 Spare Parts Used (Optional)</label>
+          <div style="display:flex; gap:8px; margin-bottom:10px;">
+            <input type="text" id="sparePartScanInput"
+              placeholder="Scan or type spare part barcode / name..."
+              style="flex:1; padding:9px 12px; background:#0f172a; border:1px solid #475569; color:#fff; border-radius:7px; font-size:13px; font-family:monospace;"
+              onkeydown="if(event.key==='Enter'){event.preventDefault();app.addSparePartToTracking();}">
+            <button type="button" onclick="app.addSparePartToTracking()"
+              style="background:#0ea5e9; color:#fff; border:none; border-radius:7px; padding:9px 16px; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap;">
+              ➕ Add
+            </button>
+          </div>
+          <div id="sparePartsUsedList">
+            ${(this.newTrackingSpares || []).length === 0
+              ? `<div style="color:#64748b; font-size:12px; text-align:center; padding:8px 0;">No spare parts added yet. Scan a barcode above.</div>`
+              : (this.newTrackingSpares || []).map((sp, i) => `
+                <div style="display:flex; align-items:center; justify-content:space-between; background:#1e293b; border-radius:6px; padding:8px 12px; margin-bottom:6px;">
+                  <div>
+                    <span style="color:#f8fafc; font-weight:700; font-size:13px;">${this.escapeHtml(sp.partName)}</span>
+                    <span style="color:#94a3b8; font-size:11px; margin-left:8px;">ID: ${this.escapeHtml(sp.partId || '')}</span>
+                    <span style="color:#34d399; font-size:11px; margin-left:8px;">Stock: ${sp.stock}</span>
+                  </div>
+                  <button type="button" onclick="app.removeSparePartFromTracking(${i})"
+                    style="background:transparent; border:none; color:#ef4444; font-size:16px; cursor:pointer; padding:0 4px;">🗑️</button>
+                </div>
+              `).join('')
+            }
+          </div>
+        </div>
+
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
           <div class="form-field">
             <label class="form-label">📥 Date In <span style="font-size:11px; color:#10b981;">(item received)</span></label>
@@ -2108,42 +2139,6 @@ class OwnerPortalApp {
             <option value="Completed">🎉 Completed</option>
             <option value="Delivered">🚀 Delivered</option>
           </select>
-        </div>
-
-        <!-- ── Spare Parts Used ── -->
-        <div style="margin-bottom: 24px; background: rgba(15,23,42,0.6); border: 1px solid #334155; border-radius: 10px; padding: 16px;">
-          <label style="font-size:13px; font-weight:700; color:#38bdf8; display:block; margin-bottom:10px;">🔩 Spare Parts Used (Optional)</label>
-
-          <!-- Scan / type barcode input -->
-          <div style="display:flex; gap:8px; margin-bottom:10px;">
-            <input type="text" id="sparePartScanInput"
-              placeholder="Scan or type spare part barcode / name..."
-              style="flex:1; padding:9px 12px; background:#0f172a; border:1px solid #475569; color:#fff; border-radius:7px; font-size:13px; font-family:monospace;"
-              onkeydown="if(event.key==='Enter'){event.preventDefault();app.addSparePartToTracking();}"
-            >
-            <button type="button" onclick="app.addSparePartToTracking()"
-              style="background:#0ea5e9; color:#fff; border:none; border-radius:7px; padding:9px 16px; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap;">
-              ➕ Add
-            </button>
-          </div>
-
-          <!-- Scanned parts list -->
-          <div id="sparePartsUsedList">
-            ${(this.newTrackingSpares || []).length === 0
-              ? `<div style="color:#64748b; font-size:12px; text-align:center; padding:8px 0;">No spare parts added yet. Scan a barcode above.</div>`
-              : (this.newTrackingSpares || []).map((sp, i) => `
-                <div style="display:flex; align-items:center; justify-content:space-between; background:#1e293b; border-radius:6px; padding:8px 12px; margin-bottom:6px;">
-                  <div>
-                    <span style="color:#f8fafc; font-weight:700; font-size:13px;">${this.escapeHtml(sp.partName)}</span>
-                    <span style="color:#94a3b8; font-size:11px; margin-left:8px;">ID: ${this.escapeHtml(sp.partId || '')}</span>
-                    <span style="color:#34d399; font-size:11px; margin-left:8px;">Stock: ${sp.stock}</span>
-                  </div>
-                  <button type="button" onclick="app.removeSparePartFromTracking(${i})"
-                    style="background:transparent; border:none; color:#ef4444; font-size:16px; cursor:pointer; padding:0 4px;">🗑️</button>
-                </div>
-              `).join('')
-            }
-          </div>
         </div>
 
         <div style="display: flex; gap: 12px;">
