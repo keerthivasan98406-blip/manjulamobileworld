@@ -10085,15 +10085,20 @@ class OwnerPortalApp {
     // Filter valid non-empty rows
     const validItems = this.purchaseDraftRows.filter(r => 
       r.name && r.name.trim() !== '' && (parseInt(r.qty) || 0) > 0
-    ).map(r => ({
-      productName: r.name.trim(),
-      barcode: (r.barcode || '').trim(),
-      category: (r.category || 'Other').trim(),
-      quantity: parseInt(r.qty) || 0,
-      distributorPrice: parseFloat(r.dPrice) || 0,
-      ownerPrice: parseFloat(r.oPrice) || 0,
-      customerPrice: parseFloat(r.cPrice) || 0
-    }));
+    ).map(r => {
+      let cat = (r.category || 'Other').trim();
+      // Never send internal sentinel values to the server
+      if (cat === '__custom__' || cat === '') cat = 'Other';
+      return {
+        productName: r.name.trim(),
+        barcode: (r.barcode || '').trim(),
+        category: cat,
+        quantity: parseInt(r.qty) || 0,
+        distributorPrice: parseFloat(r.dPrice) || 0,
+        ownerPrice: parseFloat(r.oPrice) || 0,
+        customerPrice: parseFloat(r.cPrice) || 0
+      };
+    });
 
     if (validItems.length === 0) {
       alert("Please enter at least one product with a valid Product Name and Quantity > 0.");

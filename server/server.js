@@ -1816,8 +1816,17 @@ app.post('/api/distributors/:id/purchases', async (req, res) => {
     const purchaseTimeFormatted = now.toLocaleTimeString('en-US', timeOptions);
 
     // Generate unique sequential bill number PUR-0001, PUR-0002...
+    // Use max existing bill number to avoid collisions on deleted records
+    const lastBill = await DistributorPurchase.findOne().sort({ createdAt: -1 }).lean();
+    let nextBillNum = 1;
+    if (lastBill && lastBill.billNumber) {
+      const m = lastBill.billNumber.match(/PUR-(\d+)/i);
+      if (m) nextBillNum = parseInt(m[1], 10) + 1;
+    }
+    // Also check count as a floor
     const count = await DistributorPurchase.countDocuments();
-    const billNumber = `PUR-${(count + 1).toString().padStart(4, '0')}`;
+    if (count + 1 > nextBillNum) nextBillNum = count + 1;
+    const billNumber = `PUR-${nextBillNum.toString().padStart(4, '0')}`;
     const purchaseId = `PURTXN-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
     let processedItems = [];
