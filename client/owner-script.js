@@ -9932,7 +9932,16 @@ class OwnerPortalApp {
               <table id="distributorPurchaseTable" style="width: 100%; border-collapse: collapse; text-align: left; color: #e2e8f0; font-size: 14px;">
                 <thead style="position: sticky; top: 0; background: #0f172a; z-index: 10; border-bottom: 2px solid #334155;">
                   <tr style="color: #94a3b8; font-weight: 700; text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px;">
-                    <th style="padding: 14px 16px; width: 40px; text-align: center;">#</th>
+                    <th style="padding: 14px 16px; width: 60px; text-align: center;">
+                      <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+                        <span>#</span>
+                        <button type="button" onclick="app.setAllRowsDisplay()"
+                          title="Mark all rows as Display"
+                          style="background:linear-gradient(135deg,#7c3aed,#5b21b6); color:#fff; border:none; border-radius:5px; padding:2px 6px; font-size:10px; font-weight:700; cursor:pointer; white-space:nowrap;">
+                          🖥️ All
+                        </button>
+                      </div>
+                    </th>
                     <th style="padding: 14px 16px; width: 70px; text-align: center;" title="Tick ✅ = Display category">🖥️ Disp</th>
                     <th style="padding: 14px 16px; min-width: 220px;">Product Name *</th>
                     <th style="padding: 14px 16px; min-width: 120px;">Category</th>
@@ -9984,7 +9993,16 @@ class OwnerPortalApp {
       const cPrice = row.cPrice || '';
       return `
       <tr data-row-id="${row.id}" style="border-bottom: 1px solid #334155; background: ${isDisplay ? 'rgba(124,58,237,0.08)' : 'transparent'};">
-        <td style="padding: 10px 14px; text-align: center; color: #64748b; font-weight: 600;">${idx + 1}</td>
+        <td style="padding: 6px 8px; text-align: center; color: #64748b; font-weight: 600;">
+          <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+            <span style="font-size:12px;">${idx + 1}</span>
+            <button type="button" onclick="app.scanBarcodeForPurchaseRow(${idx})"
+              title="Scan barcode to auto-fill this row"
+              style="background:#4f46e5; color:#fff; border:none; border-radius:5px; padding:3px 7px; font-size:11px; font-weight:700; cursor:pointer; white-space:nowrap;">
+              📷
+            </button>
+          </div>
+        </td>
         <td style="padding: 8px 10px; text-align: center;">
           <button onclick="app.togglePurchaseRowDisplay(${idx})"
             title="${isDisplay ? 'Display (click to unset)' : 'Other (click to set as Display)'}"
@@ -10095,6 +10113,100 @@ class OwnerPortalApp {
     this.purchaseDraftRows[idx].category = val;
     this.purchaseDraftRows[idx].showCustomCatInput = false;
     this.purchaseDraftRows[idx].customCatDraft = '';
+    this.renderPage('admin-add-distributor-purchase');
+  }
+
+  // Scan barcode for a specific purchase row — opens prompt or camera, then looks up in all sources
+  async scanBarcodeForPurchaseRow(idx) {
+    if (!this.purchaseDraftRows[idx]) return;
+
+    // Use camera scanner if available, otherwise prompt
+    if (typeof this.openMobileCameraBarcodeScanner === 'function') {
+      this.activeCameraContext = `purchase-row-${idx}`;
+      this.openMobileCameraBarcodeScanner(`purchase-row-${idx}`);
+      return;
+    }
+
+    // Fallback: text prompt
+    const scanned = window.prompt(`Row ${idx + 1}: Scan or type barcode / product name`);
+    if (!scanned || !scanned.trim()) return;
+    this._applyPurchaseRowScan(idx, scanned.trim());
+  }
+
+  // Called by camera scanner result when context is purchase-row-N
+  _applyPurchaseRowScan(idx, code) {
+    if (!this.purchaseDraftRows[idx] || !code) return;
+    const q = code.trim().toLowerCase();
+
+    // Search all sources: display stock, spare parts, distributor products
+    let found = null;
+
+    for (const d of (this.displayStock || [])) {
+      if ((d.barcode || '').toLowerCase() === q || (d.displayId || '').toLowerCase() === q || (d.displayName || '').toLowerCase().includes(q)) {
+        found = { name: d.displayName, barcode: d.barcode || d.displayId };
+        break;
+      }
+    }
+    if (!found) {
+      for (const s of (this.sparePartsStock || [])) {
+        if ((s.partId || '').toLowerCase() === q || (s.partName || '').toLowerCase().includes(q)) {
+          found = { name: s.partName, barcode: s.partId };
+          break;
+        }
+      }
+    }
+    if (!found) {
+      for (const p of (this.distributorProducts || [])) {
+        if ((p.barcode || '').toLowerCase() === q || (p.productName || '').toLowerCase().includes(q)) {
+          found = { name: p.productName, barcode: p.barcode || '' };
+          break;
+        }
+      }
+    }
+
+    if (found) {
+      this.purchaseDraftRows[idx].name    = found.name;
+      this.purchaseDraftRows[idx].barcode = found.barcode;
+    } else {
+      // Not in DB — just fill barcode field with scanned value
+      this.purchaseDraftRows[idx].barcode = code.trim();
+    }
+
+    this.renderPage('admin-add-distributor-purchase');
+    this.updatePurchaseSummaryDOM();
+  }
+
+  // Mark ALL current draft rows as Display category (one-click)
+  async setAllRowsDisplay() {
+    // Fetch fresh display stock for accurate next barcode
+    try {
+      const res = await fetch(`${this.API_URL}/display-stock/next-barcode`);
+      if (res.ok) {
+        const data = await res.json();
+        let maxNum = data.maxNum || 0;
+
+        // Also consider rows already set to Display in this form
+        this.purchaseDraftRows.forEach(row => {
+          if (row.category === 'Display' && row.barcode) {
+            const m = row.barcode.match(/^M(\d+)$/i);
+            if (m) { const n = parseInt(m[1], 10); if (!isNaN(n) && n > maxNum) maxNum = n; }
+          }
+        });
+
+        // Assign sequential M-barcodes to rows that aren't already Display
+        this.purchaseDraftRows.forEach(row => {
+          if (row.category !== 'Display') {
+            maxNum++;
+            row.category = 'Display';
+            row.barcode  = 'M' + String(maxNum).padStart(3, '0');
+          }
+        });
+      }
+    } catch (e) {
+      // Fallback: just mark all as Display without changing barcodes
+      this.purchaseDraftRows.forEach(row => { row.category = 'Display'; });
+    }
+
     this.renderPage('admin-add-distributor-purchase');
   }
 
@@ -12489,6 +12601,10 @@ class OwnerPortalApp {
         this._pendingScanFieldId = null;
       }
       this.closeMobileCameraBarcodeScanner();
+    } else if (this.activeCameraContext && this.activeCameraContext.startsWith('purchase-row-')) {
+      const idx = parseInt(this.activeCameraContext.replace('purchase-row-', ''), 10);
+      this.closeMobileCameraBarcodeScanner();
+      this._applyPurchaseRowScan(idx, code);
     }
   }
 
