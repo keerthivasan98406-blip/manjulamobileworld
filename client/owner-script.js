@@ -1328,7 +1328,7 @@ class OwnerPortalApp {
           <!-- Header -->
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; flex-wrap: wrap; gap: 14px;">
             <div>
-              <h1 style="font-size: 34px; font-weight: 800; color: #1e293b; margin: 0; letter-spacing: -0.5px;">🎯 Owner Dashboard</h1>
+              <h1 style="font-size: 34px; font-weight: 800; color: #1e293b; margin: 0; letter-spacing: -0.5px;">MANJULA MOBILE WORLD</h1>
               <p style="color: #64748b; font-size: 14px; margin-top: 5px;">Manjula Mobile World — Manage everything from one place</p>
             </div>
             <button data-page="admin-pos" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; border: none; padding: 13px 26px; font-size: 15px; font-weight: 700; border-radius: 10px; box-shadow: 0 6px 18px rgba(37,99,235,0.35); cursor: pointer; display: flex; align-items: center; gap: 8px;">
@@ -10325,37 +10325,63 @@ class OwnerPortalApp {
         const tr = document.createElement('tr');
         tr.setAttribute('data-row-id', newRow.id);
         tr.style.borderBottom = '1px solid #334155';
+        // Use the same full row HTML as renderPurchaseDraftTableRows for consistency
         tr.innerHTML = `
-          <td style="padding: 10px 14px; text-align: center; color: #64748b; font-weight: 600;">${newIdx + 1}</td>
-          <td style="padding: 8px 10px;">
-            <input type="text" class="pur-row-input" data-index="${newIdx}" data-field="name" value="" placeholder="Product Name" 
-              style="width: 100%; padding: 8px 12px; background: #0f172a; border: 1px solid #475569; color: #fff; border-radius: 6px; font-size: 14px;">
+          <td style="padding: 6px 8px; text-align: center; color: #64748b; font-weight: 600;">
+            <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+              <span style="font-size:12px;">${newIdx + 1}</span>
+              <button type="button" onclick="app.scanBarcodeForPurchaseRow(${newIdx})"
+                title="Scan barcode to auto-fill this row"
+                style="background:#4f46e5; color:#fff; border:none; border-radius:5px; padding:3px 7px; font-size:11px; font-weight:700; cursor:pointer; white-space:nowrap;">📷</button>
+            </div>
+          </td>
+          <td style="padding: 8px 10px; text-align: center;">
+            <button onclick="app.togglePurchaseRowDisplay(${newIdx})"
+              title="Other (click to set as Display)"
+              style="width:36px; height:36px; border-radius:8px; border:2px solid #475569; background:#0f172a; color:#fff; font-size:18px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center;">⬜</button>
           </td>
           <td style="padding: 8px 10px;">
-            <input type="text" class="pur-row-input" data-index="${newIdx}" data-field="barcode" value="" placeholder="Barcode / SKU" 
-              style="width: 100%; padding: 8px 12px; background: #0f172a; border: 1px solid #475569; color: #38bdf8; border-radius: 6px; font-size: 14px; font-family: monospace;">
+            <input type="text" class="pur-row-input" data-index="${newIdx}" data-field="name" value="" placeholder="Product Name"
+              style="width:100%; padding:8px 12px; background:#0f172a; border:1px solid #475569; color:#fff; border-radius:6px; font-size:14px;">
           </td>
           <td style="padding: 8px 10px;">
-            <input type="number" min="1" class="pur-row-input" data-index="${newIdx}" data-field="qty" value="" placeholder="Qty" 
-              style="width: 100%; padding: 8px 12px; background: #0f172a; border: 1px solid #475569; color: #fff; border-radius: 6px; font-size: 14px; text-align: center; font-weight: 600;">
+            <select onchange="app.setPurchaseRowCategory(${newIdx}, this.value)"
+              style="width:100%; padding:7px 10px; background:#0f172a; border:1px solid #475569; color:#fff; border-radius:6px; font-size:13px; cursor:pointer;">
+              <option value="Other" selected>Other</option>
+              <option value="Spare Parts">Spare Parts</option>
+              <option value="Accessories">Accessories</option>
+              <option value="Chargers">Chargers</option>
+              <option value="Audio">Audio</option>
+              <option value="Power Banks">Power Banks</option>
+            </select>
           </td>
           <td style="padding: 8px 10px;">
-            <input type="number" step="0.01" min="0" class="pur-row-input" data-index="${newIdx}" data-field="dPrice" value="" placeholder="₹ Dist. Price" 
-              style="width: 100%; padding: 8px 12px; background: #0f172a; border: 1px solid #475569; color: #fff; border-radius: 6px; font-size: 14px;">
+            <input type="text" class="pur-row-input" data-index="${newIdx}" data-field="barcode" value="" placeholder="Auto-generated"
+              style="width:100%; padding:8px 12px; background:#0d1f0d; border:1px solid #16a34a; color:#4ade80; border-radius:6px; font-size:13px; font-family:monospace; font-weight:700;">
           </td>
           <td style="padding: 8px 10px;">
-            <input type="number" step="0.01" min="0" class="pur-row-input" data-index="${newIdx}" data-field="oPrice" value="" placeholder="₹ Owner Price" 
-              style="width: 100%; padding: 8px 12px; background: #0f172a; border: 1px solid #475569; color: #fff; border-radius: 6px; font-size: 14px;">
+            <input type="number" min="1" class="pur-row-input" data-index="${newIdx}" data-field="qty" value="" placeholder="Qty"
+              style="width:100%; padding:8px 12px; background:#0f172a; border:1px solid #475569; color:#fff; border-radius:6px; font-size:14px; text-align:center; font-weight:600;">
           </td>
           <td style="padding: 8px 10px;">
-            <input type="number" step="0.01" min="0" class="pur-row-input" data-index="${newIdx}" data-field="cPrice" value="" placeholder="₹ Cust. Price" 
-              style="width: 100%; padding: 8px 12px; background: #0f172a; border: 1px solid #475569; color: #fff; border-radius: 6px; font-size: 14px;">
+            <input type="number" step="0.01" min="0" class="pur-row-input" data-index="${newIdx}" data-field="dPrice" value="" placeholder="₹ Dist. Price"
+              style="width:100%; padding:8px 12px; background:#0f172a; border:1px solid #475569; color:#fff; border-radius:6px; font-size:14px;">
+          </td>
+          <td style="padding: 8px 10px;">
+            <input type="number" step="0.01" min="0" class="pur-row-input" data-index="${newIdx}" data-field="oPrice" value="" placeholder="₹ Owner Price"
+              style="width:100%; padding:8px 12px; background:#0f172a; border:1px solid #475569; color:#fff; border-radius:6px; font-size:14px;">
+          </td>
+          <td style="padding: 8px 10px;">
+            <input type="number" step="0.01" min="0" class="pur-row-input" data-index="${newIdx}" data-field="cPrice" value="" placeholder="₹ Cust. Price"
+              style="width:100%; padding:8px 12px; background:#0f172a; border:1px solid #475569; color:#fff; border-radius:6px; font-size:14px;">
           </td>
           <td style="padding: 8px 10px; text-align: right; font-weight: 700; color: #34d399; font-size: 15px;">
             <span id="itemTotal_${newIdx}">₹0</span>
           </td>
           <td style="padding: 8px 10px; text-align: center;">
-            <button data-action="delete-purchase-row" data-index="${newIdx}" style="background: transparent; border: none; color: #ef4444; cursor: pointer; font-size: 16px;">🗑️</button>
+            <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+              <button data-action="delete-purchase-row" data-index="${newIdx}" style="background:transparent; border:none; color:#ef4444; cursor:pointer; font-size:16px;">🗑️</button>
+            </div>
           </td>
         `;
         tbody.appendChild(tr);
