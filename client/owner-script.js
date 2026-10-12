@@ -1206,8 +1206,8 @@ class OwnerPortalApp {
               <img src="https://i.pinimg.com/736x/e3/6f/79/e36f793e016dd6b35cd27f84030b7487.jpg" alt="Manjula Mobile World Logo" style="width: 36px; height: 36px; object-fit: contain; border-radius: 6px;">
             </div>
             <div class="nav-title" data-page="admin">
-              <div style="font-size: 14px; font-weight: 800; white-space: nowrap;">OWNER PORTAL</div>
-              <div style="font-size: 9px; font-weight: 600; color: #64748b; line-height: 1;">Manjula Mobiles</div>
+              <div style="font-size: 17px; font-weight: 900; white-space: nowrap; color: #be185d; font-family: 'Georgia', 'Times New Roman', serif; font-style: italic; line-height: 1.1;">MANJULA MOBILE WORLD</div>
+              <div style="font-size: 10px; font-weight: 700; color: #000; font-family: 'Georgia', 'Times New Roman', serif; font-style: italic; line-height: 1.2; text-align: center;">The Final Word of Mobile Solution</div>
             </div>
           </div>
           
@@ -1328,9 +1328,10 @@ class OwnerPortalApp {
           <!-- Header -->
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; flex-wrap: wrap; gap: 14px;">
             <div>
-              <h1 style="font-size: 34px; font-weight: 800; color: #1e293b; margin: 0; letter-spacing: -0.5px;">MANJULA MOBILE WORLD</h1>
-              <p style="color: #dc2626; font-size: 13px; font-weight: 700; margin-top: 3px; letter-spacing: 0.5px; text-transform: uppercase;">The Final Word of Mobile Solution</p>
-              <p style="color: #64748b; font-size: 14px; margin-top: 5px;">Manjula Mobile World — Manage everything from one place</p>
+              <h1 style="font-size: 42px; font-weight: 900; margin: 0; letter-spacing: -0.5px; line-height: 1.1; color: #be185d; font-family: 'Georgia', 'Times New Roman', serif; font-style: italic;">
+                MANJULA MOBILE WORLD
+              </h1>
+              <p style="color: #000000; font-size: 14px; font-weight: 700; margin-top: 4px; font-family: 'Georgia', 'Times New Roman', serif; font-style: italic; letter-spacing: 0.3px; text-align: center;">The Final Word of Mobile Solution</p>
             </div>
             <button data-page="admin-pos" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; border: none; padding: 13px 26px; font-size: 15px; font-weight: 700; border-radius: 10px; box-shadow: 0 6px 18px rgba(37,99,235,0.35); cursor: pointer; display: flex; align-items: center; gap: 8px;">
               🛒 Open POS Billing
@@ -3513,12 +3514,12 @@ class OwnerPortalApp {
     const sortedByCreation = [...displayList].sort((a, b) => {
       const tsA = parseInt((a.stockItemId || '').replace('STK-', '')) || 0;
       const tsB = parseInt((b.stockItemId || '').replace('STK-', '')) || 0;
-      return tsA - tsB; // oldest first → M001, newest last → M122
+      return tsA - tsB; // oldest first → MMW001, newest last → MMW999
     });
     const barcodeMap = new Map();
     sortedByCreation.forEach((item, i) => {
       const id = item.stockItemId || item._id;
-      barcodeMap.set(id, 'M' + String(i + 1).padStart(3, '0'));
+      barcodeMap.set(id, 'MMW' + String(i + 1).padStart(3, '0'));
     });
 
     const filtered = displayList.filter(d =>
@@ -3589,12 +3590,8 @@ class OwnerPortalApp {
                 <input class="input" id="stk_displayName" placeholder="e.g. Samsung A54 OLED" style="width:100%; border:1px solid #cbd5e1; color:#0f172a; background:#f8fafc;">
               </div>
               <div>
-                <label style="font-size:13px; font-weight:600; color:#374151; display:block; margin-bottom:4px;">Display ID / Code *</label>
-                <input class="input" id="stk_displayId" placeholder="e.g. DISP-SA54-001" style="width:100%; border:1px solid #cbd5e1; color:#0f172a; background:#f8fafc;">
-              </div>
-              <div>
                 <label style="font-size:13px; font-weight:600; color:#374151; display:block; margin-bottom:4px;">Barcode (CODE128)</label>
-                <input class="input" id="stk_barcode" value="${this._generateNextDisplayBarcode()}" oninput="app._renderDisplayStockFormBarcode(this.value)" placeholder="e.g. M001" style="width:100%; border:1px solid #cbd5e1; color:#2563eb; font-weight:700; font-family:monospace; background:#f8fafc;">
+                <input class="input" id="stk_barcode" value="${this._generateNextDisplayBarcode()}" oninput="app._renderDisplayStockFormBarcode(this.value)" placeholder="e.g. MMW001" style="width:100%; border:1px solid #cbd5e1; color:#2563eb; font-weight:700; font-family:monospace; background:#f8fafc;">
               </div>
               <div>
                 <label style="font-size:13px; font-weight:600; color:#374151; display:block; margin-bottom:4px;">Initial Stock *</label>
@@ -3603,10 +3600,6 @@ class OwnerPortalApp {
               <div>
                 <label style="font-size:13px; font-weight:600; color:#374151; display:block; margin-bottom:4px;">Owner Price (₹)</label>
                 <input class="input" type="number" id="stk_ownerPrice" placeholder="Cost price" min="0" style="width:100%; border:1px solid #cbd5e1; color:#0f172a; background:#f8fafc;">
-              </div>
-              <div>
-                <label style="font-size:13px; font-weight:600; color:#374151; display:block; margin-bottom:4px;">Customer Price (₹)</label>
-                <input class="input" type="number" id="stk_customerPrice" placeholder="Selling price" min="0" style="width:100%; border:1px solid #cbd5e1; color:#0f172a; background:#f8fafc;">
               </div>
             </div>
             <div style="display:flex; gap:12px; margin-top:20px;">
@@ -3657,8 +3650,17 @@ class OwnerPortalApp {
                       <th style="padding:12px 14px; border-right:1px solid #e2e8f0; width:36px; text-align:center;">#</th>
                       <th style="padding:12px 14px; border-right:1px solid #e2e8f0; min-width:180px;">Display Name</th>
                       <th style="padding:12px 14px; border-right:1px solid #e2e8f0; width:130px; text-align:center;">Barcode</th>
-                      <th style="padding:12px 14px; border-right:1px solid #e2e8f0; width:90px; text-align:center;">Owner Price</th>
-                      <th style="padding:12px 14px; border-right:1px solid #e2e8f0; width:90px; text-align:center;">Cust Price</th>
+                      <th style="padding:12px 14px; border-right:1px solid #e2e8f0; width:120px; text-align:center;">Owner Price</th>
+                      <th style="padding:12px 14px; border-right:1px solid #e2e8f0; width:170px; text-align:center;">
+                        <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+                          <span>Total Value (₹) + Password</span>
+                          <input type="password" id="stockTotalValuePassword" placeholder="Enter password"
+                            value="${this.stockTotalValueUnlocked ? 'admin123' : ''}"
+                            oninput="app.checkStockTotalValuePassword(this.value)"
+                            onkeydown="if(event.key === 'Enter') app.checkStockTotalValuePassword(this.value, true)"
+                            style="width:110px; padding:3px 6px; border:1px solid #cbd5e1; border-radius:4px; font-size:11px; text-align:center; color:#000; outline:none; font-weight:normal;">
+                        </div>
+                      </th>
                       <th style="padding:12px 14px; border-right:1px solid #e2e8f0; width:80px; text-align:center;">Stock</th>
                       <th style="padding:12px 14px; border-right:1px solid #e2e8f0; min-width:160px; text-align:center;">Adjust Stock</th>
                       <th style="padding:12px 14px; text-align:center; min-width:120px;">Action</th>
@@ -3669,7 +3671,7 @@ class OwnerPortalApp {
                       const stock = Number(item.stock) || 0;
                       const ownerPrice = Number(item.ownerPrice || item.price) || 0;
                       const customerPrice = Number(item.customerPrice || item.price) || 0;
-                      const barVal = barcodeMap.get(item.stockItemId || item._id) || (item.barcode || '').trim() || ('M' + String(idx + 1).padStart(3, '0'));
+                      const barVal = barcodeMap.get(item.stockItemId || item._id) || (item.barcode || '').trim() || ('MMW' + String(idx + 1).padStart(3, '0'));
                       const stockColor  = stock === 0 ? '#dc2626' : stock <= 1 ? '#dc2626' : stock <= 3 ? '#d97706' : '#16a34a';
                       const stockBg     = stock === 0 ? '#fef2f2' : stock <= 1 ? '#fef2f2' : stock <= 3 ? '#fffbeb' : '#f0fdf4';
                       const rowBg       = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
@@ -3718,10 +3720,14 @@ class OwnerPortalApp {
                             </div>
                           </td>
                           <td style="padding:10px 14px; text-align:center; color:#d97706; font-weight:600; border-right:1px solid #e2e8f0;">
-                            ₹${ownerPrice.toLocaleString('en-IN')}
+                            ${this.stockTotalValueUnlocked
+                              ? `₹${ownerPrice.toLocaleString('en-IN')}`
+                              : `<span style="color:#94a3b8; font-family:monospace; font-size:14px;">••••</span>`}
                           </td>
-                          <td style="padding:10px 14px; text-align:center; color:#059669; font-weight:700; border-right:1px solid #e2e8f0;">
-                            ₹${customerPrice.toLocaleString('en-IN')}
+                          <td style="padding:10px 14px; text-align:center; font-weight:700; color:#1d4ed8; border-right:1px solid #e2e8f0;">
+                            ${this.stockTotalValueUnlocked
+                              ? (ownerPrice && stock ? `₹${(ownerPrice * stock).toLocaleString('en-IN')}` : '<span style="color:#9ca3af;">—</span>')
+                              : '<span style="color:#94a3b8; font-family:monospace; font-size:14px;">••••</span>'}
                           </td>
                           <td style="padding:10px 14px; text-align:center; border-right:1px solid #e2e8f0;">
                             <span style="display:inline-block; background:${stockBg}; color:${stockColor}; font-weight:800; font-size:14px; padding:3px 10px; border-radius:6px; border:1px solid ${stockColor}40;">
@@ -3766,6 +3772,25 @@ class OwnerPortalApp {
                       `;
                     }).join('')}
                   </tbody>
+                  <tfoot>
+                    <tr style="background:#0f172a; color:#fff; font-weight:700;">
+                      <td colspan="3" style="padding:12px 16px; font-size:13px; border-right:1px solid #334155;">📊 TOTAL</td>
+                      <td style="padding:12px 16px; text-align:center; font-size:13px; color:#fbbf24; border-right:1px solid #334155;">
+                        ${this.stockTotalValueUnlocked ? `₹${filtered.reduce((s, d) => s + (Number(d.ownerPrice || d.price) || 0), 0).toLocaleString('en-IN')} avg` : '<span style="color:#94a3b8; font-family:monospace;">••••</span>'}
+                      </td>
+                      <td style="padding:12px 16px; text-align:center; font-size:15px; font-weight:900; color:#86efac; border-right:1px solid #334155;">
+                        ${this.stockTotalValueUnlocked
+                          ? `<span style="color:#fbbf24; font-size:15px; font-weight:900;">₹${filtered.reduce((s, d) => s + ((Number(d.ownerPrice || d.price) || 0) * (Number(d.stock) || 0)), 0).toLocaleString('en-IN')}</span>`
+                          : `<span style="color:#94a3b8; font-family:monospace;">••••</span>`}
+                      </td>
+                      <td style="padding:12px 16px; text-align:center; font-size:15px; font-weight:900; color:#86efac; border-right:1px solid #334155;">
+                        ${filtered.reduce((s, d) => s + (Number(d.stock) || 0), 0)} units
+                      </td>
+                      <td colspan="2" style="padding:12px 16px; text-align:center; font-size:12px; color:#94a3b8;">
+                        ${filtered.length} item${filtered.length !== 1 ? 's' : ''}
+                      </td>
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
             </div>
@@ -4150,35 +4175,35 @@ class OwnerPortalApp {
   _generateNextDisplayBarcode(offset = 0) {
     let maxNum = 0;
     (this.displayStock || []).forEach(d => {
-      // Check barcode field first, then displayId — handle both "M121" and "DS-M121" formats
       const bc = (d.barcode || '').trim();
       const did = (d.displayId || '').trim();
-      // Match plain M-number: M121
+      // Match MMW-number: MMW001
+      const matchMmw = bc.match(/^MMW(\d+)$/i) || did.match(/^MMW(\d+)$/i);
+      if (matchMmw) {
+        const num = parseInt(matchMmw[1], 10);
+        if (!isNaN(num) && num > maxNum) maxNum = num;
+      }
+      // Legacy: plain M-number M001
       const matchBc = bc.match(/^M(\d+)$/i);
       if (matchBc) {
         const num = parseInt(matchBc[1], 10);
         if (!isNaN(num) && num > maxNum) maxNum = num;
       }
-      // Match DS-M-number: DS-M121
-      const matchDid = did.match(/^DS-M(\d+)$/i) || bc.match(/^DS-M(\d+)$/i);
-      if (matchDid) {
-        const num = parseInt(matchDid[1], 10);
-        if (!isNaN(num) && num > maxNum) maxNum = num;
-      }
     });
-    return 'M' + String(maxNum + 1 + offset).padStart(3, '0');
+    return 'MMW' + String(maxNum + 1 + offset).padStart(3, '0');
   }
 
   async saveDisplayStock() {
     const displayName   = document.getElementById('stk_displayName')?.value?.trim();
-    const displayId     = document.getElementById('stk_displayId')?.value?.trim();
     const barcode       = document.getElementById('stk_barcode')?.value?.trim() || this._generateNextDisplayBarcode();
     const stock         = document.getElementById('stk_stock')?.value;
     const ownerPrice    = document.getElementById('stk_ownerPrice')?.value;
-    const customerPrice = document.getElementById('stk_customerPrice')?.value;
 
-    if (!displayName || !displayId || stock === '' || stock === null) {
-      alert('Please fill in Display Name, Display ID and Initial Stock.');
+    // Auto-generate displayId from name + barcode
+    const displayId = barcode || displayName?.replace(/\s+/g, '-').toUpperCase().substring(0, 20) || 'DISP-' + Date.now();
+
+    if (!displayName || stock === '' || stock === null) {
+      alert('Please fill in Display Name and Initial Stock.');
       return;
     }
 
@@ -4188,8 +4213,8 @@ class OwnerPortalApp {
       barcode,
       stock: Number(stock),
       ownerPrice: ownerPrice ? Number(ownerPrice) : null,
-      customerPrice: customerPrice ? Number(customerPrice) : null,
-      price: customerPrice ? Number(customerPrice) : (ownerPrice ? Number(ownerPrice) : null),
+      customerPrice: null,
+      price: ownerPrice ? Number(ownerPrice) : null,
       history: [{ change: Number(stock), stockAfter: Number(stock), date: new Date().toLocaleDateString('en-IN') }]
     };
 
@@ -8638,10 +8663,6 @@ class OwnerPortalApp {
                 <label style="font-size:13px; font-weight:600; color:#d97706; display:block; margin-bottom:4px;">Owner Price (₹)</label>
                 <input class="input" type="number" id="sp_ownerPrice" placeholder="Cost price" min="0" style="width:100%;">
               </div>
-              <div>
-                <label style="font-size:13px; font-weight:600; color:#16a34a; display:block; margin-bottom:4px;">Customer Price (₹)</label>
-                <input class="input" type="number" id="sp_customerPrice" placeholder="Selling price" min="0" style="width:100%;">
-              </div>
             </div>
             <div style="display:flex; gap:12px; margin-top:16px;">
               <button class="btn btn-primary" onclick="app.saveSparePart()" style="padding:10px 24px;">💾 Save Part</button>
@@ -8681,7 +8702,6 @@ class OwnerPortalApp {
                       <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:180px;">Part Name</th>
                       <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:150px; text-align:center;">Barcode</th>
                       <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:100px; text-align:center;">Owner Price (₹)</th>
-                      <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:110px; text-align:center;">Customer Price (₹)</th>
                       <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:100px; text-align:center;">Stock</th>
                       <th style="padding:12px 14px; font-weight:700; border-right:1px solid #334155; min-width:170px; text-align:center;">
                         <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
@@ -8707,12 +8727,14 @@ class OwnerPortalApp {
                       const stockBg    = stock === 0 ? '#fef2f2' : stock <= 1 ? '#fef2f2' : stock <= 3 ? '#fffbeb' : '#f0fdf4';
                       const rowBg      = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
                       const spBcId     = `bc_sp_${(item.partItemId || item._id || idx).toString().replace(/[^a-zA-Z0-9]/g, '_')}`;
+                      // Prefix existing partId with MMW for barcode display
+                      const spBarVal = (item.partId || '').startsWith('MMW') ? item.partId : 'MMW' + (item.partId || String(idx + 1).padStart(4, '0'));
 
                       setTimeout(() => {
                         const el = document.getElementById(spBcId);
                         if (el && typeof JsBarcode !== 'undefined') {
                           try {
-                            JsBarcode(el, item.partId, {
+                            JsBarcode(el, spBarVal, {
                               format: 'CODE128', width: 1.5, height: 32,
                               displayValue: true, fontSize: 11, margin: 4,
                               background: '#ffffff', lineColor: '#000000',
@@ -8736,16 +8758,16 @@ class OwnerPortalApp {
                           <td style="padding:8px 14px; text-align:center; border-right:1px solid #e2e8f0;">
                             <div style="display:inline-flex; flex-direction:column; align-items:center; gap:4px;">
                               <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:6px; padding:4px; text-align:center; cursor:pointer; display:flex; align-items:center; justify-content:center;"
-                                   onclick="app.printSparePartLabel('${item.partId}', '${(item.partName||'').replace(/'/g, "\\'")}')"
+                                   onclick="app.printSparePartLabel('${spBarVal}', '${(item.partName||'').replace(/'/g, "\\'")}')"
                                    title="Click to print barcode label">
                                 <svg id="${spBcId}" style="display:none; width:120px; height:45px;"></svg>
                               </div>
                               <div style="display:flex; gap:4px; justify-content:center;">
-                                <button onclick="app.printSparePartLabel('${item.partId}', '${(item.partName||'').replace(/'/g, "\\'")}')"
+                                <button onclick="app.printSparePartLabel('${spBarVal}', '${(item.partName||'').replace(/'/g, "\\'")}')"
                                   style="background:#f1f5f9; border:1px solid #cbd5e1; border-radius:4px; padding:2px 6px; font-size:10px; font-weight:600; cursor:pointer;" title="Print Browser Label">
                                   🏷️ Print
                                 </button>
-                                <button onclick="app.printSparePartTSCLabel('${item.partId}', '${(item.partName||'').replace(/'/g, "\\'")}')"
+                                <button onclick="app.printSparePartTSCLabel('${spBarVal}', '${(item.partName||'').replace(/'/g, "\\'")}')"
                                   style="background:#f1f5f9; border:1px solid #cbd5e1; border-radius:4px; padding:2px 6px; font-size:10px; font-weight:600; cursor:pointer;" title="Print TSC Label">
                                   🖶 TSC
                                 </button>
@@ -8757,9 +8779,6 @@ class OwnerPortalApp {
                               (ownerPrice ? `₹${ownerPrice.toLocaleString('en-IN')}` : '<span style="color:#9ca3af;">—</span>') :
                               '<span style="color:#94a3b8; font-family:monospace; font-size:14px;">••••</span>'
                             }
-                          </td>
-                          <td style="padding:10px 14px; text-align:center; color:#16a34a; font-weight:700; border-right:1px solid #e2e8f0;">
-                            ${customerPrice ? `₹${customerPrice.toLocaleString('en-IN')}` : '<span style="color:#9ca3af;">—</span>'}
                           </td>
                           <td style="padding:10px 14px; text-align:center; border-right:1px solid #e2e8f0;">
                             <span style="display:inline-block; background:${stockBg}; color:${stockColor}; font-weight:900; font-size:18px; min-width:48px; padding:4px 10px; border-radius:6px; border:1px solid ${stockColor}40;">
@@ -8810,13 +8829,12 @@ class OwnerPortalApp {
                     <tr style="background:#1e293b; color:#fff; font-weight:700;">
                       <td colspan="3" style="padding:12px 14px; font-size:13px; border-right:1px solid #334155;">📊 GRAND TOTAL</td>
                       <td style="padding:12px 14px; text-align:center; font-size:13px; border-right:1px solid #334155;">—</td>
-                      <td style="padding:12px 14px; text-align:center; font-size:13px; border-right:1px solid #334155;">—</td>
                       <td style="padding:12px 14px; text-align:center; font-size:15px; font-weight:900; border-right:1px solid #334155;">
                         ${filtered.reduce((sum, d) => sum + (Number(d.stock) || 0), 0)} units
                       </td>
                       <td style="padding:12px 14px; text-align:center; font-size:15px; font-weight:900; color:#86efac; border-right:1px solid #334155;">
                         ${this.spareTotalValueUnlocked ? 
-                          `₹${filtered.reduce((sum, d) => sum + ((Number(d.customerPrice) || 0) * (Number(d.stock) || 0)), 0).toLocaleString('en-IN')}` :
+                          `₹${filtered.reduce((sum, d) => sum + ((Number(d.ownerPrice) || 0) * (Number(d.stock) || 0)), 0).toLocaleString('en-IN')}` :
                           '<span style="color:#94a3b8; font-family:monospace; font-size:14px;">••••</span>'
                         }
                       </td>
@@ -9259,8 +9277,11 @@ class OwnerPortalApp {
       setTimeout(() => this._renderSparePartsFormBarcode(value), 300);
       return;
     }
+    // Always prefix with MMW for barcode display
+    const barcodeVal = value ? (value.startsWith('MMW') ? value : 'MMW' + value) : '';
+    if (!barcodeVal) { canvas.style.display = 'none'; return; }
     try {
-      JsBarcode(canvas, value, {
+      JsBarcode(canvas, barcodeVal, {
         format: 'CODE128', width: 2, height: 40,
         displayValue: true, fontSize: 13, margin: 4,
         background: '#ffffff', lineColor: '#000000'
@@ -9277,8 +9298,10 @@ class OwnerPortalApp {
       setTimeout(() => this._renderEditSparePartsBarcode(value), 300);
       return;
     }
+    const barcodeVal = value ? (value.startsWith('MMW') ? value : 'MMW' + value) : '';
+    if (!barcodeVal) { canvas.style.display = 'none'; return; }
     try {
-      JsBarcode(canvas, value, {
+      JsBarcode(canvas, barcodeVal, {
         format: 'CODE128', width: 2, height: 40,
         displayValue: true, fontSize: 13, margin: 4,
         background: '#ffffff', lineColor: '#000000'
@@ -12240,7 +12263,12 @@ class OwnerPortalApp {
         body: JSON.stringify(payload)
       });
 
-      const result = await response.json();
+      let result;
+      try {
+        result = await response.json();
+      } catch (parseErr) {
+        throw new Error(`Server returned non-JSON response (status ${response.status})`);
+      }
 
       if (response.ok && result.success) {
         this.posReceipt = result.sale;
@@ -12255,11 +12283,15 @@ class OwnerPortalApp {
         this.clearPOSCart();
         this.showPOSReceiptModal();
       } else {
-        alert(result.error || 'Failed to complete POS checkout.');
+        alert(result.error || `Failed to complete POS checkout (HTTP ${response.status}).`);
       }
     } catch (err) {
       console.error('❌ POS Checkout Error:', err);
-      alert('Network error while executing POS checkout.');
+      const isOffline = !navigator.onLine;
+      const msg = isOffline
+        ? 'No internet connection. Please check your network and try again.'
+        : `POS checkout failed: ${err.message || 'Unknown error. Check the server console.'}`;
+      alert(msg);
     }
   }
 

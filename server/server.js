@@ -2202,7 +2202,22 @@ app.delete('/api/purchase-bills/:billNumber', async (req, res) => {
 // POS Checkout Endpoint (Unified across Products, Display Stock, Spare Parts)
 app.post('/api/pos/checkout', async (req, res) => {
   try {
-    const { customerName, phoneNumber, customerAddress, items, discount, paymentMethod, notes } = req.body;
+    // Accept both field naming conventions from the client
+    const {
+      customerName,
+      phoneNumber,
+      customerPhone,    // client sends customerPhone
+      customerAddress,
+      items,
+      discount,
+      paymentMethod,
+      notes,
+      subtotal,        // client-computed subtotal (used as fallback)
+      totalAmount      // client-computed total (used as fallback)
+    } = req.body;
+
+    // Normalise phone field
+    const resolvedPhone = phoneNumber || customerPhone || 'N/A';
 
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'Cart is empty. Please add items to complete POS checkout.' });
@@ -2212,24 +2227,27 @@ app.post('/api/pos/checkout', async (req, res) => {
     let productItemsSummary = [];
 
     for (const item of items) {
-      const qty = parseInt(item.quantity) || 1;
+      // Client sends qty, server schema uses quantity — accept both
+      const qty = parseInt(item.quantity ?? item.qty) || 1;
       const price = parseFloat(item.price) || 0;
-      const itemTotal = qty * price;
+      const itemTotal = item.itemTotal != null ? parseFloat(item.itemTotal) : qty * price;
       grandTotal += itemTotal;
 
       productItemsSummary.push({
-        id: item.id,
+        id: item.itemId || item.id,
         name: item.name,
         type: item.type, // 'product', 'display', 'spare'
+        barcode: item.barcode || '',
         price: price,
         quantity: qty,
         itemTotal: itemTotal
       });
 
       // Deduct stock based on type
+      const itemId = item.itemId || item.id;
       if (item.type === 'product') {
         const prod = await Product.findOne({
-          $or: [{ id: item.id }, { _id: mongoose.Types.ObjectId.isValid(item.id) ? item.id : null }, { name: item.name }]
+          $or: [{ _id: mongoose.Types.ObjectId.isValid(itemId) ? itemId : null }, { name: item.name }]
         });
         if (prod) {
           prod.stock = Math.max(0, (prod.stock || 0) - qty);
@@ -2238,7 +2256,7 @@ app.post('/api/pos/checkout', async (req, res) => {
         }
       } else if (item.type === 'display') {
         const disp = await DisplayStock.findOne({
-          $or: [{ stockItemId: item.id }, { _id: mongoose.Types.ObjectId.isValid(item.id) ? item.id : null }, { displayName: item.name }]
+          $or: [{ stockItemId: itemId }, { _id: mongoose.Types.ObjectId.isValid(itemId) ? itemId : null }, { displayName: item.name }]
         });
         if (disp) {
           disp.stock = Math.max(0, (disp.stock || 0) - qty);
@@ -2246,7 +2264,7 @@ app.post('/api/pos/checkout', async (req, res) => {
         }
       } else if (item.type === 'spare') {
         const spare = await SpareParts.findOne({
-          $or: [{ partItemId: item.id }, { _id: mongoose.Types.ObjectId.isValid(item.id) ? item.id : null }, { partName: item.name }]
+          $or: [{ partItemId: itemId }, { _id: mongoose.Types.ObjectId.isValid(itemId) ? itemId : null }, { partName: item.name }]
         });
         if (spare) {
           spare.stock = Math.max(0, (spare.stock || 0) - qty);
@@ -2265,7 +2283,7 @@ app.post('/api/pos/checkout', async (req, res) => {
     const salesDoc = new SalesRecord({
       saleId,
       customerName: (customerName || 'Walk-in Customer').trim(),
-      phoneNumber: (phoneNumber || 'N/A').trim(),
+      phoneNumber: resolvedPhone.trim(),
       customerAddress: (customerAddress || '').trim(),
       productName: productItemsSummary.map(i => `${i.name} (${i.quantity})`).join(', '),
       productItems: productItemsSummary,
@@ -2288,6 +2306,46 @@ app.post('/api/pos/checkout', async (req, res) => {
 
 
 const PORT = process.env.PORT || 3001;
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`❌ Port ${PORT} is already in use. Attempting to free it...`);
+    const { execSync } = require('child_process');
+    try {
+      if (process.platform === 'win32') {
+        // Find and kill the process holding the port on Windows
+        const result = execSync(`netstat -ano | findstr :${PORT}`, { encoding: 'utf8' });
+        const lines = result.trim().split('\n');
+        const pids = new Set();
+        lines.forEach(line => {
+          const parts = line.trim().split(/\s+/);
+          const pid = parts[parts.length - 1];
+          if (pid && pid !== '0' && /^\d+$/.test(pid)) pids.add(pid);
+        });
+        pids.forEach(pid => {
+          try {
+            execSync(`taskkill /PID ${pid} /F`, { encoding: 'utf8' });
+            console.log(`✅ Killed process with PID ${pid}`);
+          } catch (killErr) {
+            console.warn(`⚠️ Could not kill PID ${pid}:`, killErr.message);
+          }
+        });
+      } else {
+        execSync(`fuser -k ${PORT}/tcp`, { encoding: 'utf8' });
+      }
+    } catch (findErr) {
+      // findstr returns exit code 1 when no match — that's fine
+    }
+    // Retry after a short delay
+    setTimeout(() => {
+      console.log(`🔄 Retrying to bind on port ${PORT}...`);
+      server.listen(PORT, '0.0.0.0');
+    }, 1500);
+  } else {
+    throw err;
+  }
+});
+
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
