@@ -1329,6 +1329,7 @@ class OwnerPortalApp {
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; flex-wrap: wrap; gap: 14px;">
             <div>
               <h1 style="font-size: 34px; font-weight: 800; color: #1e293b; margin: 0; letter-spacing: -0.5px;">MANJULA MOBILE WORLD</h1>
+              <p style="color: #dc2626; font-size: 13px; font-weight: 700; margin-top: 3px; letter-spacing: 0.5px; text-transform: uppercase;">The Final Word of Mobile Solution</p>
               <p style="color: #64748b; font-size: 14px; margin-top: 5px;">Manjula Mobile World — Manage everything from one place</p>
             </div>
             <button data-page="admin-pos" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; border: none; padding: 13px 26px; font-size: 15px; font-weight: 700; border-radius: 10px; box-shadow: 0 6px 18px rgba(37,99,235,0.35); cursor: pointer; display: flex; align-items: center; gap: 8px;">
