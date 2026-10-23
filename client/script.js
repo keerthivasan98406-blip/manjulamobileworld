@@ -559,24 +559,14 @@ class ManjulaMobilesApp {
       app.innerHTML = `
         <div class="loading-screen">
           <div class="loading-container">
-            <!-- Mobile Phone Icon with Animation -->
-            <div class="mobile-icon-wrapper">
-              <div class="mobile-phone">
-                <div class="phone-screen">
-                  <div class="loading-bars">
-                    <div class="bar"></div>
-                    <div class="bar"></div>
-                    <div class="bar"></div>
-                    <div class="bar"></div>
-                  </div>
-                </div>
-                <div class="phone-button"></div>
-              </div>
-              <div class="signal-waves">
-                <div class="wave"></div>
-                <div class="wave"></div>
-                <div class="wave"></div>
-              </div>
+            <!-- Shop Logo with Glowing Animated Ring -->
+            <div class="loading-logo-wrapper">
+              <div class="loading-logo-glow"></div>
+              <div class="loading-logo-ring"></div>
+              <img src="./public/assets/images/logo.png" 
+                   onerror="this.src='/public/assets/images/logo.png'" 
+                   alt="Manjula Mobile World Logo" 
+                   class="loading-logo-img">
             </div>
             
             <!-- Digital Circuit Pattern -->
@@ -592,11 +582,18 @@ class ManjulaMobilesApp {
             <!-- Loading Text -->
             <div class="loading-text">
               <h2>Manjula Mobile World</h2>
-              <p class="loading-subtitle">Mobile Repair & Parts</p>
+              <p class="loading-subtitle">The Final Word of Mobile Solution • Ramapuram</p>
+              <div class="loading-badges-row">
+                <span class="loading-badge">📱 Software</span>
+                <span class="loading-badge">🔧 Hardware</span>
+                <span class="loading-badge">💡 Chip Level</span>
+                <span class="loading-badge">🛡️ Service</span>
+              </div>
               <div class="loading-progress">
                 <div class="progress-bar"></div>
               </div>
-                            <p class="loading-time">⏱️ Maximum wait: 7 seconds</p>
+              <p class="loading-status">⚡ Loading products &amp; services...</p>
+              <p class="loading-time">⏱️ Maximum wait: 7 seconds</p>
             </div>
           </div>
         </div>
@@ -748,6 +745,8 @@ class ManjulaMobilesApp {
       if (actionElement && actionElement.dataset.action === "toggle-service-submenu") {
         e.preventDefault()
         this.toggleServiceSubMenu()
+      } else if (!e.target.closest('.service-submenu')) {
+        this.closeServiceSubMenu()
       }
       
       // Mobile service submenu
@@ -936,12 +935,15 @@ class ManjulaMobilesApp {
   toggleServiceSubMenu() {
     this.serviceSubMenuOpen = !this.serviceSubMenuOpen
     const serviceSubMenu = document.querySelector(".service-submenu")
+    const caret = document.querySelector(".service-caret")
     
     if (serviceSubMenu) {
       if (this.serviceSubMenuOpen) {
         serviceSubMenu.classList.add("active")
+        if (caret) caret.style.transform = "rotate(180deg)"
       } else {
         serviceSubMenu.classList.remove("active")
+        if (caret) caret.style.transform = "rotate(0deg)"
       }
     }
   }
@@ -949,9 +951,13 @@ class ManjulaMobilesApp {
   closeServiceSubMenu() {
     this.serviceSubMenuOpen = false
     const serviceSubMenu = document.querySelector(".service-submenu")
+    const caret = document.querySelector(".service-caret")
     
     if (serviceSubMenu) {
       serviceSubMenu.classList.remove("active")
+    }
+    if (caret) {
+      caret.style.transform = "rotate(0deg)"
     }
   }
 
@@ -1619,6 +1625,8 @@ class ManjulaMobilesApp {
       html += this.renderHelpDesk()
     } else if (page === "payment") {
       html += this.renderPaymentPage()
+    } else if (page === "admin-login" || page === "owner-login") {
+      html += this.renderAdminLogin()
     }
 
     html += this.renderFooter()
@@ -1682,7 +1690,7 @@ class ManjulaMobilesApp {
         <div class="nav-content">
           <div class="nav-brand" style="cursor: pointer; display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; overflow: hidden;">
             <div class="nav-logo" style="flex-shrink: 0;">
-              <img src="https://i.pinimg.com/736x/e3/6f/79/e36f793e016dd6b35cd27f84030b7487.jpg" alt="Manjula Mobile World Logo" style="width: 50px; height: 50px; object-fit: contain; border-radius: 8px;" onerror="this.innerHTML='<div style=&quot;width:50px;height:50px;background:linear-gradient(135deg,#dc2626,#b91c1c);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px;&quot;>📱</div>'">
+              <img src="/public/assets/images/logo.png" alt="Manjula Mobile World Logo" style="width: 50px; height: 50px; object-fit: contain; border-radius: 50%;" onerror="this.style.display='none'">
             </div>
             <div class="nav-title" data-page="home" style="min-width: 0; overflow: hidden;">
               <div class="nav-shop-name" style="font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">MANJULA MOBILE WORLD</div>
@@ -1701,10 +1709,10 @@ class ManjulaMobilesApp {
               <a class="nav-link ${currentPage === 'products' ? 'active' : ''}" data-page="products">Products</a>
             </li>
             <li class="nav-item" style="position: relative;">
-              <a class="nav-link ${currentPage.startsWith('services-') ? 'active' : ''}" data-action="toggle-service-submenu">Services</a>
+              <a class="nav-link ${currentPage.startsWith('services-') ? 'active' : ''}" data-action="toggle-service-submenu">Services <span class="service-caret" style="font-size: 9px; display: inline-block; transition: transform 0.2s;">▾</span></a>
               <div class="service-submenu">
-                <a class="nav-link" data-page="services-hardware">Hardware Repair</a>
-                <a class="nav-link" data-page="services-software">Software Repair</a>
+                <a class="nav-link" data-page="services-hardware"><span style="margin-right: 6px;">🔧</span>Hardware Repair</a>
+                <a class="nav-link" data-page="services-software"><span style="margin-right: 6px;">💻</span>Software Repair</a>
               </div>
             </li>
             <li class="nav-item">
@@ -3665,24 +3673,34 @@ Thank you for choosing Manjula Mobile World!`);
 
   renderAdminLogin() {
     return `
-      <div style="min-height: 100vh; background-color: #e43838ff; padding-top: 96px; padding-bottom: 80px; display: flex; align-items: center; justify-content: center;">
-        <div class="container" style="max-width: 400px;">
-          <div style="background-color: rgba(0, 0, 0, 0.5); border: 1px solid #334155; border-radius: 12px; padding: 48px;">
-            <h1 style="font-size: 32px; font-weight: 700; margin-bottom: 8px; text-align: center;">Owner Portal</h1>
-            <p style="color: #94a3b8; text-align: center; margin-bottom: 32px;">Enter your credentials to access</p>
+      <div style="min-height: 100vh; background: radial-gradient(circle at 50% 20%, rgba(220, 38, 38, 0.15) 0%, #0f172a 70%); padding-top: 96px; padding-bottom: 80px; display: flex; align-items: center; justify-content: center;">
+        <div class="container" style="max-width: 420px;">
+          <div style="background-color: rgba(15, 23, 42, 0.9); backdrop-filter: blur(16px); border: 1px solid rgba(51, 65, 85, 0.8); border-radius: 20px; padding: 40px 32px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(220, 38, 38, 0.2);">
+            
+            <div style="text-align: center; margin-bottom: 28px;">
+              <div style="position: relative; width: 92px; height: 92px; margin: 0 auto 14px; border-radius: 50%; padding: 3px; background: linear-gradient(135deg, #f43f5e, #3b82f6, #06b6d4); box-shadow: 0 0 25px rgba(244, 63, 94, 0.35);">
+                <img src="./public/assets/images/logo.png" 
+                     onerror="this.src='/public/assets/images/logo.png'" 
+                     alt="Manjula Mobile World Logo" 
+                     style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%; background: #ffffff; display: block;">
+              </div>
+              <div style="font-size: 11px; font-weight: 800; letter-spacing: 2px; color: #f43f5e; text-transform: uppercase; margin-bottom: 4px;">MANJULA MOBILE WORLD</div>
+              <h1 style="font-size: 26px; font-weight: 800; margin-bottom: 6px; color: #ffffff; letter-spacing: -0.5px;">Owner Portal</h1>
+              <p style="color: #94a3b8; font-size: 13px; margin: 0;">Enter your credentials to access</p>
+            </div>
             
             <div class="form-field">
-              <label class="form-label">Phone Number</label>
+              <label class="form-label" style="font-size: 13px; font-weight: 600; color: #cbd5e1;">Phone Number</label>
               <input type="tel" class="input" placeholder="Enter your phone number" id="adminPhone">
             </div>
 
             <div class="form-field">
-              <label class="form-label">Password</label>
+              <label class="form-label" style="font-size: 13px; font-weight: 600; color: #cbd5e1;">Password</label>
               <input type="password" class="input" placeholder="Enter your password" id="adminPassword">
             </div>
 
-            <button class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 16px; margin-bottom: 12px;" data-action="admin-login">Login</button>
-            <button class="btn btn-secondary" style="width: 100%; padding: 12px; font-size: 16px;" data-page="home">Back to Home</button>
+            <button class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 16px; margin-bottom: 12px; font-weight: 700; border-radius: 8px; box-shadow: 0 4px 14px rgba(220, 38, 38, 0.4);" data-action="admin-login">Login</button>
+            <button class="btn btn-secondary" style="width: 100%; padding: 12px; font-size: 14px; font-weight: 600; border-radius: 8px;" data-page="home">Back to Home</button>
           </div>
         </div>
       </div>

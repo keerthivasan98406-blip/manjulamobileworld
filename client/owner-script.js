@@ -414,18 +414,13 @@ class OwnerPortalApp {
       app.innerHTML = `
         <div class="loading-screen">
           <div class="loading-container">
-            <div class="mobile-icon-wrapper">
-              <div class="mobile-phone">
-                <div class="phone-screen">
-                  <div class="loading-bars">
-                    <div class="bar"></div>
-                    <div class="bar"></div>
-                    <div class="bar"></div>
-                    <div class="bar"></div>
-                  </div>
-                </div>
-                <div class="phone-button"></div>
-              </div>
+            <div class="loading-logo-wrapper">
+              <div class="loading-logo-glow"></div>
+              <div class="loading-logo-ring"></div>
+              <img src="./public/assets/images/logo.png" 
+                   onerror="this.src='/public/assets/images/logo.png'" 
+                   alt="Manjula Mobile World Logo" 
+                   class="loading-logo-img">
             </div>
             
             <div class="loading-text">
@@ -476,18 +471,13 @@ class OwnerPortalApp {
       app.innerHTML = `
         <div class="loading-screen">
           <div class="loading-container">
-            <div class="mobile-icon-wrapper">
-              <div class="mobile-phone">
-                <div class="phone-screen">
-                  <div class="loading-bars">
-                    <div class="bar"></div>
-                    <div class="bar"></div>
-                    <div class="bar"></div>
-                    <div class="bar"></div>
-                  </div>
-                </div>
-                <div class="phone-button"></div>
-              </div>
+            <div class="loading-logo-wrapper">
+              <div class="loading-logo-glow"></div>
+              <div class="loading-logo-ring"></div>
+              <img src="./public/assets/images/logo.png" 
+                   onerror="this.src='/public/assets/images/logo.png'" 
+                   alt="Manjula Mobile World Logo" 
+                   class="loading-logo-img">
             </div>
             
             <div class="loading-text">
@@ -1202,12 +1192,14 @@ class OwnerPortalApp {
       <nav>
         <div class="nav-content">
           <div class="nav-brand" style="cursor: pointer; display: flex; align-items: center; gap: 8px; margin-right: 12px;">
-            <div class="nav-logo" style="width: 36px; height: 36px;">
-              <img src="https://i.pinimg.com/736x/e3/6f/79/e36f793e016dd6b35cd27f84030b7487.jpg" alt="Manjula Mobile World Logo" style="width: 36px; height: 36px; object-fit: contain; border-radius: 6px;">
+            <div class="nav-logo" style="width: 44px; height: 44px; flex-shrink:0;">
+              <img src="/public/assets/images/logo.png" alt="Manjula Mobile World Logo" 
+                style="width: 44px; height: 44px; object-fit: contain; border-radius: 50%;"
+                onerror="this.style.display='none'">
             </div>
             <div class="nav-title" data-page="admin">
-              <div style="font-size: 17px; font-weight: 900; white-space: nowrap; color: #be185d; font-family: 'Georgia', 'Times New Roman', serif; font-style: italic; line-height: 1.1;">MANJULA MOBILE WORLD</div>
-              <div style="font-size: 10px; font-weight: 700; color: #000; font-family: 'Georgia', 'Times New Roman', serif; font-style: italic; line-height: 1.2; text-align: center;">The Final Word of Mobile Solution</div>
+              <div style="font-size: 17px; font-weight: 900; white-space: nowrap; color: #fff; font-family: 'Georgia', 'Times New Roman', serif; font-style: italic; line-height: 1.1;">MANJULA MOBILE WORLD</div>
+              <div style="font-size: 10px; font-weight: 700; color: #e2e8f0; font-family: 'Georgia', 'Times New Roman', serif; font-style: italic; line-height: 1.2; text-align: center;">The Final Word of Mobile Solution</div>
             </div>
           </div>
           
@@ -1271,15 +1263,24 @@ class OwnerPortalApp {
 
   renderAdminLogin() {
     return `
-      <div style="min-height: 100vh; background-color: #020617; padding-top: 96px; display: flex; align-items: center; justify-content: center;">
-        <div style="background-color: rgba(30, 41, 59, 0.5); border: 1px solid #334155; border-radius: 12px; padding: 48px; max-width: 400px; width: 100%; margin: 0 16px;">
-          <div style="text-align: center; margin-bottom: 32px;">
-            <h1 style="font-size: 32px; font-weight: 700; margin-bottom: 8px;">Owner Portal</h1>
-            <p style="color: #94a3b8;">Enter your credentials to access the management panel</p>
+      <div style="min-height: 100vh; background: radial-gradient(circle at 50% 20%, rgba(244, 63, 94, 0.12) 0%, #020617 70%); padding-top: 80px; padding-bottom: 60px; display: flex; align-items: center; justify-content: center;">
+        <div style="background-color: rgba(15, 23, 42, 0.85); backdrop-filter: blur(16px); border: 1px solid rgba(51, 65, 85, 0.8); border-radius: 20px; padding: 40px 32px; max-width: 420px; width: 100%; margin: 0 16px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(244, 63, 94, 0.15);">
+          
+          <!-- Shop Logo Header -->
+          <div style="text-align: center; margin-bottom: 28px;">
+            <div style="position: relative; width: 92px; height: 92px; margin: 0 auto 14px; border-radius: 50%; padding: 3px; background: linear-gradient(135deg, #f43f5e, #3b82f6, #06b6d4); box-shadow: 0 0 25px rgba(244, 63, 94, 0.35);">
+              <img src="./public/assets/images/logo.png" 
+                   onerror="this.src='/public/assets/images/logo.png'" 
+                   alt="Manjula Mobile World Logo" 
+                   style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%; background: #ffffff; display: block;">
+            </div>
+            <div style="font-size: 11px; font-weight: 800; letter-spacing: 2px; color: #f43f5e; text-transform: uppercase; margin-bottom: 4px;">MANJULA MOBILE WORLD</div>
+            <h1 style="font-size: 26px; font-weight: 800; margin-bottom: 6px; color: #ffffff; letter-spacing: -0.5px;">Owner Portal</h1>
+            <p style="color: #94a3b8; font-size: 13px; margin: 0;">Enter your credentials to access the management panel</p>
           </div>
           
           <div class="form-field">
-            <label class="form-label">Phone Number</label>
+            <label class="form-label" style="font-size: 13px; font-weight: 600; color: #cbd5e1;">Phone Number</label>
             <input type="tel" class="input" placeholder="Enter phone number" id="adminPhone" 
               value="${this.loginPhoneSaved || ''}" 
               ${this.otpSent ? 'disabled style="background: rgba(255,255,255,0.05); color: #64748b;"' : ''}
@@ -1287,7 +1288,7 @@ class OwnerPortalApp {
           </div>
           
           <div class="form-field">
-            <label class="form-label">Password</label>
+            <label class="form-label" style="font-size: 13px; font-weight: 600; color: #cbd5e1;">Password</label>
             <input type="password" class="input" placeholder="Enter password" id="adminPassword" 
               value="${this.loginPasswordSaved || ''}" 
               ${this.otpSent ? 'disabled style="background: rgba(255,255,255,0.05); color: #64748b;"' : ''}
@@ -1296,23 +1297,23 @@ class OwnerPortalApp {
 
           ${this.otpSent ? `
             <div class="form-field">
-              <label class="form-label" style="color: #f43f5e; font-weight: 700;">Enter OTP (Sent to Email)</label>
+              <label class="form-label" style="color: #f43f5e; font-weight: 700; font-size: 13px;">Enter OTP (Sent to Email)</label>
               <input type="text" class="input" placeholder="Enter 6-digit OTP" id="adminOtp" maxlength="6" 
                 style="border-color: #f43f5e; text-align: center; font-size: 20px; letter-spacing: 6px; font-weight: 900; background: #fff; color: #000;"
                 onkeydown="if(event.key === 'Enter') app.handleAdminLogin()"
                 autofocus>
             </div>
             
-            <button class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 16px; background-color: #f43f5e; border-color: #f43f5e;" data-action="admin-login">Verify &amp; Login</button>
+            <button class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 16px; background-color: #f43f5e; border-color: #f43f5e; font-weight: 700; border-radius: 8px; box-shadow: 0 4px 14px rgba(244, 63, 94, 0.4);" data-action="admin-login">Verify &amp; Login</button>
             <div style="margin-top: 16px; text-align: center;">
               <a href="#" onclick="app.resetLoginFlow(event)" style="color: #94a3b8; text-decoration: none; font-size: 13px; font-weight: 600;">← Change Credentials</a>
             </div>
           ` : `
-            <button class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 16px;" data-action="admin-request-otp">Get OTP</button>
+            <button class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 16px; font-weight: 700; border-radius: 8px; box-shadow: 0 4px 14px rgba(220, 38, 38, 0.4);" data-action="admin-request-otp">Get OTP</button>
           `}
           
           <div style="margin-top: 24px; text-align: center;">
-            <a href="index.html" style="color: #94a3b8; text-decoration: none; font-size: 14px;">← Back to Main Site</a>
+            <a href="index.html" style="color: #94a3b8; text-decoration: none; font-size: 13px; font-weight: 500; transition: color 0.2s;" onmouseover="this.style.color='#f43f5e'" onmouseout="this.style.color='#94a3b8'">← Back to Main Site</a>
           </div>
         </div>
       </div>
@@ -6132,9 +6133,11 @@ class OwnerPortalApp {
       background: #fff;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
+      margin: 0 auto;
     }
     .receipt {
       width: 76mm;
+      margin: 0 auto;
       page-break-inside: avoid;
       break-inside: avoid;
       overflow: hidden;
@@ -6156,6 +6159,7 @@ class OwnerPortalApp {
       * { color: #000 !important; }
       button { display: none !important; }
       .receipt { page-break-after: avoid; break-after: avoid; }
+      img { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     }
   </style>
 </head>
@@ -6164,8 +6168,9 @@ class OwnerPortalApp {
 
   <!-- Shop Header -->
   <div class="center">
+    <img src="${window.location.origin}/public/assets/images/logo.png" alt="Manjula Mobile World" style="width:70px; height:70px; object-fit:contain; border-radius:50%; margin-bottom:4px; display:block; margin-left:auto; margin-right:auto;">
     <div class="xlarge bold">MANJULA MOBILE WORLD</div>
-    <div style="font-size:10px; margin-top:2px; font-weight:700;">The Final World of Mobile Solution</div>
+    <div style="font-size:10px; margin-top:2px; font-weight:700;">The Final Word of Mobile Solution</div>
     <div style="font-size:10px; font-weight:700;">Ramapuram, Tamil Nadu - 603201</div>
     <div style="font-size:10px; font-weight:700;">Ph: +91 82484 54841</div>
     <div style="font-size:10px; font-weight:700;">manjulamobiles125@gmail.com</div>
@@ -6217,7 +6222,21 @@ class OwnerPortalApp {
 
   <div class="divider-solid"></div>
 
-  <!-- Track Online -->
+  <!-- Terms & Conditions in Tamil -->
+  <div style="border:1.5px solid #000; border-radius:3px; padding:5px 6px; margin:4px 0; font-size:9px; line-height:1.7; font-weight:700; font-family: Arial, sans-serif; color:#000;">
+    <div style="text-align:center; font-size:10px; font-weight:900; margin-bottom:4px; letter-spacing:0.5px;">
+      ⚠ சேவை மற்றும் பயன்பாட்டு விதிமுறைகள் ⚠
+    </div>
+    <div style="margin-bottom:3px;"><span style="font-weight:900;">1.</span> சர்விஸ் கொடுக்கும் கைபேசியில் சிம் மற்றும் மெமரிகார்டு அகற்றிய பின்னரே சர்வீஸ் கொடுக்கவேண்டும். உங்களின் சிம் &amp; மெமரி கார்டுக்கு நிர்வாகம் எந்த வகையிலும் பொறுப்பாகாது.</div>
+    <div style="margin-bottom:3px;"><span style="font-weight:900;">2.</span> நீங்கள் கூறும் குறைகள் மட்டுமே சரிசெய்து தரப்படும். வேறு ஏதேனும் பழுது இருந்தால் கூடுதல் கட்டணம் வசூலிக்கப்படும்.</div>
+    <div style="margin-bottom:3px;"><span style="font-weight:900;">3.</span> சர்வீஸ் செய்து முடித்த கைபேசியை திரும்ப பெற்றுச்செல்லும்போது சரிபார்த்து பெற்றுக்கொள்ளவும். கடையிலிருந்து வெளியேறியபின் ஏற்படும் பழுதுகளுக்கு நிர்வாகம் பொறுப்பல்ல.</div>
+    <div style="margin-bottom:3px;"><span style="font-weight:900;">4.</span> சர்விஸ் கொடுத்த தேதியிலிருந்து 30 நாட்களுக்குள் திரும்ப பெற்றுக்கொள்ளவேண்டும், தவறினால் நிர்வாகம் பொறுப்பல்ல.</div>
+    <div><span style="font-weight:900;">5.</span> பழுது சரிபார்த்து திரும்ப கொடுக்கும் தேதி மற்றும் நேரம் தோராயமானது. புதிய பொருட்கள் கிடைப்பதற்கு ஏற்ப தேதி மற்றும் நேரம் மாறுபடும்.</div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Track Online + Footer — after Tamil terms -->
   <div class="center" style="font-size:10px; margin: 4px 0;">
     <div>Track your repair online:</div>
     <div class="bold">manjulamobilesworld.onrender.com</div>

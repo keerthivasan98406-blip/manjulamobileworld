@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
     
     <!-- Critical CSS loaded first -->
-    <link rel="stylesheet" href="styles.css?v=20260514">
+    <link rel="stylesheet" href="styles.css?v=20261023_logo">
     
     <!-- External scripts loaded asynchronously -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
@@ -35,11 +35,31 @@
         </div>
     </div>
 
-    <!-- Main app container -->
-    <div id="app" class="app-container"></div>
+    <!-- Main app container with instant branded owner portal view -->
+    <div id="app" class="app-container">
+      <div style="min-height: 100vh; background: radial-gradient(circle at 50% 20%, rgba(244, 63, 94, 0.12) 0%, #020617 70%); padding-top: 80px; padding-bottom: 60px; display: flex; align-items: center; justify-content: center;">
+        <div style="background-color: rgba(15, 23, 42, 0.85); backdrop-filter: blur(16px); border: 1px solid rgba(51, 65, 85, 0.8); border-radius: 20px; padding: 40px 32px; max-width: 420px; width: 100%; margin: 0 16px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(244, 63, 94, 0.15);">
+          <div style="text-align: center; margin-bottom: 28px;">
+            <div style="position: relative; width: 92px; height: 92px; margin: 0 auto 14px; border-radius: 50%; padding: 3px; background: linear-gradient(135deg, #f43f5e, #3b82f6, #06b6d4); box-shadow: 0 0 25px rgba(244, 63, 94, 0.35);">
+              <img src="./public/assets/images/logo.png" 
+                   onerror="this.src='/public/assets/images/logo.png'" 
+                   alt="Manjula Mobile World Logo" 
+                   style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%; background: #ffffff; display: block;">
+            </div>
+            <div style="font-size: 11px; font-weight: 800; letter-spacing: 2px; color: #f43f5e; text-transform: uppercase; margin-bottom: 4px;">MANJULA MOBILE WORLD</div>
+            <h1 style="font-size: 26px; font-weight: 800; margin-bottom: 6px; color: #ffffff; letter-spacing: -0.5px;">Owner Portal</h1>
+            <p style="color: #94a3b8; font-size: 13px; margin: 0;">Enter your credentials to access the management panel</p>
+          </div>
+          <div style="text-align: center; color: #64748b; font-size: 13px; padding: 20px 0;">
+            <div class="progress-bar" style="height: 3px; border-radius: 2px; margin-bottom: 12px;"></div>
+            Loading Owner Portal...
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- Owner Portal Script -->
-    <script src="owner-script.js?v=20260913_fix_v8"></script>
+    <script src="owner-script.js?v=20261023_logo"></script>
 </body>
 </html>
           

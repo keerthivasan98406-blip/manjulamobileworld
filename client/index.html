@@ -102,7 +102,7 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
     
     <!-- Critical CSS loaded first -->
-    <link rel="stylesheet" href="styles.css?v=20260515m">
+    <link rel="stylesheet" href="styles.css?v=20261023_logo">
     
     <!-- External scripts loaded asynchronously -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
@@ -121,11 +121,51 @@
         </div>
     </div>
 
-    <!-- Main app container -->
-    <div id="app" class="app-container"></div>
+    <!-- Main app container with instant loading screen -->
+    <div id="app" class="app-container">
+        <div class="loading-screen">
+          <div class="loading-container">
+            <!-- Shop Logo with Glowing Animated Ring -->
+            <div class="loading-logo-wrapper">
+              <div class="loading-logo-glow"></div>
+              <div class="loading-logo-ring"></div>
+              <img src="./public/assets/images/logo.png" 
+                   onerror="this.src='/public/assets/images/logo.png'" 
+                   alt="Manjula Mobile World Logo" 
+                   class="loading-logo-img">
+            </div>
+            
+            <!-- Digital Circuit Pattern -->
+            <div class="circuit-pattern">
+              <div class="circuit-line line-1"></div>
+              <div class="circuit-line line-2"></div>
+              <div class="circuit-line line-3"></div>
+              <div class="circuit-dot dot-1"></div>
+              <div class="circuit-dot dot-2"></div>
+              <div class="circuit-dot dot-3"></div>
+            </div>
+            
+            <!-- Loading Text -->
+            <div class="loading-text">
+              <h2>Manjula Mobile World</h2>
+              <p class="loading-subtitle">The Final Word of Mobile Solution • Ramapuram</p>
+              <div class="loading-badges-row">
+                <span class="loading-badge">📱 Software</span>
+                <span class="loading-badge">🔧 Hardware</span>
+                <span class="loading-badge">💡 Chip Level</span>
+                <span class="loading-badge">🛡️ Service</span>
+              </div>
+              <div class="loading-progress">
+                <div class="progress-bar"></div>
+              </div>
+              <p class="loading-status">⚡ Loading products &amp; services...</p>
+              <p class="loading-time">⏱️ Maximum wait: 7 seconds</p>
+            </div>
+          </div>
+        </div>
+    </div>
 
     <!-- Script linked at end of body -->
-    <script src="script.js?v=20260913_fix_v8"></script>
-    <
+    <script src="script.js?v=20261023_logo"></script>
 </body>
 </html>
