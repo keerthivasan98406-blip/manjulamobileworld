@@ -11,23 +11,24 @@ class OwnerPortalApp {
     this.adminSearch = ""
     this.trackingFilter = "all"
     this.trackingSearch = ""
-    
+    this.mobileMenuOpen = false
+
     // Log admin login state on app start
     if (this.isAdminLoggedIn) {
       console.log('✅ Admin login state restored from localStorage')
       this.currentPage = "admin"
     }
-    
+
     // MongoDB API URL - Auto-detect local vs production
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     const isRender = window.location.hostname.includes('onrender.com');
-    const baseURL = isLocalhost 
-      ? 'http://localhost:3001' 
-      : isRender 
-        ? window.location.origin 
+    const baseURL = isLocalhost
+      ? 'http://localhost:3001'
+      : isRender
+        ? window.location.origin
         : 'https://manjulamobilesworld.onrender.com';
     this.API_URL = `${baseURL}/api`
-    
+
     // Socket.IO connection for real-time updates with reconnection
     if (typeof io !== 'undefined') {
       this.socket = io(baseURL, {
@@ -42,7 +43,7 @@ class OwnerPortalApp {
       console.warn('⚠️ Socket.IO not loaded, real-time updates disabled');
       this.socket = null;
     }
-    
+
     this.products = [];
     this.trackingData = [];
     this.orders = [];
@@ -63,7 +64,7 @@ class OwnerPortalApp {
     this._fullProductHighlight = null;
     this._fullProductNotFound = null;
     this.shopProducts = [];
-    
+
     // Distributor System State
     this.distributors = [];
     this.distributorSearch = "";
@@ -93,7 +94,7 @@ class OwnerPortalApp {
     this.displayDistributorSearch = "";
     this.displayDistributorFilterMonth = "all";
     this.displayDistributorFilterYear = "all";
-    
+
     // POS System State & Edit Bill State
     this.editingBillNumber = null;
     this.posCart = [];
@@ -104,7 +105,7 @@ class OwnerPortalApp {
     this.posCustomerName = "";
     this.posCustomerPhone = "";
     this.posReceipt = null;
-    
+
     this.init()
   }
 
@@ -114,7 +115,7 @@ class OwnerPortalApp {
       console.warn('⚠️ No socket connection, skipping listeners');
       return;
     }
-    
+
     this.socket.on('connect', () => {
       console.log('✅ Connected to server for real-time updates');
       console.log('Socket ID:', this.socket.id);
@@ -138,8 +139,8 @@ class OwnerPortalApp {
 
     this.socket.on('product-added', (product) => {
       console.log('📦 [OWNER PORTAL] New product added via socket:', product);
-      const exists = this.products.find(p => 
-        String(p.id) === String(product.id) || 
+      const exists = this.products.find(p =>
+        String(p.id) === String(product.id) ||
         String(p._id) === String(product._id) ||
         String(p.id) === String(product._id) ||
         String(p._id) === String(product.id)
@@ -164,7 +165,7 @@ class OwnerPortalApp {
         if (this.currentPage === 'admin' || this.currentPage === 'admin-products') {
           this.renderPage(this.currentPage);
         }
-      } 
+      }
     });
 
     this.socket.on('product-deleted', (data) => {
@@ -291,13 +292,13 @@ class OwnerPortalApp {
   async init() {
     try {
       console.log('🚀 Initializing Manjula Mobile World App...');
-      
+
       // Setup event listeners first
       this.setupEventListeners();
-      
+
       // Render login page immediately (don't wait for server)
       await this.renderPage(this.currentPage);
-      
+
       // Load data in background without blocking UI
       this.loadDataInBackground();
 
@@ -321,7 +322,7 @@ class OwnerPortalApp {
         };
         setTimeout(() => tryLookup(), 800);
       }
-      
+
     } catch (error) {
       console.error('❌ Error during initialization:', error);
       this.showErrorMessage('Failed to load application. Please refresh the page.');
@@ -331,7 +332,7 @@ class OwnerPortalApp {
   async loadDataInBackground() {
     try {
       console.log('📡 Loading data in background...');
-      
+
       // Try to load data, but don't block the UI
       await Promise.all([
         this.loadProductsFromStorage().catch(err => {
@@ -379,9 +380,9 @@ class OwnerPortalApp {
           this.shopProducts = [];
         })
       ]);
-      
+
       console.log('✅ Background data load complete');
-      
+
       // Refresh the page if user is logged in to show loaded data
       if (this.isAdminLoggedIn && this.currentPage !== 'admin-login') {
         await this.renderPage(this.currentPage);
@@ -393,11 +394,11 @@ class OwnerPortalApp {
 
   async checkServerStatus() {
     try {
-      const response = await fetch(`${this.API_URL}/health`, { 
+      const response = await fetch(`${this.API_URL}/health`, {
         method: 'GET',
-        timeout: 5000 
+        timeout: 5000
       });
-      
+
       if (response.ok) {
         const health = await response.json();
         console.log('✅ Server is awake:', health.uptime, 'seconds uptime');
@@ -441,7 +442,7 @@ class OwnerPortalApp {
   async loadDataWithRetry() {
     const maxRetries = 3;
     let retryCount = 0;
-    
+
     while (retryCount < maxRetries) {
       try {
         await Promise.all([
@@ -453,7 +454,7 @@ class OwnerPortalApp {
       } catch (error) {
         retryCount++;
         console.log(`⚠️ Load attempt ${retryCount} failed:`, error.message);
-        
+
         if (retryCount < maxRetries) {
           console.log(`🔄 Retrying in ${retryCount * 2} seconds...`);
           await new Promise(resolve => setTimeout(resolve, retryCount * 2000));
@@ -496,12 +497,12 @@ class OwnerPortalApp {
 
   setupEventListeners() {
     const app = document.getElementById("app")
-    
+
     if (!app) {
       console.error('❌ App container not found!');
       return;
     }
-    
+
     // Event delegation for all click events
     app.addEventListener("click", async (e) => {
       // Navigation and page routing
@@ -509,18 +510,27 @@ class OwnerPortalApp {
       if (pageElement && pageElement.dataset.page) {
         e.preventDefault()
         console.log('📄 Navigating to page:', pageElement.dataset.page);
+        this.closeMobileMenu();
         await this.renderPage(pageElement.dataset.page)
       }
-      
+
       // Filter buttons
       const filterElement = e.target.closest('[data-filter]');
       if (filterElement && filterElement.dataset.filter) {
         e.preventDefault();
         this.filterTracking(filterElement.dataset.filter);
       }
-      
+
       // Admin actions
       const actionElement = e.target.closest('[data-action]');
+      if (actionElement && actionElement.dataset.action === "toggle-mobile-menu") {
+        e.preventDefault();
+        this.toggleMobileMenu();
+      }
+      if (actionElement && actionElement.dataset.action === "close-mobile-menu") {
+        e.preventDefault();
+        this.closeMobileMenu();
+      }
       if (actionElement && actionElement.dataset.action === "admin-login") {
         this.handleAdminLogin()
       }
@@ -528,6 +538,7 @@ class OwnerPortalApp {
         this.requestAdminOtp()
       }
       if (actionElement && actionElement.dataset.action === "admin-logout") {
+        this.closeMobileMenu();
         this.handleAdminLogout()
       }
       if (actionElement && actionElement.dataset.action === "add-product-form") {
@@ -547,7 +558,7 @@ class OwnerPortalApp {
       if (actionElement && actionElement.dataset.action === "save-product") {
         this.saveProduct()
       }
-      
+
       // Tracking actions
       if (actionElement && actionElement.dataset.action === "save-new-tracking") {
         this.saveNewTracking()
@@ -715,9 +726,9 @@ class OwnerPortalApp {
     app.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') {
         // Prevent Enter from navigating away on any search input
-        if (e.target.id === 'adminSearch' || 
-            e.target.id === 'trackingSearchInput' ||
-            e.target.classList.contains('input')) {
+        if (e.target.id === 'adminSearch' ||
+          e.target.id === 'trackingSearchInput' ||
+          e.target.classList.contains('input')) {
           e.preventDefault();
         }
         // USB barcode scanner: when Enter fired on a purchase row barcode field, auto-lookup
@@ -780,10 +791,55 @@ class OwnerPortalApp {
         }
       }
     });
+
+    // Close mobile menu on Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && this.mobileMenuOpen) {
+        this.closeMobileMenu();
+      }
+    });
+
+    // Close mobile menu when clicking outside
+    document.addEventListener('click', (e) => {
+      if (this.mobileMenuOpen) {
+        const mobileMenu = document.querySelector('.mobile-nav-menu');
+        const toggleBtn = document.querySelector('.mobile-menu-toggle');
+        if (mobileMenu && !mobileMenu.contains(e.target) && (!toggleBtn || !toggleBtn.contains(e.target))) {
+          this.closeMobileMenu();
+        }
+      }
+    });
+  }
+
+  toggleMobileMenu() {
+    this.mobileMenuOpen = !this.mobileMenuOpen;
+    const mobileMenu = document.querySelector('.mobile-nav-menu');
+    const menuToggle = document.querySelector('.mobile-menu-toggle');
+    if (mobileMenu) {
+      if (this.mobileMenuOpen) {
+        mobileMenu.classList.add('active');
+        if (menuToggle) menuToggle.classList.add('active');
+      } else {
+        mobileMenu.classList.remove('active');
+        if (menuToggle) menuToggle.classList.remove('active');
+      }
+    }
+  }
+
+  closeMobileMenu() {
+    this.mobileMenuOpen = false;
+    const mobileMenu = document.querySelector('.mobile-nav-menu');
+    const menuToggle = document.querySelector('.mobile-menu-toggle');
+    if (mobileMenu) {
+      mobileMenu.classList.remove('active');
+    }
+    if (menuToggle) {
+      menuToggle.classList.remove('active');
+    }
   }
 
   async requestAdminOtp() {
-    const phone    = document.getElementById("adminPhone")?.value || ""
+    const phone = document.getElementById("adminPhone")?.value || ""
     const password = document.getElementById("adminPassword")?.value || ""
 
     if (!phone || !password) {
@@ -828,9 +884,9 @@ class OwnerPortalApp {
   }
 
   async handleAdminLogin() {
-    const phone    = this.loginPhoneSaved || document.getElementById("adminPhone")?.value || ""
+    const phone = this.loginPhoneSaved || document.getElementById("adminPhone")?.value || ""
     const password = this.loginPasswordSaved || document.getElementById("adminPassword")?.value || ""
-    const otp      = document.getElementById("adminOtp")?.value || ""
+    const otp = document.getElementById("adminOtp")?.value || ""
 
     if (!otp) {
       alert("Please enter the 6-digit OTP code.");
@@ -874,7 +930,7 @@ class OwnerPortalApp {
   async loadProductsFromStorage() {
     try {
       console.log('📡 [OWNER PORTAL] Loading products from database...');
-      
+
       const response = await fetch(`${this.API_URL}/products`);
       if (response.ok) {
         this.products = await response.json();
@@ -1107,6 +1163,7 @@ class OwnerPortalApp {
 
     const app = document.getElementById("app")
     this.currentPage = page
+    this.mobileMenuOpen = false
 
     if (page.startsWith("admin") && !this.isAdminLoggedIn) {
       page = "admin-login"
@@ -1181,7 +1238,7 @@ class OwnerPortalApp {
         if (activeStart !== null && activeEnd !== null && typeof restored.setSelectionRange === 'function') {
           try {
             restored.setSelectionRange(activeStart, activeEnd);
-          } catch (e) {}
+          } catch (e) { }
         }
       }
     }
@@ -1191,15 +1248,15 @@ class OwnerPortalApp {
     return `
       <nav>
         <div class="nav-content">
-          <div class="nav-brand" style="cursor: pointer; display: flex; align-items: center; gap: 8px; margin-right: 12px;">
-            <div class="nav-logo" style="width: 44px; height: 44px; flex-shrink:0;">
+          <div class="nav-brand" style="cursor: pointer; display: flex; align-items: center; gap: 8px; margin-right: 12px;" data-page="admin">
+            <div class="nav-logo" style="width: 40px; height: 40px; flex-shrink: 0; border-radius: 50% !important; overflow: hidden; background: #ffffff; border: 2px solid #dc2626; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(220, 38, 38, 0.2);">
               <img src="/public/assets/images/logo.png" alt="Manjula Mobile World Logo" 
-                style="width: 44px; height: 44px; object-fit: contain; border-radius: 50%;"
-                onerror="this.style.display='none'">
+                style="width: 100%; height: 100%; object-fit: cover; border-radius: 50% !important; display: block;"
+                onerror="this.src='./public/assets/images/logo.png'">
             </div>
             <div class="nav-title" data-page="admin">
-              <div style="font-size: 17px; font-weight: 900; white-space: nowrap; color: #fff; font-family: 'Georgia', 'Times New Roman', serif; font-style: italic; line-height: 1.1;">MANJULA MOBILE WORLD</div>
-              <div style="font-size: 10px; font-weight: 700; color: #e2e8f0; font-family: 'Georgia', 'Times New Roman', serif; font-style: italic; line-height: 1.2; text-align: center;">The Final Word of Mobile Solution</div>
+              <div style="font-size: 16px; font-weight: 900; white-space: nowrap; color: #dc2626; font-family: 'Georgia', 'Times New Roman', serif; font-style: italic; line-height: 1.1;">MANJULA MOBILE WORLD</div>
+              <div style="font-size: 9.5px; font-weight: 800; color: #000000 !important; font-family: 'Georgia', 'Times New Roman', serif; font-style: italic; line-height: 1.2; text-align: left;">The Final Word of Mobile Solution</div>
             </div>
           </div>
           
@@ -1256,8 +1313,50 @@ class OwnerPortalApp {
               </li>
             `}
           </ul>
+
+          ${this.isAdminLoggedIn ? `
+            <button class="mobile-menu-toggle" data-action="toggle-mobile-menu" aria-label="Toggle navigation menu">
+              <span>Menu</span> ☰
+            </button>
+          ` : `
+            <a href="index.html" class="mobile-menu-toggle" style="text-decoration: none; padding: 6px 12px; font-size: 12px;">← Site</a>
+          `}
         </div>
       </nav>
+
+      ${this.isAdminLoggedIn ? `
+        <div class="mobile-nav-menu">
+          <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 6px 10px 14px 10px; border-bottom: 2px solid #fee2e2; margin-bottom: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="width: 32px; height: 32px; border-radius: 50% !important; overflow: hidden; border: 2px solid #dc2626; background: #fff; display: flex; align-items: center; justify-content: center;">
+                <img src="/public/assets/images/logo.png" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50% !important;" onerror="this.src='./public/assets/images/logo.png'">
+              </div>
+              <div>
+                <div style="font-weight: 900; font-size: 13px; color: #dc2626; font-family: 'Georgia', serif; font-style: italic; line-height: 1.1;">MANJULA MOBILE WORLD</div>
+                <div style="font-size: 8.5px; font-weight: 800; color: #000000 !important; font-family: 'Georgia', serif; font-style: italic; line-height: 1.1;">The Final Word of Mobile Solution</div>
+              </div>
+            </div>
+            <button data-action="close-mobile-menu" aria-label="Close menu" style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #475569; cursor: pointer; line-height: 1;">✕</button>
+          </div>
+          <ul class="mobile-nav-pills" style="width: 100%; gap: 6px; padding: 0 4px 60px 4px; overflow-y: auto; max-height: calc(100vh - 120px); list-style: none;">
+            <li class="nav-item"><a class="nav-link ${this.currentPage === 'admin' ? 'active' : ''}" data-page="admin" style="padding: 11px 14px; font-size: 14px; font-weight: 700; text-align: left; justify-content: flex-start; display: flex; align-items: center; gap: 10px; border-radius: 10px;">📊 Dashboard</a></li>
+            <li class="nav-item"><a class="nav-link ${this.currentPage === 'admin-pos' ? 'active' : ''}" data-page="admin-pos" style="padding: 11px 14px; font-size: 14px; font-weight: 700; text-align: left; justify-content: flex-start; display: flex; align-items: center; gap: 10px; border-radius: 10px;">🛒 POS Billing</a></li>
+            <li class="nav-item"><a class="nav-link ${this.currentPage === 'admin-products' ? 'active' : ''}" data-page="admin-products" style="padding: 11px 14px; font-size: 14px; font-weight: 700; text-align: left; justify-content: flex-start; display: flex; align-items: center; gap: 10px; border-radius: 10px;">📦 Products</a></li>
+            <li class="nav-item"><a class="nav-link ${this.currentPage === 'admin-tracking' ? 'active' : ''}" data-page="admin-tracking" style="padding: 11px 14px; font-size: 14px; font-weight: 700; text-align: left; justify-content: flex-start; display: flex; align-items: center; gap: 10px; border-radius: 10px;">🔧 Tracking</a></li>
+            <li class="nav-item"><a class="nav-link ${this.currentPage === 'admin-orders' ? 'active' : ''}" data-page="admin-orders" style="padding: 11px 14px; font-size: 14px; font-weight: 700; text-align: left; justify-content: flex-start; display: flex; align-items: center; gap: 10px; border-radius: 10px;">📋 Orders</a></li>
+            <li class="nav-item"><a class="nav-link ${this.currentPage === 'admin-sales' || this.currentPage === 'admin-sales-monthly' ? 'active' : ''}" data-page="admin-sales" style="padding: 11px 14px; font-size: 14px; font-weight: 700; text-align: left; justify-content: flex-start; display: flex; align-items: center; gap: 10px; border-radius: 10px;">🛍️ Sales Records</a></li>
+            <li class="nav-item"><a class="nav-link ${this.currentPage === 'admin-display-stock' ? 'active' : ''}" data-page="admin-display-stock" style="padding: 11px 14px; font-size: 14px; font-weight: 700; text-align: left; justify-content: flex-start; display: flex; align-items: center; gap: 10px; border-radius: 10px;">📱 Display Stock</a></li>
+            <li class="nav-item"><a class="nav-link ${this.currentPage === 'admin-spare-parts' ? 'active' : ''}" data-page="admin-spare-parts" style="padding: 11px 14px; font-size: 14px; font-weight: 700; text-align: left; justify-content: flex-start; display: flex; align-items: center; gap: 10px; border-radius: 10px;">🔩 Spare Parts</a></li>
+            <li class="nav-item"><a class="nav-link ${this.currentPage === 'admin-distributors' || this.currentPage === 'admin-distributor-profile' || this.currentPage === 'admin-add-distributor-purchase' || this.currentPage === 'admin-edit-distributor-purchase' ? 'active' : ''}" data-page="admin-distributors" style="padding: 11px 14px; font-size: 14px; font-weight: 700; text-align: left; justify-content: flex-start; display: flex; align-items: center; gap: 10px; border-radius: 10px;">🏢 Distributors</a></li>
+            <li class="nav-item"><a class="nav-link ${this.currentPage === 'admin-distributor-products' ? 'active' : ''}" data-page="admin-distributor-products" style="padding: 11px 14px; font-size: 14px; font-weight: 700; text-align: left; justify-content: flex-start; display: flex; align-items: center; gap: 10px; border-radius: 10px;">🏷️ Dist. Items</a></li>
+            <li class="nav-item"><a class="nav-link ${this.currentPage === 'admin-owner-products' ? 'active' : ''}" data-page="admin-owner-products" style="padding: 11px 14px; font-size: 14px; font-weight: 700; text-align: left; justify-content: flex-start; display: flex; align-items: center; gap: 10px; border-radius: 10px;">📋 Owner Products</a></li>
+            <li class="nav-item"><a class="nav-link ${this.currentPage === 'admin-full-products' ? 'active' : ''}" data-page="admin-full-products" style="padding: 11px 14px; font-size: 14px; font-weight: 700; text-align: left; justify-content: flex-start; display: flex; align-items: center; gap: 10px; border-radius: 10px;">📑 All Products</a></li>
+            <li class="nav-item"><a class="nav-link ${this.currentPage === 'admin-purchase-bills' || this.currentPage === 'admin-view-bill' ? 'active' : ''}" data-page="admin-purchase-bills" style="padding: 11px 14px; font-size: 14px; font-weight: 700; text-align: left; justify-content: flex-start; display: flex; align-items: center; gap: 10px; border-radius: 10px;">🧾 Purchase Bills</a></li>
+            <li class="nav-item"><a class="nav-link" href="index.html" style="padding: 11px 14px; font-size: 14px; font-weight: 700; text-align: left; justify-content: flex-start; display: flex; align-items: center; gap: 10px; border-radius: 10px; background-color: #f1f5f9; color: #0f172a; border: 1px solid #cbd5e1;">🌐 View Main Site</a></li>
+            <li class="nav-item"><a class="nav-link admin-pill" data-action="admin-logout" style="padding: 11px 14px; font-size: 14px; font-weight: 700; text-align: left; justify-content: flex-start; display: flex; align-items: center; gap: 10px; border-radius: 10px; background: linear-gradient(135deg, #ef4444, #b91c1c); color: white; border-color: #dc2626;">🚪 Logout</a></li>
+          </ul>
+        </div>
+      ` : ''}
     `
   }
 
@@ -1319,7 +1418,7 @@ class OwnerPortalApp {
       </div>
     `
   }
- 
+
   renderAdmin() {
     const totalPurchaseItems = (this.purchaseBills || []).reduce((s, b) => s + (b.totalQuantity || 0), 0);
     return `
@@ -1499,11 +1598,10 @@ class OwnerPortalApp {
           </div>
 
           <div class="admin-products-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">
-            ${
-              filteredProducts.length > 0
-                ? filteredProducts.map((product) => this.renderAdminProductCard(product)).join("")
-                : '<div style="grid-column: 1/-1; text-align: center; padding: 48px; color: #94a3b8;">No products found</div>'
-            }
+            ${filteredProducts.length > 0
+        ? filteredProducts.map((product) => this.renderAdminProductCard(product)).join("")
+        : '<div style="grid-column: 1/-1; text-align: center; padding: 48px; color: #94a3b8;">No products found</div>'
+      }
           </div>
         </div>
       </div>
@@ -1517,16 +1615,16 @@ class OwnerPortalApp {
     const stockAlert = stock === 0
       ? `<span style="background:rgba(239,68,68,0.2);color:#ef4444;font-size:10px;padding:2px 7px;border-radius:4px;font-weight:700;">⚠️ Out of Stock</span>`
       : stock <= 3
-      ? `<span style="background:rgba(245,158,11,0.2);color:#f59e0b;font-size:10px;padding:2px 7px;border-radius:4px;font-weight:700;">⚠️ Low Stock (${stock})</span>`
-      : `<span style="background:rgba(16,185,129,0.15);color:#10b981;font-size:10px;padding:2px 7px;border-radius:4px;font-weight:700;">📦 Stock: ${stock}</span>`;
-    
+        ? `<span style="background:rgba(245,158,11,0.2);color:#f59e0b;font-size:10px;padding:2px 7px;border-radius:4px;font-weight:700;">⚠️ Low Stock (${stock})</span>`
+        : `<span style="background:rgba(16,185,129,0.15);color:#10b981;font-size:10px;padding:2px 7px;border-radius:4px;font-weight:700;">📦 Stock: ${stock}</span>`;
+
     return `
       <div class="admin-product-card" style="background-color: rgba(30, 41, 59, 0.5); border: 1px solid ${stock === 0 ? '#ef4444' : stock <= 3 ? '#f59e0b' : '#334155'}; border-radius: 8px; padding: 16px; margin-bottom: 16px; max-width: 300px;">
         <div class="admin-product-image" style="width: 100%; height: 120px; margin-bottom: 12px; display: flex; align-items: center; justify-content: center; background: rgba(51, 65, 85, 0.3); border-radius: 6px;">
-          ${product.imageUrl ? 
-            `<img src="${product.imageUrl}" alt="${product.name}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px;">` :
-            `<span style="font-size: 32px;">${product.image || '📦'}</span>`
-          }
+          ${product.imageUrl ?
+        `<img src="${product.imageUrl}" alt="${product.name}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px;">` :
+        `<span style="font-size: 32px;">${product.image || '📦'}</span>`
+      }
         </div>
         <div class="admin-product-info">
           <h3 style="margin-bottom: 6px; font-size: 14px; font-weight: 600; color: #f8fafc;">${product.name}</h3>
@@ -1693,7 +1791,7 @@ class OwnerPortalApp {
     const paymentsByDate = {};
     this.trackingData.forEach(t => {
       const isOldRecord = t.advanceAmount === undefined && t.paidAmount === undefined;
-      
+
       if (isOldRecord) {
         const date = t.createdAt || 'Unknown';
         if (!paymentsByDate[date]) paymentsByDate[date] = [];
@@ -1719,7 +1817,7 @@ class OwnerPortalApp {
             balance: Number(t.balanceAmount) || 0
           });
         }
-        
+
         const paid = Number(t.paidAmount) || 0;
         if (paid > 0) {
           const date = t.balancePaidDate || t.createdAt || 'Unknown';
@@ -1757,10 +1855,10 @@ class OwnerPortalApp {
           ${sortedKeys.length === 0 ? `
             <div style="text-align:center; padding:60px; color:#fff; font-size:16px;">No tracking payments found</div>
           ` : sortedKeys.map(dateKey => {
-            const payments = paymentsByDate[dateKey];
-            const totalReceived = payments.reduce((sum, p) => sum + p.amount, 0);
-            
-            return `
+      const payments = paymentsByDate[dateKey];
+      const totalReceived = payments.reduce((sum, p) => sum + p.amount, 0);
+
+      return `
               <div style="background:rgba(255,255,255,0.95); border-radius:12px; margin-bottom:20px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
                 <div style="background:linear-gradient(135deg,#065f46,#047857); padding:14px 20px; display:flex; justify-content:space-between; align-items:center;">
                   <div style="color:#fff; font-weight:700; font-size:16px;">📅 ${dateKey}</div>
@@ -1781,8 +1879,8 @@ class OwnerPortalApp {
                   </thead>
                   <tbody>
                     ${payments.map((p, i) => {
-                      const displayBal = p.balance > 0 ? p.balance : 0;
-                      return `
+        const displayBal = p.balance > 0 ? p.balance : 0;
+        return `
                       <tr style="border-top:1px solid #e5e7eb; background:${i % 2 === 0 ? '#fff' : '#f9fafb'};">
                         <td style="padding:10px 14px; color:#1d4ed8; font-weight:700;">${p.qrId}</td>
                         <td style="padding:10px 14px; color:#111827; font-size:12px;">
@@ -1800,8 +1898,8 @@ class OwnerPortalApp {
                         </td>
                         <td style="padding:10px 14px; text-align:right; font-weight:700;">
                           ${p.type === 'Full Payment' ? '<span style="color:#10b981;">✓ Paid</span>' : (displayBal > 0
-                            ? `<span style="color:#dc2626; font-weight:800;">₹${displayBal.toLocaleString('en-IN')}</span>`
-                            : `<span style="color:#10b981;">✓ Cleared</span>`)}
+            ? `<span style="color:#dc2626; font-weight:800;">₹${displayBal.toLocaleString('en-IN')}</span>`
+            : `<span style="color:#10b981;">✓ Cleared</span>`)}
                         </td>
                       </tr>
                     `}).join('')}
@@ -1818,7 +1916,7 @@ class OwnerPortalApp {
                 </table>
               </div>
             `;
-          }).join('')}
+    }).join('')}
         </div>
       </div>
     `;
@@ -1827,7 +1925,7 @@ class OwnerPortalApp {
   renderTrackingMonthlyIncome() {
     // Group payments by month (YYYY-MM)
     const groups = {};
-    
+
     this.trackingData.forEach(t => {
       const isOldRecord = t.advanceAmount === undefined && t.paidAmount === undefined;
 
@@ -1862,7 +1960,7 @@ class OwnerPortalApp {
             type: 'Advance'
           });
         }
-        
+
         // Balance
         const paid = Number(t.paidAmount) || 0;
         if (paid > 0) {
@@ -1904,9 +2002,9 @@ class OwnerPortalApp {
           ${sortedKeys.length === 0 ? `
             <div style="text-align:center; padding:60px; color:#fff; font-size:16px;">No tracking records found</div>
           ` : sortedKeys.map(monthKey => {
-            const recs = groups[monthKey];
-            const total = recs.reduce((s, t) => s + t.amount, 0);
-            return `
+      const recs = groups[monthKey];
+      const total = recs.reduce((s, t) => s + t.amount, 0);
+      return `
               <div style="background:rgba(255,255,255,0.95); border-radius:12px; margin-bottom:20px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
                 <div style="background:linear-gradient(135deg,#1e3a8a,#1d4ed8); padding:14px 20px; display:flex; justify-content:space-between; align-items:center;">
                   <div style="color:#fff; font-weight:700; font-size:16px;">📆 ${monthLabel(monthKey)}</div>
@@ -1935,7 +2033,7 @@ class OwnerPortalApp {
                         <td style="padding:10px 14px; color:#374151;">${p.productName}</td>
                         <td style="padding:10px 14px;">
                           <span style="background:#dbeafe; color:#1e40af; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600;">${p.status}</span>
-                          ${p.type ? `<span style="background:${p.type==='Advance'?'#fef3c7':'#d1fae5'}; color:${p.type==='Advance'?'#b45309':'#047857'}; padding:2px 6px; border-radius:4px; font-size:9px; font-weight:700; margin-left:4px;">${p.type}</span>` : ''}
+                          ${p.type ? `<span style="background:${p.type === 'Advance' ? '#fef3c7' : '#d1fae5'}; color:${p.type === 'Advance' ? '#b45309' : '#047857'}; padding:2px 6px; border-radius:4px; font-size:9px; font-weight:700; margin-left:4px;">${p.type}</span>` : ''}
                         </td>
                         <td style="padding:10px 14px; text-align:right; color:#1d4ed8; font-weight:700;">₹${(p.amount).toLocaleString('en-IN')}</td>
                       </tr>
@@ -1948,7 +2046,7 @@ class OwnerPortalApp {
                 </table>
               </div>
             `;
-          }).join('')}
+    }).join('')}
         </div>
       </div>
     `;
@@ -2072,8 +2170,8 @@ class OwnerPortalApp {
           </div>
           <div id="sparePartsUsedList">
             ${(this.newTrackingSpares || []).length === 0
-              ? `<div style="color:#64748b; font-size:12px; text-align:center; padding:8px 0;">No items added yet. Scan a barcode above.</div>`
-              : (this.newTrackingSpares || []).map((sp, i) => `
+        ? `<div style="color:#64748b; font-size:12px; text-align:center; padding:8px 0;">No items added yet. Scan a barcode above.</div>`
+        : (this.newTrackingSpares || []).map((sp, i) => `
                 <div style="display:flex; align-items:center; justify-content:space-between; background:#1e293b; border-radius:6px; padding:8px 12px; margin-bottom:6px;">
                   <div>
                     <span style="color:#f8fafc; font-weight:700; font-size:13px;">${this.escapeHtml(sp.partName)}</span>
@@ -2084,7 +2182,7 @@ class OwnerPortalApp {
                     style="background:transparent; border:none; color:#ef4444; font-size:16px; cursor:pointer; padding:0 4px;">🗑️</button>
                 </div>
               `).join('')
-            }
+      }
           </div>
         </div>
 
@@ -2198,18 +2296,18 @@ class OwnerPortalApp {
     // Get filter and search values
     const filterStatus = this.trackingFilter || 'all';
     const searchTerm = (this.trackingSearch || '').toLowerCase();
-    
+
     // Filter tracking data
     let filteredTracking = this.trackingData;
-    
+
     // Apply status filter
     if (filterStatus !== 'all') {
       filteredTracking = filteredTracking.filter(t => t.status === filterStatus);
     }
-    
+
     // Apply search filter
     if (searchTerm) {
-      filteredTracking = filteredTracking.filter(t => 
+      filteredTracking = filteredTracking.filter(t =>
         t.customerName?.toLowerCase().includes(searchTerm) ||
         t.qrId?.toLowerCase().includes(searchTerm) ||
         t.productName?.toLowerCase().includes(searchTerm) ||
@@ -2230,7 +2328,7 @@ class OwnerPortalApp {
       };
       return parseDate(b.createdAt) - parseDate(a.createdAt);
     });
-    
+
     return `
       <div class="tracking-list">
         <!-- Search Bar -->
@@ -2301,15 +2399,14 @@ class OwnerPortalApp {
         
         <!-- Tracking Cards Grid (matching product grid) -->
         <div class="admin-tracking-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">
-          ${
-            filteredTracking.length > 0
-              ? filteredTracking.map(tracking => this.renderTrackingCard(tracking)).join('')
-              : `<div style="grid-column: 1/-1; text-align: center; padding: 48px; color: #94a3b8; background: rgba(30, 41, 59, 0.3); border-radius: 12px; border: 2px dashed #334155;">
+          ${filteredTracking.length > 0
+        ? filteredTracking.map(tracking => this.renderTrackingCard(tracking)).join('')
+        : `<div style="grid-column: 1/-1; text-align: center; padding: 48px; color: #94a3b8; background: rgba(30, 41, 59, 0.3); border-radius: 12px; border: 2px dashed #334155;">
                   <div style="font-size: 48px; margin-bottom: 16px;">🔍</div>
                   <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">No tracking records found</div>
                   <div style="font-size: 14px;">Try adjusting your search or filter</div>
                 </div>`
-          }
+      }
         </div>
       </div>
     `
@@ -2317,15 +2414,15 @@ class OwnerPortalApp {
 
   renderTrackingCard(tracking) {
     const statusColors = {
-      'Received':         '#3b82f6',
-      'Diagnostics':      '#8b5cf6',
-      'Return':           '#ef4444',
-      'In Progress':      '#f59e0b',
-      'Parts Ordered':    '#ec4899',
-      'Quality Check':    '#06b6d4',
+      'Received': '#3b82f6',
+      'Diagnostics': '#8b5cf6',
+      'Return': '#ef4444',
+      'In Progress': '#f59e0b',
+      'Parts Ordered': '#ec4899',
+      'Quality Check': '#06b6d4',
       'Ready for Pickup': '#f59e0b',
-      'Completed':        '#10b981',
-      'Delivered':        '#2563eb'
+      'Completed': '#10b981',
+      'Delivered': '#2563eb'
     };
     const statusColor = statusColors[tracking.status] || '#10b981';
     const bcId = `bc_card_${tracking.qrId.replace(/[^a-zA-Z0-9]/g, '_')}`;
@@ -2345,7 +2442,7 @@ class OwnerPortalApp {
           el.style.width = '100%';
           el.style.height = '100px';
           el.setAttribute('height', '100');
-        } catch(e) {}
+        } catch (e) { }
       }
     }, 50);
 
@@ -2383,7 +2480,7 @@ class OwnerPortalApp {
           📅 ${tracking.createdAt}
           ${tracking.completedAt ? `<br>✅ Completed: ${tracking.completedAt}` : ''}
           ${tracking.deliveredAt ? `<br>🚀 Delivered: ${tracking.deliveredAt}` : ''}
-          ${tracking.returnedAt  ? `<br>↩️ Returned: ${tracking.returnedAt}`  : ''}
+          ${tracking.returnedAt ? `<br>↩️ Returned: ${tracking.returnedAt}` : ''}
         </div>
         
         ${tracking.status === 'Return' ? `
@@ -2405,7 +2502,7 @@ class OwnerPortalApp {
         ${tracking.address ? `<div style="color:#94a3b8; font-size:10px; margin-bottom:6px;">📍 ${tracking.address}</div>` : ''}
         ${(tracking.dateIn || tracking.dateOut) ? `
         <div style="display:flex; gap:12px; margin-bottom:6px; font-size:10px;">
-          ${tracking.dateIn  ? `<span style="color:#10b981;">📥 In: <strong>${tracking.dateIn}</strong></span>`  : ''}
+          ${tracking.dateIn ? `<span style="color:#10b981;">📥 In: <strong>${tracking.dateIn}</strong></span>` : ''}
           ${tracking.dateOut ? `<span style="color:#f59e0b;">📤 Out: <strong>${tracking.dateOut}</strong></span>` : ''}
         </div>` : ''}
         
@@ -2422,8 +2519,8 @@ class OwnerPortalApp {
           <button class="btn btn-secondary" style="flex: 1; padding: 4px 8px; font-size: 11px;" data-action="edit-tracking" data-qr-id="${tracking.qrId}">🔄 Status</button>
           <button class="btn" style="flex: 1; padding: 4px 8px; font-size: 11px; background: rgba(244, 63, 94, 0.1); color: #f87171; border: 1px solid #f87171; border-radius: 4px;" data-action="delete-tracking" data-qr-id="${tracking.qrId}">Delete</button>
           <button onclick="app.printTrackingCard('${tracking.qrId}')" style="flex: 1; padding: 4px 8px; font-size: 11px; background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981; border-radius: 4px; cursor: pointer; font-weight: 600;">🖨️ Print</button>
-          <button onclick="app.printTrackingLabel('${tracking.qrId}','${(tracking.customerName||'').replace(/'/g,"\\'")}','${((tracking.productName||tracking.deviceModel||'')).replace(/'/g,"\\'")}');" style="flex: 1; padding: 4px 8px; font-size: 11px; background: rgba(30,41,59,0.8); color: #e2e8f0; border: 1px solid #475569; border-radius: 4px; cursor: pointer; font-weight: 600;">🏷️ Label</button>
-          <button onclick="app.printTSCLabel('${tracking.qrId}','${(tracking.customerName||'').replace(/'/g,"\\'")}','${((tracking.productName||tracking.deviceModel||'')).replace(/'/g,"\\'")}');" style="flex: 1; padding: 4px 8px; font-size: 11px; background: rgba(234,88,12,0.15); color: #fb923c; border: 1px solid #fb923c; border-radius: 4px; cursor: pointer; font-weight: 600;">🖶 TSC</button>
+          <button onclick="app.printTrackingLabel('${tracking.qrId}','${(tracking.customerName || '').replace(/'/g, "\\'")}','${((tracking.productName || tracking.deviceModel || '')).replace(/'/g, "\\'")}');" style="flex: 1; padding: 4px 8px; font-size: 11px; background: rgba(30,41,59,0.8); color: #e2e8f0; border: 1px solid #475569; border-radius: 4px; cursor: pointer; font-weight: 600;">🏷️ Label</button>
+          <button onclick="app.printTSCLabel('${tracking.qrId}','${(tracking.customerName || '').replace(/'/g, "\\'")}','${((tracking.productName || tracking.deviceModel || '')).replace(/'/g, "\\'")}');" style="flex: 1; padding: 4px 8px; font-size: 11px; background: rgba(234,88,12,0.15); color: #fb923c; border: 1px solid #fb923c; border-radius: 4px; cursor: pointer; font-weight: 600;">🖶 TSC</button>
         </div>
       </div>
     `
@@ -2444,11 +2541,10 @@ class OwnerPortalApp {
           </div>
 
           <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap:10px;">
-            ${
-              this.orders.length > 0
-                ? this.orders.map(order => this.renderOrderCard(order)).join('')
-                : '<div style="grid-column:1/-1; text-align: center; padding: 48px; color: #94a3b8;">No orders found</div>'
-            }
+            ${this.orders.length > 0
+        ? this.orders.map(order => this.renderOrderCard(order)).join('')
+        : '<div style="grid-column:1/-1; text-align: center; padding: 48px; color: #94a3b8;">No orders found</div>'
+      }
           </div>
         </div>
       </div>
@@ -2461,11 +2557,11 @@ class OwnerPortalApp {
     if (order.orderDate) {
       try {
         const date = new Date(order.orderDate);
-        formattedDate = date.toLocaleString('en-IN', { 
-          year: 'numeric', 
-          month: 'short', 
-          day: 'numeric', 
-          hour: '2-digit', 
+        formattedDate = date.toLocaleString('en-IN', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
           minute: '2-digit',
           hour12: true,
           timeZone: 'Asia/Kolkata'
@@ -2477,11 +2573,11 @@ class OwnerPortalApp {
     } else if (order.createdAt) {
       try {
         const date = new Date(order.createdAt);
-        formattedDate = date.toLocaleString('en-IN', { 
-          year: 'numeric', 
-          month: 'short', 
-          day: 'numeric', 
-          hour: '2-digit', 
+        formattedDate = date.toLocaleString('en-IN', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
           minute: '2-digit',
           hour12: true,
           timeZone: 'Asia/Kolkata'
@@ -2553,15 +2649,15 @@ class OwnerPortalApp {
   showScreenshotFromOrder(orderId) {
     // Find the order by ID
     const order = this.orders.find(o => (o.orderId === orderId || o.id === orderId));
-    
+
     if (!order || !order.paymentScreenshot || !order.paymentScreenshot.data) {
       alert('Screenshot not found for this order.');
       return;
     }
-    
+
     // Use base64 data directly (same as product images)
     const imageSrc = order.paymentScreenshot.data || order.paymentScreenshot.imageUrl;
-    
+
     // Show the screenshot modal
     this.showScreenshotModal(imageSrc, order.paymentScreenshot.fileName);
   }
@@ -2582,7 +2678,7 @@ class OwnerPortalApp {
       padding: 20px;
       box-sizing: border-box;
     `;
-    
+
     modal.innerHTML = `
       <div style="background: white; border-radius: 12px; padding: 24px; max-width: 600px; width: 100%; text-align: center;">
         <h3 style="margin-bottom: 16px; color: #000;">Payment Screenshot</h3>
@@ -2591,14 +2687,14 @@ class OwnerPortalApp {
         <button id="closeModal" style="background: #dc2626; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 600;">Close</button>
       </div>
     `;
-    
+
     document.body.appendChild(modal);
-    
+
     // Handle close button
     document.getElementById('closeModal').onclick = () => {
       document.body.removeChild(modal);
     };
-    
+
     // Close on background click
     modal.onclick = (e) => {
       if (e.target === modal) {
@@ -2611,7 +2707,7 @@ class OwnerPortalApp {
   printOrder(orderId) {
     // Find the order by ID
     const order = this.orders.find(o => (o.orderId === orderId || o.id === orderId));
-    
+
     if (!order) {
       alert('Order not found!');
       return;
@@ -2622,11 +2718,11 @@ class OwnerPortalApp {
     if (order.orderDate) {
       try {
         const date = new Date(order.orderDate);
-        formattedDate = date.toLocaleString('en-IN', { 
-          year: 'numeric', 
-          month: 'long', 
-          day: 'numeric', 
-          hour: '2-digit', 
+        formattedDate = date.toLocaleString('en-IN', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
           minute: '2-digit',
           hour12: true,
           timeZone: 'Asia/Kolkata'
@@ -2637,11 +2733,11 @@ class OwnerPortalApp {
     } else if (order.createdAt) {
       try {
         const date = new Date(order.createdAt);
-        formattedDate = date.toLocaleString('en-IN', { 
-          year: 'numeric', 
-          month: 'long', 
-          day: 'numeric', 
-          hour: '2-digit', 
+        formattedDate = date.toLocaleString('en-IN', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
           minute: '2-digit',
           hour12: true,
           timeZone: 'Asia/Kolkata'
@@ -2788,10 +2884,10 @@ class OwnerPortalApp {
         <div class="payment-info">
           <div class="section-title">Payment Information</div>
           <p><strong>Payment Method:</strong> ${order.paymentMethod}</p>
-          ${order.paymentScreenshot && order.paymentScreenshot.data ? 
-            `<p><strong>Payment Screenshot:</strong> Attached (${order.paymentScreenshot.fileName})</p>` : 
-            '<p><strong>Payment Screenshot:</strong> Not available</p>'
-          }
+          ${order.paymentScreenshot && order.paymentScreenshot.data ?
+        `<p><strong>Payment Screenshot:</strong> Attached (${order.paymentScreenshot.fileName})</p>` :
+        '<p><strong>Payment Screenshot:</strong> Not available</p>'
+      }
         </div>
 
         <div class="footer">
@@ -2807,9 +2903,9 @@ class OwnerPortalApp {
     const printWindow = window.open('', '_blank', 'width=800,height=900');
     printWindow.document.write(printContent);
     printWindow.document.close();
-    
+
     // Wait for content to load then show printer dialog
-    printWindow.onload = function() {
+    printWindow.onload = function () {
       printWindow.focus();
       printWindow.print();
       // Do NOT auto-close — let the user finish with the printer dialog
@@ -2950,8 +3046,8 @@ class OwnerPortalApp {
                 <option value="Chargers" ${product.category === "Chargers" ? "selected" : ""}>Chargers</option>
                 <option value="Audio" ${product.category === "Audio" ? "selected" : ""}>Audio</option>
                 <option value="Power" ${product.category === "Power" ? "selected" : ""}>Power Banks</option>
-                ${(this.customCategories || []).filter(c => !['Smartphones','Services','Accessories','Chargers','Audio','Power'].includes(c)).map(c => `<option value="${c}" ${product.category === c ? 'selected' : ''}>${c}</option>`).join('')}
-                ${!['Smartphones','Services','Accessories','Chargers','Audio','Power'].includes(product.category) && !(this.customCategories||[]).includes(product.category) && product.category ? `<option value="${product.category}" selected>${product.category}</option>` : ''}
+                ${(this.customCategories || []).filter(c => !['Smartphones', 'Services', 'Accessories', 'Chargers', 'Audio', 'Power'].includes(c)).map(c => `<option value="${c}" ${product.category === c ? 'selected' : ''}>${c}</option>`).join('')}
+                ${!['Smartphones', 'Services', 'Accessories', 'Chargers', 'Audio', 'Power'].includes(product.category) && !(this.customCategories || []).includes(product.category) && product.category ? `<option value="${product.category}" selected>${product.category}</option>` : ''}
                 <option value="__custom__">➕ Add Custom Category...</option>
               </select>
               <div id="customCategoryWrapEdit" style="display:none; margin-top:8px;">
@@ -3202,10 +3298,10 @@ class OwnerPortalApp {
           ` : `
             <div class="sales-records-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
               ${filtered.map(sale => {
-                const amount = Number(sale.saleAmount) || 0;
-                const discount = Number(sale.discount) || 0;
-                const netAmount = amount - discount;
-                return `
+      const amount = Number(sale.saleAmount) || 0;
+      const discount = Number(sale.discount) || 0;
+      const netAmount = amount - discount;
+      return `
                 <div style="background: rgba(255,255,255,0.95); border-radius: 12px; padding: 16px; border: 2px solid #fecaca; position: relative;">
                   <div style="margin-bottom: 12px;">
                     <div style="font-size: 16px; font-weight: 700; color: #000;">${sale.customerName}</div>
@@ -3260,8 +3356,8 @@ class OwnerPortalApp {
         (b.billNumber && b.billNumber.toLowerCase().includes(search)) ||
         (b.distributorName && b.distributorName.toLowerCase().includes(search)) ||
         (b.distributorMobile && b.distributorMobile.includes(search)) ||
-        (b.items && b.items.some(it => 
-          (it.productName && it.productName.toLowerCase().includes(search)) || 
+        (b.items && b.items.some(it =>
+          (it.productName && it.productName.toLowerCase().includes(search)) ||
           (it.barcode && it.barcode.toLowerCase().includes(search))
         ))
       );
@@ -3630,7 +3726,7 @@ class OwnerPortalApp {
             <div style="background:#fef2f2; border:1px solid #fca5a5; border-radius:10px; padding:12px 18px; margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
               <div style="display:flex; align-items:center; gap:10px;">
                 <span style="font-size:20px;">⚠️</span>
-                <span style="font-size:13px; color:#dc2626; font-weight:700;">Only 1 unit left — ${lowStock.map(d=>d.displayName).join(', ')}</span>
+                <span style="font-size:13px; color:#dc2626; font-weight:700;">Only 1 unit left — ${lowStock.map(d => d.displayName).join(', ')}</span>
               </div>
               <button onclick="app.downloadLowStockAlertPDF()" style="background:#0f172a; color:#fff; border:none; border-radius:7px; padding:6px 14px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;">📄 Download PDF</button>
             </div>
@@ -3669,29 +3765,29 @@ class OwnerPortalApp {
                   </thead>
                   <tbody class="stock-table-body">
                     ${filtered.map((item, idx) => {
-                      const stock = Number(item.stock) || 0;
-                      const ownerPrice = Number(item.ownerPrice || item.price) || 0;
-                      const customerPrice = Number(item.customerPrice || item.price) || 0;
-                      const barVal = barcodeMap.get(item.stockItemId || item._id) || (item.barcode || '').trim() || ('MMW' + String(idx + 1).padStart(3, '0'));
-                      const stockColor  = stock === 0 ? '#dc2626' : stock <= 1 ? '#dc2626' : stock <= 3 ? '#d97706' : '#16a34a';
-                      const stockBg     = stock === 0 ? '#fef2f2' : stock <= 1 ? '#fef2f2' : stock <= 3 ? '#fffbeb' : '#f0fdf4';
-                      const rowBg       = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
-                      const bcCanvasId  = `bc_disp_${(item.stockItemId || item._id || idx).toString().replace(/[^a-zA-Z0-9]/g, '_')}`;
+      const stock = Number(item.stock) || 0;
+      const ownerPrice = Number(item.ownerPrice || item.price) || 0;
+      const customerPrice = Number(item.customerPrice || item.price) || 0;
+      const barVal = barcodeMap.get(item.stockItemId || item._id) || (item.barcode || '').trim() || ('MMW' + String(idx + 1).padStart(3, '0'));
+      const stockColor = stock === 0 ? '#dc2626' : stock <= 1 ? '#dc2626' : stock <= 3 ? '#d97706' : '#16a34a';
+      const stockBg = stock === 0 ? '#fef2f2' : stock <= 1 ? '#fef2f2' : stock <= 3 ? '#fffbeb' : '#f0fdf4';
+      const rowBg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
+      const bcCanvasId = `bc_disp_${(item.stockItemId || item._id || idx).toString().replace(/[^a-zA-Z0-9]/g, '_')}`;
 
-                      setTimeout(() => {
-                        const el = document.getElementById(bcCanvasId);
-                        if (el && typeof JsBarcode !== 'undefined') {
-                          try {
-                            JsBarcode(el, barVal, {
-                              format: 'CODE128', width: 1.2, height: 28,
-                              displayValue: true, fontSize: 10, margin: 2,
-                              background: '#ffffff', lineColor: '#000000'
-                            });
-                          } catch(e) {}
-                        }
-                      }, 50);
+      setTimeout(() => {
+        const el = document.getElementById(bcCanvasId);
+        if (el && typeof JsBarcode !== 'undefined') {
+          try {
+            JsBarcode(el, barVal, {
+              format: 'CODE128', width: 1.2, height: 28,
+              displayValue: true, fontSize: 10, margin: 2,
+              background: '#ffffff', lineColor: '#000000'
+            });
+          } catch (e) { }
+        }
+      }, 50);
 
-                      return `
+      return `
                         <tr class="stock-item-row" data-id="${item.stockItemId}" style="background:${rowBg}; border-bottom:1px solid #e2e8f0; transition:background 0.2s;"
                             onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='${rowBg}'">
                           <td style="padding:10px 14px; color:#64748b; font-weight:600; border-right:1px solid #e2e8f0; text-align:center;">${idx + 1}</td>
@@ -3704,16 +3800,16 @@ class OwnerPortalApp {
                           <td style="padding:8px 10px; text-align:center; border-right:1px solid #e2e8f0;">
                             <div style="display:inline-flex; flex-direction:column; align-items:center; gap:4px;">
                               <div style="background:#ffffff; border:1px solid #cbd5e1; border-radius:6px; padding:4px; text-align:center; cursor:pointer; display:flex; align-items:center; justify-content:center;"
-                                   onclick="app.printDisplayStockLabelDirect('${barVal}', '${(item.displayName||'').replace(/'/g, "\\'")}', '${customerPrice}')"
+                                   onclick="app.printDisplayStockLabelDirect('${barVal}', '${(item.displayName || '').replace(/'/g, "\\'")}', '${customerPrice}')"
                                    title="Click to print barcode label">
                                 <svg id="${bcCanvasId}" style="max-width: 120px; display: block; margin: 0 auto;"></svg>
                               </div>
                               <div style="display:flex; gap:4px; justify-content:center;">
-                                <button onclick="app.printDisplayStockLabelDirect('${barVal}', '${(item.displayName||'').replace(/'/g, "\\'")}', '${customerPrice}')"
+                                <button onclick="app.printDisplayStockLabelDirect('${barVal}', '${(item.displayName || '').replace(/'/g, "\\'")}', '${customerPrice}')"
                                   style="background:#f1f5f9; border:1px solid #cbd5e1; border-radius:4px; padding:2px 6px; font-size:10px; font-weight:600; cursor:pointer;" title="Print Browser Label">
                                   🏷️ Print
                                 </button>
-                                <button onclick="app.printDisplayStockTSCLabelDirect('${barVal}', '${(item.displayName||'').replace(/'/g, "\\'")}', '${customerPrice}')"
+                                <button onclick="app.printDisplayStockTSCLabelDirect('${barVal}', '${(item.displayName || '').replace(/'/g, "\\'")}', '${customerPrice}')"
                                   style="background:#f1f5f9; border:1px solid #cbd5e1; border-radius:4px; padding:2px 6px; font-size:10px; font-weight:600; cursor:pointer;" title="Print TSC Label">
                                   🖶 TSC
                                 </button>
@@ -3722,13 +3818,13 @@ class OwnerPortalApp {
                           </td>
                           <td style="padding:10px 14px; text-align:center; color:#d97706; font-weight:600; border-right:1px solid #e2e8f0;">
                             ${this.stockTotalValueUnlocked
-                              ? `₹${ownerPrice.toLocaleString('en-IN')}`
-                              : `<span style="color:#94a3b8; font-family:monospace; font-size:14px;">••••</span>`}
+          ? `₹${ownerPrice.toLocaleString('en-IN')}`
+          : `<span style="color:#94a3b8; font-family:monospace; font-size:14px;">••••</span>`}
                           </td>
                           <td style="padding:10px 14px; text-align:center; font-weight:700; color:#1d4ed8; border-right:1px solid #e2e8f0;">
                             ${this.stockTotalValueUnlocked
-                              ? (ownerPrice && stock ? `₹${(ownerPrice * stock).toLocaleString('en-IN')}` : '<span style="color:#9ca3af;">—</span>')
-                              : '<span style="color:#94a3b8; font-family:monospace; font-size:14px;">••••</span>'}
+          ? (ownerPrice && stock ? `₹${(ownerPrice * stock).toLocaleString('en-IN')}` : '<span style="color:#9ca3af;">—</span>')
+          : '<span style="color:#94a3b8; font-family:monospace; font-size:14px;">••••</span>'}
                           </td>
                           <td style="padding:10px 14px; text-align:center; border-right:1px solid #e2e8f0;">
                             <span style="display:inline-block; background:${stockBg}; color:${stockColor}; font-weight:800; font-size:14px; padding:3px 10px; border-radius:6px; border:1px solid ${stockColor}40;">
@@ -3744,7 +3840,7 @@ class OwnerPortalApp {
                                 ▲ In
                               </button>
                               <button onclick="app.adjustStock('${item.stockItemId}', -1)"
-                                style="background:#dc2626; color:#fff; border:none; border-radius:6px; padding:5px 10px; font-size:11px; font-weight:700; cursor:pointer; ${stock===0?'opacity:0.45;cursor:not-allowed;':''}">
+                                style="background:#dc2626; color:#fff; border:none; border-radius:6px; padding:5px 10px; font-size:11px; font-weight:700; cursor:pointer; ${stock === 0 ? 'opacity:0.45;cursor:not-allowed;' : ''}">
                                 ▼ Out
                               </button>
                             </div>
@@ -3771,7 +3867,7 @@ class OwnerPortalApp {
                           </td>
                         </tr>
                       `;
-                    }).join('')}
+    }).join('')}
                   </tbody>
                   <tfoot>
                     <tr style="background:#0f172a; color:#fff; font-weight:700;">
@@ -3781,8 +3877,8 @@ class OwnerPortalApp {
                       </td>
                       <td style="padding:12px 16px; text-align:center; font-size:15px; font-weight:900; color:#86efac; border-right:1px solid #334155;">
                         ${this.stockTotalValueUnlocked
-                          ? `<span style="color:#fbbf24; font-size:15px; font-weight:900;">₹${filtered.reduce((s, d) => s + ((Number(d.ownerPrice || d.price) || 0) * (Number(d.stock) || 0)), 0).toLocaleString('en-IN')}</span>`
-                          : `<span style="color:#94a3b8; font-family:monospace;">••••</span>`}
+        ? `<span style="color:#fbbf24; font-size:15px; font-weight:900;">₹${filtered.reduce((s, d) => s + ((Number(d.ownerPrice || d.price) || 0) * (Number(d.stock) || 0)), 0).toLocaleString('en-IN')}</span>`
+        : `<span style="color:#94a3b8; font-family:monospace;">••••</span>`}
                       </td>
                       <td style="padding:12px 16px; text-align:center; font-size:15px; font-weight:900; color:#86efac; border-right:1px solid #334155;">
                         ${filtered.reduce((s, d) => s + (Number(d.stock) || 0), 0)} units
@@ -3858,7 +3954,7 @@ class OwnerPortalApp {
 
   printDisplayStockLabelDirect(barcode, name, price) {
     const barVal = (barcode || '').trim();
-    const dev    = (name || '').substring(0, 16).toUpperCase();
+    const dev = (name || '').substring(0, 16).toUpperCase();
 
     const win = window.open('', '_blank', 'width=920,height=480');
     win.document.write(`<!DOCTYPE html>
@@ -4085,12 +4181,12 @@ class OwnerPortalApp {
 </body>
 </html>`);
     win.document.close();
-    setTimeout(() => { try { win.focus(); } catch(e) {} }, 200);
+    setTimeout(() => { try { win.focus(); } catch (e) { } }, 200);
   }
 
   async printDisplayStockTSCLabelDirect(barcode, name, price) {
     const barVal = (barcode || '').replace(/[^A-Za-z0-9]/g, '');
-    const dev    = (name || '').substring(0, 14).toUpperCase().replace(/"/g, '');
+    const dev = (name || '').substring(0, 14).toUpperCase().replace(/"/g, '');
 
     const tspl = [
       'SIZE 101.5 mm, 25 mm',
@@ -4139,7 +4235,7 @@ class OwnerPortalApp {
       } else {
         throw new Error('Local TSC agent response not ok');
       }
-    } catch(e) {
+    } catch (e) {
       const blob = new Blob([tspl], { type: 'text/plain;charset=utf-8' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
@@ -4195,10 +4291,10 @@ class OwnerPortalApp {
   }
 
   async saveDisplayStock() {
-    const displayName   = document.getElementById('stk_displayName')?.value?.trim();
-    const barcode       = document.getElementById('stk_barcode')?.value?.trim() || this._generateNextDisplayBarcode();
-    const stock         = document.getElementById('stk_stock')?.value;
-    const ownerPrice    = document.getElementById('stk_ownerPrice')?.value;
+    const displayName = document.getElementById('stk_displayName')?.value?.trim();
+    const barcode = document.getElementById('stk_barcode')?.value?.trim() || this._generateNextDisplayBarcode();
+    const stock = document.getElementById('stk_stock')?.value;
+    const ownerPrice = document.getElementById('stk_ownerPrice')?.value;
 
     // Auto-generate displayId from name + barcode
     const displayId = barcode || displayName?.replace(/\s+/g, '-').toUpperCase().substring(0, 20) || 'DISP-' + Date.now();
@@ -4319,8 +4415,8 @@ class OwnerPortalApp {
 
     const win = window.open('', '_blank', 'width=700,height=500');
     const rows = lowItems.map((d, i) => `
-      <tr style="background:${i%2===0?'#fff':'#fef2f2'}">
-        <td>${i+1}</td>
+      <tr style="background:${i % 2 === 0 ? '#fff' : '#fef2f2'}">
+        <td>${i + 1}</td>
         <td style="font-weight:700;">${d.displayName}</td>
         <td>${d.displayId}</td>
         <td style="color:#dc2626;font-weight:900;">1 unit</td>
@@ -4349,7 +4445,7 @@ class OwnerPortalApp {
     <button onclick="window.print()" style="padding:10px 24px;background:#1e293b;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer;">🖨️ Print / Save as PDF</button>
     </body></html>`);
     win.document.close();
-    setTimeout(() => { try { win.focus(); } catch(e) {} }, 200);
+    setTimeout(() => { try { win.focus(); } catch (e) { } }, 200);
   }
 
   downloadLowStockPDF(stockItemId) {
@@ -4380,7 +4476,7 @@ class OwnerPortalApp {
     <button onclick="window.print()" style="padding:10px 24px;background:#1e293b;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer;">🖨️ Print / Save as PDF</button>
     </body></html>`);
     win.document.close();
-    setTimeout(() => { try { win.focus(); } catch(e) {} }, 200);
+    setTimeout(() => { try { win.focus(); } catch (e) { } }, 200);
   }
 
   showEditStockModal(stockItemId) {
@@ -4442,10 +4538,10 @@ class OwnerPortalApp {
   }
 
   async saveEditDisplayStock(stockItemId) {
-    const displayName   = document.getElementById('edit_displayName')?.value?.trim();
-    const displayId     = document.getElementById('edit_displayId')?.value?.trim();
-    const barcode       = document.getElementById('edit_barcode')?.value?.trim() || displayId;
-    const ownerPrice    = document.getElementById('edit_ownerPrice')?.value;
+    const displayName = document.getElementById('edit_displayName')?.value?.trim();
+    const displayId = document.getElementById('edit_displayId')?.value?.trim();
+    const barcode = document.getElementById('edit_barcode')?.value?.trim() || displayId;
+    const ownerPrice = document.getElementById('edit_ownerPrice')?.value;
     const customerPrice = document.getElementById('edit_customerPrice')?.value;
 
     if (!displayName || !displayId) {
@@ -4647,18 +4743,18 @@ class OwnerPortalApp {
           ` : `
             <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:16px;">
               ${filtered.map(svc => {
-                const price = Number(svc.price) || 0;
-                const advance = Number(svc.advance) || 0;
-                const balance = price - advance;
-                const statusColors = {
-                  'Received': '#6b7280',
-                  'In Progress': '#d97706',
-                  'Ready for Pickup': '#2563eb',
-                  'Completed': '#16a34a',
-                  'Delivered': '#7c3aed'
-                };
-                const color = statusColors[svc.status] || '#6b7280';
-                return `
+      const price = Number(svc.price) || 0;
+      const advance = Number(svc.advance) || 0;
+      const balance = price - advance;
+      const statusColors = {
+        'Received': '#6b7280',
+        'In Progress': '#d97706',
+        'Ready for Pickup': '#2563eb',
+        'Completed': '#16a34a',
+        'Delivered': '#7c3aed'
+      };
+      const color = statusColors[svc.status] || '#6b7280';
+      return `
                   <div style="background:rgba(255,255,255,0.97); border-radius:12px; padding:16px; border:2px solid #fecaca; position:relative;">
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
                       <div>
@@ -4683,7 +4779,7 @@ class OwnerPortalApp {
                     </div>
                   </div>
                 `;
-              }).join('')}
+    }).join('')}
             </div>
           `}
         </div>
@@ -4786,7 +4882,7 @@ class OwnerPortalApp {
 
             <div style="display:flex;justify-content:space-between;margin-bottom:20px;">
               <div style="font-size:13px;color:#6b7280;">Date: <strong style="color:#111;">${svc.serviceDate}</strong></div>
-              <div style="font-size:12px;background:${svc.status==='Delivered'||svc.status==='Completed'?'#dcfce7':'#fef3c7'};color:${svc.status==='Delivered'||svc.status==='Completed'?'#16a34a':'#d97706'};padding:3px 10px;border-radius:20px;font-weight:700;">${svc.status}</div>
+              <div style="font-size:12px;background:${svc.status === 'Delivered' || svc.status === 'Completed' ? '#dcfce7' : '#fef3c7'};color:${svc.status === 'Delivered' || svc.status === 'Completed' ? '#16a34a' : '#d97706'};padding:3px 10px;border-radius:20px;font-weight:700;">${svc.status}</div>
             </div>
 
             <!-- Customer -->
@@ -4815,7 +4911,7 @@ class OwnerPortalApp {
                 <span>Advance Paid</span>
                 <span>- ₹${advance.toLocaleString()}</span>
               </div>
-              <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:800;color:${balance>0?'#dc2626':'#16a34a'};border-top:1px dashed #fecaca;padding-top:8px;margin-top:4px;">
+              <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:800;color:${balance > 0 ? '#dc2626' : '#16a34a'};border-top:1px dashed #fecaca;padding-top:8px;margin-top:4px;">
                 <span>${balance > 0 ? 'Balance Due' : 'Fully Paid ✅'}</span>
                 <span>₹${balance.toLocaleString()}</span>
               </div>
@@ -4856,7 +4952,7 @@ class OwnerPortalApp {
     const printWindow = window.open('', '_blank', 'width=600,height=800');
     printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Service Receipt - Manjula Mobile World</title><style>body{font-family:Arial,sans-serif;margin:0;padding:20px;color:#111;}@media print{button{display:none!important;}}.print-btn{display:block;margin:20px auto;padding:10px 28px;background:#000;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer;font-family:monospace;}</style></head><body>${content.innerHTML}<br><button class="print-btn" onclick="window.print()">🖨️ PRINT</button></body></html>`);
     printWindow.document.close();
-    setTimeout(() => { try { printWindow.focus(); } catch(e) {} }, 200);
+    setTimeout(() => { try { printWindow.focus(); } catch (e) { } }, 200);
   }
 
   // ── Helper: parse service/sale date to a Date object ──────────────────
@@ -4908,11 +5004,11 @@ class OwnerPortalApp {
               <div style="font-size:48px; margin-bottom:16px;">📅</div><p>No service records yet.</p>
             </div>
           ` : sortedKeys.map(key => {
-            const dayRecords = groups[key];
-            const totalPrice   = dayRecords.reduce((s, r) => s + (Number(r.price)   || 0), 0);
-            const totalAdvance = dayRecords.reduce((s, r) => s + (Number(r.advance) || 0), 0);
-            const totalBalance = totalPrice - totalAdvance;
-            return `
+      const dayRecords = groups[key];
+      const totalPrice = dayRecords.reduce((s, r) => s + (Number(r.price) || 0), 0);
+      const totalAdvance = dayRecords.reduce((s, r) => s + (Number(r.advance) || 0), 0);
+      const totalBalance = totalPrice - totalAdvance;
+      return `
               <div style="background:rgba(255,255,255,0.97); border-radius:14px; margin-bottom:24px; overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,0.12);">
                 <!-- Day header -->
                 <div style="background:linear-gradient(135deg,#0891b2,#0e7490); padding:14px 24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
@@ -4921,7 +5017,7 @@ class OwnerPortalApp {
                     <div style="text-align:center;"><div style="font-size:18px; font-weight:800; color:#fff;">${dayRecords.length}</div><div style="font-size:11px; color:#cffafe;">Jobs</div></div>
                     <div style="text-align:center;"><div style="font-size:18px; font-weight:800; color:#fff;">₹${totalPrice.toLocaleString()}</div><div style="font-size:11px; color:#cffafe;">Total</div></div>
                     <div style="text-align:center;"><div style="font-size:18px; font-weight:800; color:#a7f3d0;">₹${totalAdvance.toLocaleString()}</div><div style="font-size:11px; color:#cffafe;">Advance</div></div>
-                    <div style="text-align:center;"><div style="font-size:18px; font-weight:800; color:${totalBalance>0?'#fde68a':'#a7f3d0'};">₹${totalBalance.toLocaleString()}</div><div style="font-size:11px; color:#cffafe;">Balance</div></div>
+                    <div style="text-align:center;"><div style="font-size:18px; font-weight:800; color:${totalBalance > 0 ? '#fde68a' : '#a7f3d0'};">₹${totalBalance.toLocaleString()}</div><div style="font-size:11px; color:#cffafe;">Balance</div></div>
                   </div>
                 </div>
                 <!-- Table -->
@@ -4942,34 +5038,34 @@ class OwnerPortalApp {
                     </thead>
                     <tbody>
                       ${dayRecords.map((svc, i) => {
-                        const p = Number(svc.price)||0, a = Number(svc.advance)||0, b = p-a;
-                        return `
-                          <tr style="border-bottom:1px solid #ecfeff; ${i%2===1?'background:#f0fdff;':''}">
-                            <td style="padding:9px 14px; color:#9ca3af;">${i+1}</td>
+        const p = Number(svc.price) || 0, a = Number(svc.advance) || 0, b = p - a;
+        return `
+                          <tr style="border-bottom:1px solid #ecfeff; ${i % 2 === 1 ? 'background:#f0fdff;' : ''}">
+                            <td style="padding:9px 14px; color:#9ca3af;">${i + 1}</td>
                             <td style="padding:9px 14px; font-weight:600; color:#111;">${svc.customerName}</td>
                             <td style="padding:9px 14px; color:#0891b2;">${svc.phoneNumber}</td>
                             <td style="padding:9px 14px; color:#374151; max-width:200px;">${svc.serviceDetails}</td>
-                            <td style="padding:9px 14px;"><span style="font-size:11px; font-weight:700; padding:2px 8px; border-radius:20px; background:#f0fdf4; color:#16a34a;">${svc.status||'Received'}</span></td>
-                            <td style="padding:9px 14px; text-align:right;">${p?'₹'+p.toLocaleString():'—'}</td>
-                            <td style="padding:9px 14px; text-align:right; color:#16a34a;">${a?'₹'+a.toLocaleString():'—'}</td>
-                            <td style="padding:9px 14px; text-align:right; font-weight:700; color:${b>0?'#dc2626':'#16a34a'};">${p?'₹'+b.toLocaleString():'—'}</td>
+                            <td style="padding:9px 14px;"><span style="font-size:11px; font-weight:700; padding:2px 8px; border-radius:20px; background:#f0fdf4; color:#16a34a;">${svc.status || 'Received'}</span></td>
+                            <td style="padding:9px 14px; text-align:right;">${p ? '₹' + p.toLocaleString() : '—'}</td>
+                            <td style="padding:9px 14px; text-align:right; color:#16a34a;">${a ? '₹' + a.toLocaleString() : '—'}</td>
+                            <td style="padding:9px 14px; text-align:right; font-weight:700; color:${b > 0 ? '#dc2626' : '#16a34a'};">${p ? '₹' + b.toLocaleString() : '—'}</td>
                             <td style="padding:9px 14px; text-align:center;"><button onclick="app.showServiceBill('${svc.serviceId}')" style="background:#dbeafe; border:none; border-radius:6px; padding:4px 10px; cursor:pointer; color:#1d4ed8; font-size:13px;">🧾</button></td>
                           </tr>`;
-                      }).join('')}
+      }).join('')}
                     </tbody>
                     <tfoot>
                       <tr style="background:#ecfeff; border-top:2px solid #a5f3fc;">
                         <td colspan="5" style="padding:9px 14px; font-weight:700; color:#374151;">Day Total</td>
                         <td style="padding:9px 14px; text-align:right; font-weight:700;">₹${totalPrice.toLocaleString()}</td>
                         <td style="padding:9px 14px; text-align:right; font-weight:700; color:#16a34a;">₹${totalAdvance.toLocaleString()}</td>
-                        <td style="padding:9px 14px; text-align:right; font-weight:800; color:${totalBalance>0?'#dc2626':'#16a34a'};">₹${totalBalance.toLocaleString()}</td>
+                        <td style="padding:9px 14px; text-align:right; font-weight:800; color:${totalBalance > 0 ? '#dc2626' : '#16a34a'};">₹${totalBalance.toLocaleString()}</td>
                         <td></td>
                       </tr>
                     </tfoot>
                   </table>
                 </div>
               </div>`;
-          }).join('')}
+    }).join('')}
         </div>
       </div>`;
   }
@@ -4982,17 +5078,17 @@ class OwnerPortalApp {
     records.forEach(svc => {
       const d = this._parseDate(svc.serviceDate);
       const key = d && !isNaN(d)
-        ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`
+        ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
         : 'Unknown';
       if (!groups[key]) groups[key] = [];
       groups[key].push(svc);
     });
 
-    const sortedKeys = Object.keys(groups).sort((a,b) => b.localeCompare(a));
+    const sortedKeys = Object.keys(groups).sort((a, b) => b.localeCompare(a));
     const monthLabel = key => {
       if (key === 'Unknown') return 'Unknown Date';
       const [y, m] = key.split('-');
-      return new Date(y, m-1, 1).toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+      return new Date(y, m - 1, 1).toLocaleString('en-IN', { month: 'long', year: 'numeric' });
     };
 
     return `
@@ -5015,11 +5111,11 @@ class OwnerPortalApp {
               <div style="font-size:48px; margin-bottom:16px;">📆</div><p>No service records yet.</p>
             </div>
           ` : sortedKeys.map(key => {
-            const monthRecords = groups[key];
-            const totalPrice   = monthRecords.reduce((s,r) => s+(Number(r.price)||0), 0);
-            const totalAdvance = monthRecords.reduce((s,r) => s+(Number(r.advance)||0), 0);
-            const totalBalance = totalPrice - totalAdvance;
-            return `
+      const monthRecords = groups[key];
+      const totalPrice = monthRecords.reduce((s, r) => s + (Number(r.price) || 0), 0);
+      const totalAdvance = monthRecords.reduce((s, r) => s + (Number(r.advance) || 0), 0);
+      const totalBalance = totalPrice - totalAdvance;
+      return `
               <div style="background:rgba(255,255,255,0.97); border-radius:14px; margin-bottom:28px; overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,0.12);">
                 <!-- Month header -->
                 <div style="background:linear-gradient(135deg,#1d4ed8,#1e40af); padding:16px 24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
@@ -5028,7 +5124,7 @@ class OwnerPortalApp {
                     <div style="text-align:center;"><div style="font-size:20px; font-weight:800; color:#fff;">${monthRecords.length}</div><div style="font-size:11px; color:#bfdbfe;">Jobs</div></div>
                     <div style="text-align:center;"><div style="font-size:20px; font-weight:800; color:#fff;">₹${totalPrice.toLocaleString()}</div><div style="font-size:11px; color:#bfdbfe;">Total Revenue</div></div>
                     <div style="text-align:center;"><div style="font-size:20px; font-weight:800; color:#a7f3d0;">₹${totalAdvance.toLocaleString()}</div><div style="font-size:11px; color:#bfdbfe;">Advance Collected</div></div>
-                    <div style="text-align:center;"><div style="font-size:20px; font-weight:800; color:${totalBalance>0?'#fde68a':'#a7f3d0'};">₹${totalBalance.toLocaleString()}</div><div style="font-size:11px; color:#bfdbfe;">Balance Pending</div></div>
+                    <div style="text-align:center;"><div style="font-size:20px; font-weight:800; color:${totalBalance > 0 ? '#fde68a' : '#a7f3d0'};">₹${totalBalance.toLocaleString()}</div><div style="font-size:11px; color:#bfdbfe;">Balance Pending</div></div>
                   </div>
                 </div>
                 <!-- Table -->
@@ -5050,35 +5146,35 @@ class OwnerPortalApp {
                     </thead>
                     <tbody>
                       ${monthRecords.map((svc, i) => {
-                        const p = Number(svc.price)||0, a = Number(svc.advance)||0, b = p-a;
-                        return `
-                          <tr style="border-bottom:1px solid #eff6ff; ${i%2===1?'background:#f8faff;':''}">
-                            <td style="padding:9px 14px; color:#9ca3af;">${i+1}</td>
+        const p = Number(svc.price) || 0, a = Number(svc.advance) || 0, b = p - a;
+        return `
+                          <tr style="border-bottom:1px solid #eff6ff; ${i % 2 === 1 ? 'background:#f8faff;' : ''}">
+                            <td style="padding:9px 14px; color:#9ca3af;">${i + 1}</td>
                             <td style="padding:9px 14px; font-weight:600; color:#111;">${svc.customerName}</td>
                             <td style="padding:9px 14px; color:#1d4ed8;">${svc.phoneNumber}</td>
                             <td style="padding:9px 14px; color:#374151; max-width:200px;">${svc.serviceDetails}</td>
                             <td style="padding:9px 14px; color:#6b7280;">${svc.serviceDate}</td>
-                            <td style="padding:9px 14px;"><span style="font-size:11px; font-weight:700; padding:2px 8px; border-radius:20px; background:#f0fdf4; color:#16a34a;">${svc.status||'Received'}</span></td>
-                            <td style="padding:9px 14px; text-align:right;">${p?'₹'+p.toLocaleString():'—'}</td>
-                            <td style="padding:9px 14px; text-align:right; color:#16a34a;">${a?'₹'+a.toLocaleString():'—'}</td>
-                            <td style="padding:9px 14px; text-align:right; font-weight:700; color:${b>0?'#dc2626':'#16a34a'};">${p?'₹'+b.toLocaleString():'—'}</td>
+                            <td style="padding:9px 14px;"><span style="font-size:11px; font-weight:700; padding:2px 8px; border-radius:20px; background:#f0fdf4; color:#16a34a;">${svc.status || 'Received'}</span></td>
+                            <td style="padding:9px 14px; text-align:right;">${p ? '₹' + p.toLocaleString() : '—'}</td>
+                            <td style="padding:9px 14px; text-align:right; color:#16a34a;">${a ? '₹' + a.toLocaleString() : '—'}</td>
+                            <td style="padding:9px 14px; text-align:right; font-weight:700; color:${b > 0 ? '#dc2626' : '#16a34a'};">${p ? '₹' + b.toLocaleString() : '—'}</td>
                             <td style="padding:9px 14px; text-align:center;"><button onclick="app.showServiceBill('${svc.serviceId}')" style="background:#dbeafe; border:none; border-radius:6px; padding:4px 10px; cursor:pointer; color:#1d4ed8; font-size:13px;">🧾</button></td>
                           </tr>`;
-                      }).join('')}
+      }).join('')}
                     </tbody>
                     <tfoot>
                       <tr style="background:#eff6ff; border-top:2px solid #bfdbfe;">
                         <td colspan="6" style="padding:9px 14px; font-weight:700; color:#374151;">Month Total</td>
                         <td style="padding:9px 14px; text-align:right; font-weight:700;">₹${totalPrice.toLocaleString()}</td>
                         <td style="padding:9px 14px; text-align:right; font-weight:700; color:#16a34a;">₹${totalAdvance.toLocaleString()}</td>
-                        <td style="padding:9px 14px; text-align:right; font-weight:800; color:${totalBalance>0?'#dc2626':'#16a34a'};">₹${totalBalance.toLocaleString()}</td>
+                        <td style="padding:9px 14px; text-align:right; font-weight:800; color:${totalBalance > 0 ? '#dc2626' : '#16a34a'};">₹${totalBalance.toLocaleString()}</td>
                         <td></td>
                       </tr>
                     </tfoot>
                   </table>
                 </div>
               </div>`;
-          }).join('')}
+    }).join('')}
         </div>
       </div>`;
   }
@@ -5136,12 +5232,12 @@ class OwnerPortalApp {
               <p>No sales records yet.</p>
             </div>
           ` : sortedKeys.map(key => {
-            const sales = groups[key];
-            const totalRevenue = sales.reduce((sum, s) => sum + (Number(s.saleAmount) || 0), 0);
-            const totalDiscount = sales.reduce((sum, s) => sum + (Number(s.discount) || 0), 0);
-            const netRevenue = totalRevenue - totalDiscount;
+      const sales = groups[key];
+      const totalRevenue = sales.reduce((sum, s) => sum + (Number(s.saleAmount) || 0), 0);
+      const totalDiscount = sales.reduce((sum, s) => sum + (Number(s.discount) || 0), 0);
+      const netRevenue = totalRevenue - totalDiscount;
 
-            return `
+      return `
               <div style="background:rgba(255,255,255,0.97); border-radius:14px; margin-bottom:28px; overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,0.12);">
                 <!-- Month header -->
                 <div style="background:linear-gradient(135deg,#dc2626,#b91c1c); padding:16px 24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
@@ -5181,10 +5277,10 @@ class OwnerPortalApp {
                     </thead>
                     <tbody>
                       ${sales.map((sale, idx) => {
-                        const amt = Number(sale.saleAmount) || 0;
-                        const disc = Number(sale.discount) || 0;
-                        const net = amt - disc;
-                        return `
+        const amt = Number(sale.saleAmount) || 0;
+        const disc = Number(sale.discount) || 0;
+        const net = amt - disc;
+        return `
                           <tr style="border-bottom:1px solid #fef2f2; ${idx % 2 === 1 ? 'background:#fffbfb;' : ''}">
                             <td style="padding:10px 16px; color:#9ca3af;">${idx + 1}</td>
                             <td style="padding:10px 16px; font-weight:600; color:#111;">${sale.customerName}</td>
@@ -5203,7 +5299,7 @@ class OwnerPortalApp {
                             </td>
                           </tr>
                         `;
-                      }).join('')}
+      }).join('')}
                     </tbody>
                     <!-- Month total row -->
                     <tfoot>
@@ -5219,7 +5315,7 @@ class OwnerPortalApp {
                 </div>
               </div>
             `;
-          }).join('')}
+    }).join('')}
         </div>
       </div>
     `;
@@ -5263,13 +5359,13 @@ class OwnerPortalApp {
       return [(clientX - rect.left) * scaleX, (clientY - rect.top) * scaleY];
     };
 
-    canvas.addEventListener('mousedown',  (e) => { drawing = true; [lastX, lastY] = getPos(e); });
-    canvas.addEventListener('mousemove',  (e) => { if (!drawing) return; const [x, y] = getPos(e); ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(x, y); ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5; ctx.lineCap = 'round'; ctx.stroke(); [lastX, lastY] = [x, y]; });
-    canvas.addEventListener('mouseup',    () => { drawing = false; });
+    canvas.addEventListener('mousedown', (e) => { drawing = true;[lastX, lastY] = getPos(e); });
+    canvas.addEventListener('mousemove', (e) => { if (!drawing) return; const [x, y] = getPos(e); ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(x, y); ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5; ctx.lineCap = 'round'; ctx.stroke();[lastX, lastY] = [x, y]; });
+    canvas.addEventListener('mouseup', () => { drawing = false; });
     canvas.addEventListener('mouseleave', () => { drawing = false; });
-    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); drawing = true; [lastX, lastY] = getPos(e); }, { passive: false });
-    canvas.addEventListener('touchmove',  (e) => { e.preventDefault(); if (!drawing) return; const [x, y] = getPos(e); ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(x, y); ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5; ctx.lineCap = 'round'; ctx.stroke(); [lastX, lastY] = [x, y]; }, { passive: false });
-    canvas.addEventListener('touchend',   () => { drawing = false; });
+    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); drawing = true;[lastX, lastY] = getPos(e); }, { passive: false });
+    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); if (!drawing) return; const [x, y] = getPos(e); ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(x, y); ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5; ctx.lineCap = 'round'; ctx.stroke();[lastX, lastY] = [x, y]; }, { passive: false });
+    canvas.addEventListener('touchend', () => { drawing = false; });
   }
 
   clearSaleSignature() {
@@ -5355,11 +5451,11 @@ class OwnerPortalApp {
       if (!container) return;
       const lastRow = container.lastElementChild;
       if (!lastRow) return;
-      const nameInput   = lastRow.querySelector('.sp_name');
-      const catInput    = lastRow.querySelector('.sp_cat');
+      const nameInput = lastRow.querySelector('.sp_name');
+      const catInput = lastRow.querySelector('.sp_cat');
       const amountInput = lastRow.querySelector('.sp_amount');
-      if (nameInput)   nameInput.value   = match.name;
-      if (catInput)    catInput.value    = match.category;
+      if (nameInput) nameInput.value = match.name;
+      if (catInput) catInput.value = match.category;
       if (amountInput) amountInput.value = match.price || '';
       this.updateBillPreview();
 
@@ -5484,22 +5580,22 @@ class OwnerPortalApp {
   selectRowProduct(rowId, name, category, price) {
     const row = document.getElementById(rowId);
     if (!row) return;
-    const nameInput     = row.querySelector('.sp_name');
-    const catInput      = row.querySelector('.sp_cat');
-    const amountInput   = row.querySelector('.sp_amount');
-    const dropdown      = document.getElementById(`dd_${rowId}`);
+    const nameInput = row.querySelector('.sp_name');
+    const catInput = row.querySelector('.sp_cat');
+    const amountInput = row.querySelector('.sp_amount');
+    const dropdown = document.getElementById(`dd_${rowId}`);
 
-    if (nameInput)   nameInput.value   = name;
-    if (catInput)    catInput.value    = category;
+    if (nameInput) nameInput.value = name;
+    if (catInput) catInput.value = category;
     if (amountInput) amountInput.value = price || '';
-    if (dropdown)    dropdown.style.display = 'none';
+    if (dropdown) dropdown.style.display = 'none';
 
     this.updateBillPreview();
   }
 
   async saveSaleRecord() {
     const customerName = document.getElementById('sale_customerName')?.value?.trim();
-    const phoneNumber  = document.getElementById('sale_phoneNumber')?.value?.trim();
+    const phoneNumber = document.getElementById('sale_phoneNumber')?.value?.trim();
     const purchaseDate = document.getElementById('sale_purchaseDate')?.value;
 
     if (!customerName || !phoneNumber || !purchaseDate) {
@@ -5511,10 +5607,10 @@ class OwnerPortalApp {
     const container = document.getElementById('sale_items_container');
     const rows = container ? Array.from(container.children) : [];
     const items = rows.map(row => ({
-      name:     (row.querySelector('.sp_name')?.value || '').trim(),
-      category: (row.querySelector('.sp_cat')?.value  || '').trim(),
-      quantity: Number(row.querySelector('.sp_qty')?.value)      || 1,
-      amount:   Number(row.querySelector('.sp_amount')?.value)   || 0,
+      name: (row.querySelector('.sp_name')?.value || '').trim(),
+      category: (row.querySelector('.sp_cat')?.value || '').trim(),
+      quantity: Number(row.querySelector('.sp_qty')?.value) || 1,
+      amount: Number(row.querySelector('.sp_amount')?.value) || 0,
       discount: Number(row.querySelector('.sp_discount')?.value) || 0
     })).filter(i => i.name);
 
@@ -5534,8 +5630,8 @@ class OwnerPortalApp {
       customerAddress: document.getElementById('sale_customerAddress')?.value?.trim(),
       productName,
       productItems: items,         // full multi-item array
-      saleAmount:  totalAmount   || null,
-      discount:    totalDiscount || null,
+      saleAmount: totalAmount || null,
+      discount: totalDiscount || null,
       purchaseDate,
       warrantyPeriod: document.getElementById('sale_warrantyPeriod')?.value,
       notes: document.getElementById('sale_notes')?.value?.trim(),
@@ -5578,8 +5674,8 @@ class OwnerPortalApp {
     let total = 0;
     if (container) {
       Array.from(container.children).forEach(row => {
-        const qty      = Number(row.querySelector('.sp_qty')?.value)      || 1;
-        const amount   = Number(row.querySelector('.sp_amount')?.value)   || 0;
+        const qty = Number(row.querySelector('.sp_qty')?.value) || 1;
+        const amount = Number(row.querySelector('.sp_amount')?.value) || 0;
         const discount = Number(row.querySelector('.sp_discount')?.value) || 0;
         total += Math.max(0, (amount - discount) * qty);
       });
@@ -5662,10 +5758,10 @@ class OwnerPortalApp {
   }
 
   async saveEditSale(saleId) {
-    const customerName  = document.getElementById('es_customerName')?.value?.trim();
-    const phoneNumber   = document.getElementById('es_phoneNumber')?.value?.trim();
-    const productName   = document.getElementById('es_productName')?.value?.trim();
-    const purchaseDate  = document.getElementById('es_purchaseDate')?.value;
+    const customerName = document.getElementById('es_customerName')?.value?.trim();
+    const phoneNumber = document.getElementById('es_phoneNumber')?.value?.trim();
+    const productName = document.getElementById('es_productName')?.value?.trim();
+    const purchaseDate = document.getElementById('es_purchaseDate')?.value;
 
     if (!customerName || !phoneNumber || !productName || !purchaseDate) {
       alert('Please fill in Customer Name, Phone, Product Name and Date.');
@@ -5677,11 +5773,11 @@ class OwnerPortalApp {
       phoneNumber,
       customerAddress: document.getElementById('es_customerAddress')?.value?.trim(),
       productName,
-      saleAmount:      document.getElementById('es_saleAmount')?.value || null,
-      discount:        document.getElementById('es_discount')?.value || null,
+      saleAmount: document.getElementById('es_saleAmount')?.value || null,
+      discount: document.getElementById('es_discount')?.value || null,
       purchaseDate,
-      warrantyPeriod:  document.getElementById('es_warrantyPeriod')?.value,
-      notes:           document.getElementById('es_notes')?.value?.trim()
+      warrantyPeriod: document.getElementById('es_warrantyPeriod')?.value,
+      notes: document.getElementById('es_notes')?.value?.trim()
     };
 
     try {
@@ -5709,9 +5805,9 @@ class OwnerPortalApp {
     const sale = this.salesRecords.find(s => s.saleId === saleId);
     if (!sale) return;
 
-    const amount   = Number(sale.saleAmount) || 0;
+    const amount = Number(sale.saleAmount) || 0;
     const discount = Number(sale.discount) || 0;
-    const net      = amount - discount;
+    const net = amount - discount;
 
     const receiptStyle = `
       font-family: Arial, 'Helvetica Neue', sans-serif;
@@ -5755,20 +5851,19 @@ class OwnerPortalApp {
 
             <!-- Product -->
             <div style="font-weight:bold;margin-bottom:3px;">PRODUCT DETAILS</div>
-            ${
-              sale.productItems && sale.productItems.length > 0
-                ? sale.productItems.map((it, idx) => {
-                    const qty = Number(it.quantity) || 1;
-                    const qtyStr = qty > 1 ? ` (x${qty})` : '';
-                    return `
+            ${sale.productItems && sale.productItems.length > 0
+        ? sale.productItems.map((it, idx) => {
+          const qty = Number(it.quantity) || 1;
+          const qtyStr = qty > 1 ? ` (x${qty})` : '';
+          return `
                       <div style="display:flex;justify-content:space-between;margin-bottom:2px;">
                         <span style="max-width:65%;word-break:break-word;">${it.name}${qtyStr}</span>
                         <span style="font-weight:bold;">Rs.${(it.amount * qty).toLocaleString('en-IN')}</span>
                       </div>
                     `;
-                  }).join('')
-                : `<div style="display:flex;justify-content:space-between;"><span>Product</span><span style="font-weight:bold;text-align:right;max-width:55%;word-break:break-word;">${sale.productName}</span></div>`
-            }
+        }).join('')
+        : `<div style="display:flex;justify-content:space-between;"><span>Product</span><span style="font-weight:bold;text-align:right;max-width:55%;word-break:break-word;">${sale.productName}</span></div>`
+      }
             ${sale.productModel ? `<div style="display:flex;justify-content:space-between;"><span>Model</span><span style="font-weight:bold;">${sale.productModel}</span></div>` : ''}
             ${sale.warrantyPeriod ? `<div style="display:flex;justify-content:space-between;"><span>Warranty</span><span style="font-weight:bold;">${sale.warrantyPeriod}</span></div>` : ''}
 
@@ -5819,9 +5914,9 @@ class OwnerPortalApp {
     const sale = this.salesRecords.find(s => s.saleId === saleId);
     if (!sale) return;
 
-    const amount   = Number(sale.saleAmount) || 0;
+    const amount = Number(sale.saleAmount) || 0;
     const discount = Number(sale.discount) || 0;
-    const net      = amount - discount;
+    const net = amount - discount;
 
     const win = window.open('', '_blank', 'width=400,height=700');
     win.document.write(`<!DOCTYPE html>
@@ -5955,7 +6050,7 @@ class OwnerPortalApp {
 </html>`);
     win.document.close();
     // Focus the window — user clicks the PRINT button inside to trigger printer dialog
-    setTimeout(() => { try { win.focus(); } catch(e) {} }, 200);
+    setTimeout(() => { try { win.focus(); } catch (e) { } }, 200);
   }
 
   async deleteSaleRecord(saleId) {
@@ -5976,9 +6071,9 @@ class OwnerPortalApp {
     const sale = this.salesRecords.find(s => s.saleId === saleId);
     if (!sale) return;
 
-    const amount   = Number(sale.saleAmount) || 0;
-    const discount = Number(sale.discount)   || 0;
-    const net      = amount - discount;
+    const amount = Number(sale.saleAmount) || 0;
+    const discount = Number(sale.discount) || 0;
+    const net = amount - discount;
 
     const items = sale.productItems && sale.productItems.length > 0
       ? sale.productItems
@@ -6044,7 +6139,7 @@ class OwnerPortalApp {
     dashed();
     if (discount > 0) {
       rowText('Sub-Total', 'Rs.' + amount.toLocaleString('en-IN'));
-      rowText('Discount',  '- Rs.' + discount.toLocaleString('en-IN'));
+      rowText('Discount', '- Rs.' + discount.toLocaleString('en-IN'));
     }
     solid();
     doc.setFontSize(11); doc.setFont('courier', 'bold');
@@ -6098,7 +6193,7 @@ class OwnerPortalApp {
           // Then trigger file share so owner can attach the PDF
           setTimeout(async () => {
             try { await navigator.share({ files: [file], title: 'Receipt - ' + sale.saleId }); }
-            catch(e) { if (e.name !== 'AbortError') doc.save(fileName); }
+            catch (e) { if (e.name !== 'AbortError') doc.save(fileName); }
           }, 500);
           return;
         }
@@ -6261,7 +6356,7 @@ class OwnerPortalApp {
 </html>`);
     win.document.close();
     // Focus the window — user clicks the PRINT button inside to trigger printer dialog
-    setTimeout(() => { try { win.focus(); } catch(e) {} }, 200);
+    setTimeout(() => { try { win.focus(); } catch (e) { } }, 200);
   }
 
   exportProductsPDF() {
@@ -6271,19 +6366,19 @@ class OwnerPortalApp {
       const stock = Number(p.stock) || 0;
       const stockColor = stock === 0 ? '#dc2626' : stock <= 3 ? '#d97706' : '#059669';
       const stockLabel = stock === 0 ? 'Out of Stock' : stock <= 3 ? `Low (${stock})` : stock;
-      return `<tr style="background:${i%2===0?'#fff':'#f9fafb'}">
-        <td>${i+1}</td>
+      return `<tr style="background:${i % 2 === 0 ? '#fff' : '#f9fafb'}">
+        <td>${i + 1}</td>
         <td><strong>${p.name}</strong></td>
-        <td>${p.category||'-'}</td>
-        <td style="color:#059669;font-weight:700;">₹${(Number(p.price)||0).toLocaleString('en-IN')}</td>
-        <td style="color:#6b7280;text-decoration:line-through;">₹${(Number(p.originalPrice)||0).toLocaleString('en-IN')}</td>
-        <td style="color:#d97706;font-weight:700;">${p.ownerPrice ? '₹'+Number(p.ownerPrice).toLocaleString('en-IN') : '-'}</td>
+        <td>${p.category || '-'}</td>
+        <td style="color:#059669;font-weight:700;">₹${(Number(p.price) || 0).toLocaleString('en-IN')}</td>
+        <td style="color:#6b7280;text-decoration:line-through;">₹${(Number(p.originalPrice) || 0).toLocaleString('en-IN')}</td>
+        <td style="color:#d97706;font-weight:700;">${p.ownerPrice ? '₹' + Number(p.ownerPrice).toLocaleString('en-IN') : '-'}</td>
         <td style="color:${stockColor};font-weight:700;">${stockLabel}</td>
-        <td><span style="background:${p.inStock?'#dcfce7':'#fee2e2'};color:${p.inStock?'#166534':'#dc2626'};padding:2px 8px;border-radius:4px;font-size:11px;">${p.inStock?'In Stock':'Out of Stock'}</span></td>
+        <td><span style="background:${p.inStock ? '#dcfce7' : '#fee2e2'};color:${p.inStock ? '#166534' : '#dc2626'};padding:2px 8px;border-radius:4px;font-size:11px;">${p.inStock ? 'In Stock' : 'Out of Stock'}</span></td>
       </tr>`;
     }).join('');
-    const lowStockCount = data.filter(p => { const s = Number(p.stock)||0; return s > 0 && s <= 3; }).length;
-    const outOfStockCount = data.filter(p => (Number(p.stock)||0) === 0).length;
+    const lowStockCount = data.filter(p => { const s = Number(p.stock) || 0; return s > 0 && s <= 3; }).length;
+    const outOfStockCount = data.filter(p => (Number(p.stock) || 0) === 0).length;
     win.document.write(`
       <!DOCTYPE html><html><head><title>Products Report</title>
       <style>
@@ -6321,13 +6416,13 @@ class OwnerPortalApp {
     const data = this.trackingData;
     const win = window.open('', '_blank', 'width=900,height=700');
     const rows = data.map((t, i) => `
-      <tr style="background:${i%2===0?'#fff':'#f9fafb'}">
-        <td>${i+1}</td><td>${t.createdAt||'-'}</td><td>${t.qrId}</td>
-        <td>${t.customerName}</td><td>${t.contact||'-'}</td>
-        <td>${t.productName||t.deviceModel||'-'}</td><td>${t.issue}</td>
-        <td>${t.status}</td><td style="font-weight:700;color:#059669;">₹${(Number(t.amount)||0).toLocaleString('en-IN')}</td>
+      <tr style="background:${i % 2 === 0 ? '#fff' : '#f9fafb'}">
+        <td>${i + 1}</td><td>${t.createdAt || '-'}</td><td>${t.qrId}</td>
+        <td>${t.customerName}</td><td>${t.contact || '-'}</td>
+        <td>${t.productName || t.deviceModel || '-'}</td><td>${t.issue}</td>
+        <td>${t.status}</td><td style="font-weight:700;color:#059669;">₹${(Number(t.amount) || 0).toLocaleString('en-IN')}</td>
       </tr>`).join('');
-    const total = data.reduce((s,t)=>s+(Number(t.amount)||0),0);
+    const total = data.reduce((s, t) => s + (Number(t.amount) || 0), 0);
     win.document.write(`
       <!DOCTYPE html><html><head><title>Tracking Records</title>
       <style>
@@ -6352,10 +6447,10 @@ class OwnerPortalApp {
 
   exportTrackingXL() {
     const data = this.trackingData;
-    const headers = ['#','Date','QR ID','Customer','Contact','Device','Issue','Status','Amount (Rs)'];
+    const headers = ['#', 'Date', 'QR ID', 'Customer', 'Contact', 'Device', 'Issue', 'Status', 'Amount (Rs)'];
     const rows = data.map((t, i) => [
-      i+1, t.createdAt||'', t.qrId, t.customerName, t.contact||'',
-      t.productName||t.deviceModel||'', t.issue, t.status, Number(t.amount)||0
+      i + 1, t.createdAt || '', t.qrId, t.customerName, t.contact || '',
+      t.productName || t.deviceModel || '', t.issue, t.status, Number(t.amount) || 0
     ]);
     this._downloadCSV('tracking_records', headers, rows);
   }
@@ -6364,17 +6459,17 @@ class OwnerPortalApp {
     const data = this.salesRecords;
     const win = window.open('', '_blank', 'width=900,height=700');
     const rows = data.map((s, i) => {
-      const net = (Number(s.saleAmount)||0) - (Number(s.discount)||0);
-      return `<tr style="background:${i%2===0?'#fff':'#f9fafb'}">
-        <td>${i+1}</td><td>${s.purchaseDate||'-'}</td><td>${s.customerName}</td>
-        <td>${s.phoneNumber||'-'}</td><td>${s.productName}</td>
-        <td>${s.productModel||'-'}</td><td>${s.warrantyPeriod||'-'}</td>
-        <td>₹${(Number(s.saleAmount)||0).toLocaleString('en-IN')}</td>
-        <td>₹${(Number(s.discount)||0).toLocaleString('en-IN')}</td>
+      const net = (Number(s.saleAmount) || 0) - (Number(s.discount) || 0);
+      return `<tr style="background:${i % 2 === 0 ? '#fff' : '#f9fafb'}">
+        <td>${i + 1}</td><td>${s.purchaseDate || '-'}</td><td>${s.customerName}</td>
+        <td>${s.phoneNumber || '-'}</td><td>${s.productName}</td>
+        <td>${s.productModel || '-'}</td><td>${s.warrantyPeriod || '-'}</td>
+        <td>₹${(Number(s.saleAmount) || 0).toLocaleString('en-IN')}</td>
+        <td>₹${(Number(s.discount) || 0).toLocaleString('en-IN')}</td>
         <td style="font-weight:700;color:#059669;">₹${net.toLocaleString('en-IN')}</td>
       </tr>`;
     }).join('');
-    const total = data.reduce((s,r)=>(s+(Number(r.saleAmount)||0)-(Number(r.discount)||0)),0);
+    const total = data.reduce((s, r) => (s + (Number(r.saleAmount) || 0) - (Number(r.discount) || 0)), 0);
     win.document.write(`
       <!DOCTYPE html><html><head><title>Sales Records</title>
       <style>
@@ -6399,10 +6494,10 @@ class OwnerPortalApp {
 
   exportSalesXL() {
     const data = this.salesRecords;
-    const headers = ['#','Date','Customer','Phone','Product','Model','Warranty','Amount (Rs)','Discount (Rs)','Net (Rs)'];
+    const headers = ['#', 'Date', 'Customer', 'Phone', 'Product', 'Model', 'Warranty', 'Amount (Rs)', 'Discount (Rs)', 'Net (Rs)'];
     const rows = data.map((s, i) => {
-      const net = (Number(s.saleAmount)||0) - (Number(s.discount)||0);
-      return [i+1, s.purchaseDate||'', s.customerName, s.phoneNumber||'', s.productName, s.productModel||'', s.warrantyPeriod||'', Number(s.saleAmount)||0, Number(s.discount)||0, net];
+      const net = (Number(s.saleAmount) || 0) - (Number(s.discount) || 0);
+      return [i + 1, s.purchaseDate || '', s.customerName, s.phoneNumber || '', s.productName, s.productModel || '', s.warrantyPeriod || '', Number(s.saleAmount) || 0, Number(s.discount) || 0, net];
     });
     this._downloadCSV('sales_records', headers, rows);
   }
@@ -6414,8 +6509,8 @@ class OwnerPortalApp {
       const stock = Number(d.stock) || 0;
       const stockColor = stock === 0 ? '#dc2626' : stock <= 1 ? '#dc2626' : '#16a34a';
       const statusLabel = stock === 0 ? 'Out of Stock' : stock <= 1 ? 'Last 1 - Reorder!' : 'In Stock';
-      return `<tr style="background:${i%2===0?'#fff':'#f9fafb'}">
-        <td>${i+1}</td>
+      return `<tr style="background:${i % 2 === 0 ? '#fff' : '#f9fafb'}">
+        <td>${i + 1}</td>
         <td>${d.displayName}</td>
         <td>${d.displayId}</td>
         <td>${this.stockTotalValueUnlocked ? (d.price ? '₹' + Number(d.price).toLocaleString('en-IN') : '—') : '••••'}</td>
@@ -6423,7 +6518,7 @@ class OwnerPortalApp {
         <td style="color:${stockColor}; font-weight:700;">${statusLabel}</td>
       </tr>`;
     }).join('');
-    const totalValue = data.reduce((sum, d) => sum + ((Number(d.price)||0) * (Number(d.stock)||0)), 0);
+    const totalValue = data.reduce((sum, d) => sum + ((Number(d.price) || 0) * (Number(d.stock) || 0)), 0);
     win.document.write(`
       <!DOCTYPE html><html><head><title>Display Stock Report</title>
       <style>
@@ -6452,7 +6547,7 @@ class OwnerPortalApp {
     const rows = data.map((d, i) => {
       const stock = Number(d.stock) || 0;
       const status = stock === 0 ? 'Out of Stock' : stock <= 1 ? 'Last 1 - Reorder!' : 'In Stock';
-      return [i+1, d.displayName, d.displayId, this.stockTotalValueUnlocked ? (Number(d.price)||0) : '••••', stock, status];
+      return [i + 1, d.displayName, d.displayId, this.stockTotalValueUnlocked ? (Number(d.price) || 0) : '••••', stock, status];
     });
     this._downloadCSV('display_stock', headers, rows);
   }
@@ -6560,11 +6655,11 @@ class OwnerPortalApp {
 
         const editingIdStr = String(this.editingProductId);
         const existingProduct = this.products.find((p) => String(p.id) === editingIdStr || String(p._id) === editingIdStr);
-        
+
         if (existingProduct) {
           const mongoId = existingProduct._id || existingProduct.id;
           console.log('💾 [OWNER PORTAL] Updating product in database...');
-          
+
           // Update in database ONLY
           const response = await fetch(`${this.API_URL}/products/${mongoId}`, {
             method: 'PATCH',
@@ -6575,20 +6670,20 @@ class OwnerPortalApp {
           if (response.ok) {
             const savedProduct = await response.json();
             console.log('✅ [OWNER PORTAL] Product updated in database:', savedProduct);
-            
+
             // Update local array (no localStorage)
             const productIndex = this.products.findIndex((p) => String(p.id) === editingIdStr || String(p._id) === editingIdStr);
             if (productIndex !== -1) {
               this.products[productIndex] = savedProduct;
             }
-            
+
             alert("✅ Product updated in database successfully!");
           } else {
             const errorText = await response.text();
             console.error('❌ [OWNER PORTAL] Database update failed:', errorText);
             throw new Error(`Failed to update product: ${errorText}`);
           }
-          
+
           this.editingProductId = null;
           console.log('🔄 Product updated in database, main website will see changes');
         } else {
@@ -6617,7 +6712,7 @@ class OwnerPortalApp {
         };
 
         console.log('💾 [OWNER PORTAL] Saving product to database...');
-        
+
         // Save to database ONLY
         const response = await fetch(`${this.API_URL}/products`, {
           method: 'POST',
@@ -6628,26 +6723,26 @@ class OwnerPortalApp {
         if (response.ok) {
           const savedProduct = await response.json();
           console.log('✅ [OWNER PORTAL] Product saved to database:', savedProduct);
-          
+
           // Add to local array (no localStorage)
           this.products.push(savedProduct);
-          
+
           alert("✅ Product saved to database successfully!");
         } else {
           const errorText = await response.text();
           console.error('❌ [OWNER PORTAL] Database save failed:', errorText);
           throw new Error(`Failed to save product: ${errorText}`);
         }
-        
+
         console.log('🔄 Product saved to database, main website will see it');
       }
 
       this.renderPage("admin-products");
     } catch (error) {
       console.error('❌ Error saving product:', error);
-      
+
       let errorMessage = error.message;
-      
+
       if (error.message.includes('timeout') || error.message.includes('timed out')) {
         alert(`⏰ Database operation timed out!\n\nThis usually means:\n• Slow internet connection\n• Database server is busy\n\nPlease try again in a few moments.`);
       } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
@@ -6678,14 +6773,14 @@ class OwnerPortalApp {
 
       if (response.ok) {
         const savedProduct = await response.json();
-        
+
         // Update local storage with response from database
         const index = this.products.findIndex(p => (p._id || p.id) === mongoId);
         if (index !== -1) {
           this.products[index] = savedProduct;
           localStorage.setItem('manjula_products', JSON.stringify(this.products));
         }
-        
+
         console.log('✅ Product update synced to database successfully');
       } else {
         console.error('❌ Failed to sync product update to database');
@@ -6699,10 +6794,10 @@ class OwnerPortalApp {
   async syncProductToDatabase(product) {
     try {
       console.log('🔄 [OWNER PORTAL] Starting database sync for product:', product.name);
-      
+
       const productForDB = { ...product };
       delete productForDB.id; // Remove temporary ID, let MongoDB generate _id
-      
+
       const response = await fetch(`${this.API_URL}/products`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -6712,7 +6807,7 @@ class OwnerPortalApp {
       if (response.ok) {
         const savedProduct = await response.json();
         console.log('✅ [OWNER PORTAL] Product saved to database:', savedProduct);
-        
+
         // Update local storage with real database product
         const index = this.products.findIndex(p => p.id === product.id);
         if (index !== -1) {
@@ -6720,7 +6815,7 @@ class OwnerPortalApp {
           localStorage.setItem('manjula_products', JSON.stringify(this.products));
           console.log('✅ [OWNER PORTAL] Local storage updated with database product');
         }
-        
+
         console.log('✅ Product synced to database successfully - main website should see it now!');
       } else {
         const errorText = await response.text();
@@ -6743,7 +6838,7 @@ class OwnerPortalApp {
 
         const mongoId = product._id || product.id;
         console.log('💾 [OWNER PORTAL] Deleting product from database...');
-        
+
         // Delete from database ONLY
         const response = await fetch(`${this.API_URL}/products/${mongoId}`, {
           method: 'DELETE'
@@ -6751,10 +6846,10 @@ class OwnerPortalApp {
 
         if (response.ok) {
           console.log('✅ [OWNER PORTAL] Product deleted from database');
-          
+
           // Remove from local array (no localStorage)
           this.products = this.products.filter((p) => String(p.id) !== productIdStr && String(p._id) !== productIdStr);
-          
+
           this.renderPage("admin-products");
           alert('✅ Product deleted from database successfully!');
         } else {
@@ -6762,7 +6857,7 @@ class OwnerPortalApp {
           console.error('❌ [OWNER PORTAL] Database delete failed:', errorText);
           throw new Error(`Failed to delete product: ${errorText}`);
         }
-        
+
         console.log('🔄 Product deleted from database, main website will see changes');
       } catch (error) {
         console.error('❌ Error deleting product:', error);
@@ -6845,7 +6940,7 @@ class OwnerPortalApp {
     };
 
     const itemName = matchType === 'display' ? (match?.displayName) : (match?.partName);
-    const itemId   = matchType === 'display' ? (match?.stockItemId) : (match?.partItemId);
+    const itemId = matchType === 'display' ? (match?.stockItemId) : (match?.partItemId);
     const itemCode = matchType === 'display' ? (match?.barcode || match?.displayId) : (match?.partId);
     const itemStock = match?.stock || 0;
 
@@ -6885,7 +6980,7 @@ class OwnerPortalApp {
       <div style="display:flex; align-items:center; justify-content:space-between; background:#1e293b; border-radius:6px; padding:8px 12px; margin-bottom:6px;">
         <div>
           <span style="color:#f8fafc; font-weight:700; font-size:13px;">${this.escapeHtml(sp.partName)}</span>
-          <span style="background:${sp.type==='display'?'#0e4a2a':'#1e3a5f'}; color:${sp.type==='display'?'#34d399':'#38bdf8'}; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px; margin-left:6px;">${sp.type==='display'?'🖥️ Display':'🔩 Spare'}</span>
+          <span style="background:${sp.type === 'display' ? '#0e4a2a' : '#1e3a5f'}; color:${sp.type === 'display' ? '#34d399' : '#38bdf8'}; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px; margin-left:6px;">${sp.type === 'display' ? '🖥️ Display' : '🔩 Spare'}</span>
           <span style="color:#94a3b8; font-size:11px; margin-left:6px;">ID: ${this.escapeHtml(sp.partId || '')}</span>
           <span style="color:#34d399; font-size:11px; margin-left:6px;">Stock: ${sp.stock}</span>
         </div>
@@ -6901,19 +6996,19 @@ class OwnerPortalApp {
     const password = document.getElementById("newTrackingPassword")?.value?.trim();
     const customer = document.getElementById("newTrackingCustomer")?.value?.trim();
     const device = document.getElementById("newTrackingDevice")?.value?.trim();
-    const contact       = document.getElementById("newTrackingContact")?.value?.trim();
-    const address       = document.getElementById("newTrackingAddress")?.value?.trim();
-    const dateIn        = document.getElementById("newTrackingDateIn")?.value?.trim();
-    const dateOut       = document.getElementById("newTrackingDateOut")?.value?.trim();
-    const issue         = document.getElementById("newTrackingIssue")?.value?.trim();
-    const status        = document.getElementById("newTrackingStatus")?.value;
-    const days          = document.getElementById("newTrackingDays")?.value;
-    const amount        = document.getElementById("newTrackingAmount")?.value?.trim();
-    const advance       = document.getElementById("newTrackingAdvance")?.value?.trim();
-    const paidAmount    = document.getElementById("newTrackingPaid")?.value?.trim();
+    const contact = document.getElementById("newTrackingContact")?.value?.trim();
+    const address = document.getElementById("newTrackingAddress")?.value?.trim();
+    const dateIn = document.getElementById("newTrackingDateIn")?.value?.trim();
+    const dateOut = document.getElementById("newTrackingDateOut")?.value?.trim();
+    const issue = document.getElementById("newTrackingIssue")?.value?.trim();
+    const status = document.getElementById("newTrackingStatus")?.value;
+    const days = document.getElementById("newTrackingDays")?.value;
+    const amount = document.getElementById("newTrackingAmount")?.value?.trim();
+    const advance = document.getElementById("newTrackingAdvance")?.value?.trim();
+    const paidAmount = document.getElementById("newTrackingPaid")?.value?.trim();
     const totalReceived = document.getElementById("newTrackingTotalReceived")?.value?.trim();
-    const balance       = document.getElementById("newTrackingBalance")?.value?.trim();
-    const imei          = document.getElementById("newTrackingIMEI")?.value?.trim() || '';
+    const balance = document.getElementById("newTrackingBalance")?.value?.trim();
+    const imei = document.getElementById("newTrackingIMEI")?.value?.trim() || '';
     if (!qrId || !password || !customer || !device || !issue || !amount) {
       alert("Please fill all required fields: QR ID, Password, Customer Name, Device Model, Issue Description, and Full Price");
       return;
@@ -6945,16 +7040,16 @@ class OwnerPortalApp {
         deviceModel: device,
         contact: contact,
         address: address || '',
-        dateIn:  dateIn  || currentDate,
+        dateIn: dateIn || currentDate,
         dateOut: dateOut || '',
         status: status,
         issue: issue,
         estimatedDays: Number.parseInt(days) || 0,
-        amount:         Number.parseInt(amount) || 0,
-        advanceAmount:  Number.parseInt(advance) || 0,
-        paidAmount:     Number.parseInt(paidAmount) || 0,
-        totalReceived:  Number.parseInt(totalReceived) || 0,
-        balanceAmount:  Number.parseInt(balance) || Number.parseInt(amount) || 0,
+        amount: Number.parseInt(amount) || 0,
+        advanceAmount: Number.parseInt(advance) || 0,
+        paidAmount: Number.parseInt(paidAmount) || 0,
+        totalReceived: Number.parseInt(totalReceived) || 0,
+        balanceAmount: Number.parseInt(balance) || Number.parseInt(amount) || 0,
         imsi: null,
         imei: imei || null,
         createdAt: currentDate,
@@ -6970,7 +7065,7 @@ class OwnerPortalApp {
 
       // 1. Save to local storage IMMEDIATELY (instant)
       this.trackingData.push(newTracking);
-      
+
       // 2. Show SUCCESS popup immediately
       alert("✅ Tracking record created successfully!\n\nQR ID: " + qrId + "\nPassword: " + password + "\nAmount: ₹" + amount + "\n\nShare these details with your customer for tracking.");
 
@@ -7013,7 +7108,7 @@ class OwnerPortalApp {
         }
         this.newTrackingSpares = [];
       }
-      
+
       // 3. Clear form and render page immediately
       document.getElementById("newTrackingQRId").value = "";
       document.getElementById("newTrackingPassword").value = "";
@@ -7021,25 +7116,25 @@ class OwnerPortalApp {
       document.getElementById("newTrackingDevice").value = "";
       document.getElementById("newTrackingContact").value = "";
       if (document.getElementById("newTrackingAddress")) document.getElementById("newTrackingAddress").value = "";
-      if (document.getElementById("newTrackingDateIn"))  document.getElementById("newTrackingDateIn").value  = "";
+      if (document.getElementById("newTrackingDateIn")) document.getElementById("newTrackingDateIn").value = "";
       if (document.getElementById("newTrackingDateOut")) document.getElementById("newTrackingDateOut").value = "";
       document.getElementById("newTrackingIssue").value = "";
       document.getElementById("newTrackingDays").value = "0";
       document.getElementById("newTrackingAmount").value = "";
-      if (document.getElementById("newTrackingAdvance"))       document.getElementById("newTrackingAdvance").value = "";
-      if (document.getElementById("newTrackingPaid"))          document.getElementById("newTrackingPaid").value = "";
+      if (document.getElementById("newTrackingAdvance")) document.getElementById("newTrackingAdvance").value = "";
+      if (document.getElementById("newTrackingPaid")) document.getElementById("newTrackingPaid").value = "";
       if (document.getElementById("newTrackingTotalReceived")) document.getElementById("newTrackingTotalReceived").value = "";
-      if (document.getElementById("newTrackingBalance"))       document.getElementById("newTrackingBalance").value = "";
-      if (document.getElementById("newTrackingIMEI"))  document.getElementById("newTrackingIMEI").value = "";
-      
+      if (document.getElementById("newTrackingBalance")) document.getElementById("newTrackingBalance").value = "";
+      if (document.getElementById("newTrackingIMEI")) document.getElementById("newTrackingIMEI").value = "";
+
       this.toggleTrackingForm();
       this.renderPage("admin-tracking");
-      
+
       // 4. Sync to database in background (don't wait for it)
       this.syncTrackingToDatabase(newTracking).catch(error => {
         console.error('❌ Background tracking sync failed:', error);
       });
-      
+
       console.log('🔄 Tracking saved locally, syncing to database in background');
     } catch (error) {
       console.error('Error saving tracking:', error);
@@ -7127,29 +7222,29 @@ class OwnerPortalApp {
             </div>
             <div>
               <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Total Received (₹)</label>
-              <input id="et_total" class="input" type="number" value="${Number(t.totalReceived) || (Number(t.advanceAmount||0) + Number(t.paidAmount||0))}" readonly style="width:100%;color:#059669;background:#f0fdf4;border:1px solid #d1d5db;font-weight:700;">
+              <input id="et_total" class="input" type="number" value="${Number(t.totalReceived) || (Number(t.advanceAmount || 0) + Number(t.paidAmount || 0))}" readonly style="width:100%;color:#059669;background:#f0fdf4;border:1px solid #d1d5db;font-weight:700;">
               <small style="color:#6b7280;font-size:10px;">Advance + Paid (auto)</small>
             </div>
             <div>
               <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Balance Amount (₹)</label>
               <input id="et_balance" class="input" type="number"
-                value="${Math.max(0, Number(t.amount||0) - Number(t.advanceAmount||0) - Number(t.paidAmount||0))}"
+                value="${Math.max(0, Number(t.amount || 0) - Number(t.advanceAmount || 0) - Number(t.paidAmount || 0))}"
                 readonly style="width:100%;color:#dc2626;background:#fef2f2;border:1px solid #d1d5db;font-weight:700;">
               <small style="color:#6b7280;font-size:10px;">Full − Advance − Paid (auto)</small>
             </div>
             <div>
               <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">Estimated Completion</label>
               <select id="et_estimatedDays" class="input" style="width:100%;color:#111;background:#f8fafc;border:1px solid #d1d5db;">
-                <option value="0" ${(t.estimatedDays||0)==0?'selected':''}>📅 Same Day</option>
-                <option value="1" ${(t.estimatedDays||0)==1?'selected':''}>1 Day</option>
-                <option value="2" ${(t.estimatedDays||0)==2?'selected':''}>2 Days</option>
-                <option value="3" ${(t.estimatedDays||0)==3?'selected':''}>3 Days</option>
-                <option value="4" ${(t.estimatedDays||0)==4?'selected':''}>4 Days</option>
-                <option value="5" ${(t.estimatedDays||0)==5?'selected':''}>5 Days</option>
-                <option value="7" ${(t.estimatedDays||0)==7?'selected':''}>1 Week</option>
-                <option value="10" ${(t.estimatedDays||0)==10?'selected':''}>10 Days</option>
-                <option value="14" ${(t.estimatedDays||0)==14?'selected':''}>2 Weeks</option>
-                <option value="30" ${(t.estimatedDays||0)==30?'selected':''}>1 Month</option>
+                <option value="0" ${(t.estimatedDays || 0) == 0 ? 'selected' : ''}>📅 Same Day</option>
+                <option value="1" ${(t.estimatedDays || 0) == 1 ? 'selected' : ''}>1 Day</option>
+                <option value="2" ${(t.estimatedDays || 0) == 2 ? 'selected' : ''}>2 Days</option>
+                <option value="3" ${(t.estimatedDays || 0) == 3 ? 'selected' : ''}>3 Days</option>
+                <option value="4" ${(t.estimatedDays || 0) == 4 ? 'selected' : ''}>4 Days</option>
+                <option value="5" ${(t.estimatedDays || 0) == 5 ? 'selected' : ''}>5 Days</option>
+                <option value="7" ${(t.estimatedDays || 0) == 7 ? 'selected' : ''}>1 Week</option>
+                <option value="10" ${(t.estimatedDays || 0) == 10 ? 'selected' : ''}>10 Days</option>
+                <option value="14" ${(t.estimatedDays || 0) == 14 ? 'selected' : ''}>2 Weeks</option>
+                <option value="30" ${(t.estimatedDays || 0) == 30 ? 'selected' : ''}>1 Month</option>
               </select>
             </div>            <div>
               <label style="font-size:12px;font-weight:600;color:#374151;display:block;margin-bottom:4px;">QR Password</label>
@@ -7177,9 +7272,9 @@ class OwnerPortalApp {
   }
 
   async saveEditTracking(qrId) {
-    const customerName  = document.getElementById('et_customerName')?.value?.trim();
-    const productName   = document.getElementById('et_productName')?.value?.trim();
-    const issue         = document.getElementById('et_issue')?.value?.trim();
+    const customerName = document.getElementById('et_customerName')?.value?.trim();
+    const productName = document.getElementById('et_productName')?.value?.trim();
+    const issue = document.getElementById('et_issue')?.value?.trim();
 
     if (!customerName || !productName || !issue) {
       alert('Please fill in Customer Name, Device Name and Issue.');
@@ -7190,16 +7285,16 @@ class OwnerPortalApp {
     const updatedData = {
       customerName,
       productName,
-      contact:        document.getElementById('et_contact')?.value?.trim(),
-      address:        document.getElementById('et_address')?.value?.trim(),
-      amount:         Number(document.getElementById('et_amount')?.value) || 0,
-      advanceAmount:  Number(document.getElementById('et_advance')?.value) || 0,
-      paidAmount:     paidAmt,
-      totalReceived:  Number(document.getElementById('et_total')?.value) || 0,
-      balanceAmount:  Number(document.getElementById('et_balance')?.value) || 0,
-      balancePaidDate: document.getElementById('et_balancePaidDate')?.value?.trim() || (paidAmt > 0 ? new Date().toLocaleDateString('en-IN', {day:'2-digit',month:'2-digit',year:'numeric'}) : ''),
-      estimatedDays:  Number(document.getElementById('et_estimatedDays')?.value) || 0,
-      qrPassword:     document.getElementById('et_qrPassword')?.value?.trim(),
+      contact: document.getElementById('et_contact')?.value?.trim(),
+      address: document.getElementById('et_address')?.value?.trim(),
+      amount: Number(document.getElementById('et_amount')?.value) || 0,
+      advanceAmount: Number(document.getElementById('et_advance')?.value) || 0,
+      paidAmount: paidAmt,
+      totalReceived: Number(document.getElementById('et_total')?.value) || 0,
+      balanceAmount: Number(document.getElementById('et_balance')?.value) || 0,
+      balancePaidDate: document.getElementById('et_balancePaidDate')?.value?.trim() || (paidAmt > 0 ? new Date().toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : ''),
+      estimatedDays: Number(document.getElementById('et_estimatedDays')?.value) || 0,
+      qrPassword: document.getElementById('et_qrPassword')?.value?.trim(),
       issue
     };
 
@@ -7235,20 +7330,20 @@ class OwnerPortalApp {
 
   showStatusModal(tracking) {
     const statuses = [
-      { value: 'Received',        label: '📥 Received',         desc: 'Device received at service center' },
-      { value: 'Diagnostics',     label: '🔍 Diagnostics',      desc: 'Checking device issues' },
-      { value: 'Return',          label: '↩️ Return',            desc: 'Device returned to customer' },
-      { value: 'In Progress',     label: '🔧 In Progress',      desc: 'Repair work in progress' },
-      { value: 'Parts Ordered',   label: '📦 Parts Ordered',    desc: 'Waiting for replacement parts' },
-      { value: 'Quality Check',   label: '✅ Quality Check',    desc: 'Final testing' },
-      { value: 'Ready for Pickup',label: '📢 Ready for Pickup', desc: 'Ready for collection' },
-      { value: 'Completed',       label: '🎉 Completed',        desc: 'Service completed' },
-      { value: 'Delivered',       label: '🚚 Delivered',        desc: 'Device delivered to customer' }
+      { value: 'Received', label: '📥 Received', desc: 'Device received at service center' },
+      { value: 'Diagnostics', label: '🔍 Diagnostics', desc: 'Checking device issues' },
+      { value: 'Return', label: '↩️ Return', desc: 'Device returned to customer' },
+      { value: 'In Progress', label: '🔧 In Progress', desc: 'Repair work in progress' },
+      { value: 'Parts Ordered', label: '📦 Parts Ordered', desc: 'Waiting for replacement parts' },
+      { value: 'Quality Check', label: '✅ Quality Check', desc: 'Final testing' },
+      { value: 'Ready for Pickup', label: '📢 Ready for Pickup', desc: 'Ready for collection' },
+      { value: 'Completed', label: '🎉 Completed', desc: 'Service completed' },
+      { value: 'Delivered', label: '🚚 Delivered', desc: 'Device delivered to customer' }
     ];
 
     // Which options to hide when Return is selected
     const returnOnlyStatuses = ['Return'];
-    const hiddenWhenReturn = ['In Progress','Parts Ordered','Quality Check','Ready for Pickup','Completed','Delivered'];
+    const hiddenWhenReturn = ['In Progress', 'Parts Ordered', 'Quality Check', 'Ready for Pickup', 'Completed', 'Delivered'];
 
     const hasPaidFull = (Number(tracking.amount || 0) - Number(tracking.advanceAmount || 0) - Number(tracking.paidAmount || 0)) <= 0;
 
@@ -7266,18 +7361,18 @@ class OwnerPortalApp {
             <label class="status-select-label">Select New Status</label>
             <select class="status-select" id="newStatusSelect" data-qr-id="${tracking.qrId}" onchange="app.onStatusSelectChange(this)">
               ${statuses.map(s => {
-                const isDelivered = s.value === 'Delivered';
-                const hideReturn = hiddenWhenReturn.includes(s.value) && tracking.status === 'Return';
-                const hideDelivered = isDelivered && !hasPaidFull;
-                const hide = hideReturn || hideDelivered;
+      const isDelivered = s.value === 'Delivered';
+      const hideReturn = hiddenWhenReturn.includes(s.value) && tracking.status === 'Return';
+      const hideDelivered = isDelivered && !hasPaidFull;
+      const hide = hideReturn || hideDelivered;
 
-                return `
+      return `
                   <option value="${s.value}" ${s.value === tracking.status ? 'selected' : ''}
                     ${hide ? 'style="display:none"' : ''}>
                     ${s.label} - ${s.desc}
                   </option>
                 `;
-              }).join('')}
+    }).join('')}
             </select>
           </div>
 
@@ -7302,7 +7397,7 @@ class OwnerPortalApp {
 
   // Called when the status dropdown changes — hides/shows options based on Return and Payment status
   onStatusSelectChange(selectEl) {
-    const hiddenWhenReturn = ['In Progress','Parts Ordered','Quality Check','Ready for Pickup','Completed','Delivered'];
+    const hiddenWhenReturn = ['In Progress', 'Parts Ordered', 'Quality Check', 'Ready for Pickup', 'Completed', 'Delivered'];
     const isReturn = selectEl.value === 'Return';
     const warning = document.getElementById('returnWarning');
 
@@ -7338,7 +7433,7 @@ class OwnerPortalApp {
   async saveTrackingStatus(qrId) {
     const newStatus = document.getElementById('newStatusSelect').value;
     const tracking = this.trackingData.find((t) => t.qrId === qrId);
-    
+
     if (!tracking) return;
 
     // 1. Update local storage IMMEDIATELY (instant)
@@ -7350,7 +7445,7 @@ class OwnerPortalApp {
       hour: '2-digit',
       minute: '2-digit'
     });
-    
+
     // Set completed date when status is changed to "Completed"
     if (newStatus === 'Completed' && !tracking.completedAt) {
       tracking.completedAt = new Date().toLocaleDateString('en-IN', {
@@ -7371,39 +7466,39 @@ class OwnerPortalApp {
         day: '2-digit', month: '2-digit', year: 'numeric'
       });
     }
-    
+
     // 2. Show SUCCESS and render page immediately
     this.closeStatusModal();
     this.renderPage("admin-tracking");
     alert(`✅ Status updated to: ${newStatus}${newStatus === 'Completed' ? '\n✅ Completed date recorded!' : ''}`);
-    
+
     // 3. Sync to database in background (don't wait for it)
     this.syncTrackingStatusToDatabase(qrId, newStatus, tracking.lastUpdated, tracking.completedAt).catch(error => {
       console.error('❌ Background tracking status sync failed:', error);
     });
-    
+
     console.log('🔄 Tracking status updated locally, syncing to database in background');
   }
 
   // Background sync method for tracking status updates
   async syncTrackingStatusToDatabase(qrId, newStatus, lastUpdated, completedAt) {
     try {
-      const updateData = { 
-        status: newStatus, 
-        lastUpdated: lastUpdated 
+      const updateData = {
+        status: newStatus,
+        lastUpdated: lastUpdated
       };
-      
+
       // Include completedAt if it exists
       if (completedAt) {
         updateData.completedAt = completedAt;
       }
-      
+
       const response = await fetch(`${this.API_URL}/tracking/${qrId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updateData)
       });
-      
+
       if (response.ok) {
         console.log('✅ Tracking status synced to database successfully');
       } else {
@@ -7418,16 +7513,16 @@ class OwnerPortalApp {
     if (confirm("Are you sure you want to delete this tracking record?")) {
       // 1. Delete from local storage IMMEDIATELY (instant)
       this.trackingData = this.trackingData.filter((t) => t.qrId !== qrId);
-      
+
       // 2. Show SUCCESS and render page immediately
       this.renderPage("admin-tracking");
       alert('✅ Tracking deleted successfully!');
-      
+
       // 3. Delete from database in background (don't wait for it)
       this.syncTrackingDeleteToDatabase(qrId).catch(error => {
         console.error('❌ Background tracking delete sync failed:', error);
       });
-      
+
       console.log('🔄 Tracking deleted locally, syncing to database in background');
     }
   }
@@ -7438,7 +7533,7 @@ class OwnerPortalApp {
       const response = await fetch(`${this.API_URL}/tracking/${qrId}`, {
         method: 'DELETE'
       });
-      
+
       if (response.ok) {
         console.log('✅ Tracking deletion synced to database successfully');
       } else {
@@ -7469,7 +7564,7 @@ class OwnerPortalApp {
       try {
         const url = new URL(code.startsWith('http') ? code : 'https://x.x/' + code);
         code = url.searchParams.get('scan') || code;
-      } catch(e) {
+      } catch (e) {
         const match = code.match(/[?&]scan=([^&\s]+)/);
         if (match) code = match[1];
       }
@@ -7517,12 +7612,12 @@ class OwnerPortalApp {
     if (existing) existing.remove();
 
     const statusColors = {
-      'Received':'#3b82f6','Diagnostics':'#8b5cf6','Return':'#ef4444',
-      'In Progress':'#f59e0b','Parts Ordered':'#ec4899','Quality Check':'#06b6d4',
-      'Ready for Pickup':'#f59e0b','Completed':'#10b981','Delivered':'#2563eb'
+      'Received': '#3b82f6', 'Diagnostics': '#8b5cf6', 'Return': '#ef4444',
+      'In Progress': '#f59e0b', 'Parts Ordered': '#ec4899', 'Quality Check': '#06b6d4',
+      'Ready for Pickup': '#f59e0b', 'Completed': '#10b981', 'Delivered': '#2563eb'
     };
     const sc = statusColors[t.status] || '#10b981';
-    const bcModalId = `bc_modal_${t.qrId.replace(/[^a-zA-Z0-9]/g,'_')}`;
+    const bcModalId = `bc_modal_${t.qrId.replace(/[^a-zA-Z0-9]/g, '_')}`;
 
     const modal = `
       <div id="barcodeLookupModal" onclick="if(event.target===this)this.remove()"
@@ -7551,19 +7646,19 @@ class OwnerPortalApp {
           <!-- All Details -->
           <div style="display:grid;gap:0;font-size:13px;border:1px solid #334155;border-radius:8px;overflow:hidden;">
             ${[
-              ['👤 Customer', t.customerName],
-              ['📞 Phone', t.contact || '—'],
-              ['📱 Device', t.productName || t.deviceModel || '—'],
-              ['🔑 Password', t.qrPassword || '—'],
-              ['⏱ Est. Days', t.estimatedDays == 0 ? 'Same Day' : (t.estimatedDays ? t.estimatedDays + ' days' : '—')],
-              ['💰 Amount', t.amount ? '₹' + Number(t.amount).toLocaleString('en-IN') : '—'],
-              ['📅 Received', t.createdAt || '—'],
-              ['✅ Completed', t.completedAt || '—'],
-              ['🚀 Delivered', t.deliveredAt || '—'],
-              ['↩️ Returned', t.returnedAt  || '—'],
-              ['🕒 Last Update', t.lastUpdated || '—'],
-            ].filter(([,v]) => v !== '—' || ['👤 Customer','📱 Device','💰 Amount','📅 Received'].some(l => l === [].toString())).map(([label, value], i) => `
-              <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:9px 14px;background:${i%2===0?'rgba(30,41,59,0.8)':'rgba(51,65,85,0.4)'};border-bottom:1px solid #334155;">
+        ['👤 Customer', t.customerName],
+        ['📞 Phone', t.contact || '—'],
+        ['📱 Device', t.productName || t.deviceModel || '—'],
+        ['🔑 Password', t.qrPassword || '—'],
+        ['⏱ Est. Days', t.estimatedDays == 0 ? 'Same Day' : (t.estimatedDays ? t.estimatedDays + ' days' : '—')],
+        ['💰 Amount', t.amount ? '₹' + Number(t.amount).toLocaleString('en-IN') : '—'],
+        ['📅 Received', t.createdAt || '—'],
+        ['✅ Completed', t.completedAt || '—'],
+        ['🚀 Delivered', t.deliveredAt || '—'],
+        ['↩️ Returned', t.returnedAt || '—'],
+        ['🕒 Last Update', t.lastUpdated || '—'],
+      ].filter(([, v]) => v !== '—' || ['👤 Customer', '📱 Device', '💰 Amount', '📅 Received'].some(l => l === [].toString())).map(([label, value], i) => `
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:9px 14px;background:${i % 2 === 0 ? 'rgba(30,41,59,0.8)' : 'rgba(51,65,85,0.4)'};border-bottom:1px solid #334155;">
                 <span style="color:#94a3b8;font-size:12px;min-width:110px;">${label}</span>
                 <span style="font-weight:600;color:#f8fafc;text-align:right;max-width:55%;word-break:break-word;">${value}</span>
               </div>`).join('')}
@@ -7576,11 +7671,11 @@ class OwnerPortalApp {
 
           <!-- Action buttons -->
           <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;">
-            <button onclick="app.printTrackingLabel('${t.qrId}','${(t.customerName||'').replace(/'/g,"\\'")}','${((t.productName||t.deviceModel||'')).replace(/'/g,"\\'")}');document.getElementById('barcodeLookupModal').remove();"
+            <button onclick="app.printTrackingLabel('${t.qrId}','${(t.customerName || '').replace(/'/g, "\\'")}','${((t.productName || t.deviceModel || '')).replace(/'/g, "\\'")}');document.getElementById('barcodeLookupModal').remove();"
               style="flex:1;min-width:100px;background:#1e293b;color:#fff;border:1px solid #475569;border-radius:8px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">
               🏷️ Print Label
             </button>
-            <button onclick="app.printTSCLabel('${t.qrId}','${(t.customerName||'').replace(/'/g,"\\'")}','${((t.productName||t.deviceModel||'')).replace(/'/g,"\\'")}');document.getElementById('barcodeLookupModal').remove();"
+            <button onclick="app.printTSCLabel('${t.qrId}','${(t.customerName || '').replace(/'/g, "\\'")}','${((t.productName || t.deviceModel || '')).replace(/'/g, "\\'")}');document.getElementById('barcodeLookupModal').remove();"
               style="flex:1;min-width:100px;background:#ea580c;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;">
               🖶 TSC Printer
             </button>
@@ -7604,11 +7699,11 @@ class OwnerPortalApp {
       if (el && typeof JsBarcode !== 'undefined') {
         try {
           JsBarcode(el, t.qrId, {
-            format:'CODE128', width:2.2, height:50,
-            displayValue:true, fontSize:14, margin:6,
-            background:'#ffffff', lineColor:'#000000', fontOptions:'bold'
+            format: 'CODE128', width: 2.2, height: 50,
+            displayValue: true, fontSize: 14, margin: 6,
+            background: '#ffffff', lineColor: '#000000', fontOptions: 'bold'
           });
-        } catch(e) {}
+        } catch (e) { }
       }
     }, 50);
 
@@ -7623,8 +7718,8 @@ class OwnerPortalApp {
     };
 
     const barVal = (t.qrId || '').trim();
-    const cust   = (t.customerName || '').substring(0, 14).toUpperCase();
-    const dev    = (t.productName || t.deviceModel || '').substring(0, 16);
+    const cust = (t.customerName || '').substring(0, 14).toUpperCase();
+    const dev = (t.productName || t.deviceModel || '').substring(0, 16);
 
     const win = window.open('', '_blank', 'width=920,height=480');
     win.document.write(`<!DOCTYPE html>
@@ -7921,7 +8016,7 @@ class OwnerPortalApp {
 </body>
 </html>`);
     win.document.close();
-    setTimeout(() => { try { win.focus(); } catch(e) {} }, 200);
+    setTimeout(() => { try { win.focus(); } catch (e) { } }, 200);
   }
 
   // ── Send ZPL command to Zebra-compatible thermal label printer ───────────
@@ -7931,8 +8026,8 @@ class OwnerPortalApp {
     };
 
     const barVal = (t.qrId || '').replace(/[^A-Za-z0-9]/g, '');
-    const cust   = (t.customerName || customerName || '').substring(0, 14).toUpperCase().replace(/"/g, '');
-    const dev    = (t.productName || t.deviceModel || deviceModel || '').substring(0, 14).toUpperCase().replace(/"/g, '');
+    const cust = (t.customerName || customerName || '').substring(0, 14).toUpperCase().replace(/"/g, '');
+    const dev = (t.productName || t.deviceModel || deviceModel || '').substring(0, 14).toUpperCase().replace(/"/g, '');
 
     // TSPL command for Zenpert 4T520 / TSC-compatible printer
     const tspl = [
@@ -8004,8 +8099,8 @@ class OwnerPortalApp {
       } catch (serverErr) {
         // Both failed — download as fallback
         const blob = new Blob([tspl], { type: 'application/octet-stream' });
-        const url  = URL.createObjectURL(blob);
-        const a    = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
         a.href = url; a.download = `label-${barVal}.prn`; a.click();
         URL.revokeObjectURL(url);
         alert('⚠️ Print agent not running.\n\nFile downloaded: label-' + barVal + '.prn\n\nTo enable one-click printing:\n1. Run print-agent/start-agent.bat on this PC\n2. Keep it running in the background');
@@ -8045,8 +8140,8 @@ class OwnerPortalApp {
       if (dateInInput) {
         const today = new Date();
         const yyyy = today.getFullYear();
-        const mm   = String(today.getMonth() + 1).padStart(2, '0');
-        const dd   = String(today.getDate()).padStart(2, '0');
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
         dateInInput.value = `${yyyy}-${mm}-${dd}`;
       }
 
@@ -8127,7 +8222,7 @@ class OwnerPortalApp {
       });
       canvas.style.display = 'block';
       canvas.style.margin = '0 auto';
-    } catch(e) { console.warn('Barcode render error:', e); }
+    } catch (e) { console.warn('Barcode render error:', e); }
   }
 
   handleTrackingSearch(value) {
@@ -8152,7 +8247,7 @@ class OwnerPortalApp {
           if (result.success) {
             const customerInput = document.getElementById(targetNameId);
             const addressInput = document.getElementById(targetAddressId);
-            
+
             if (customerInput && !customerInput.value.trim()) {
               customerInput.value = result.customerName;
             }
@@ -8427,7 +8522,7 @@ class OwnerPortalApp {
     const input = document.getElementById('stockSearchInput');
     if (input) {
       const rect = input.getBoundingClientRect();
-      dropdown.style.top  = (rect.bottom + window.scrollY + 4) + 'px';
+      dropdown.style.top = (rect.bottom + window.scrollY + 4) + 'px';
       dropdown.style.left = rect.left + 'px';
       dropdown.style.width = rect.width + 'px';
     }
@@ -8518,14 +8613,14 @@ class OwnerPortalApp {
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = newContent;
       const newTrackingList = tempDiv.firstElementChild;
-      
+
       // Preserve the search input value and focus
       const oldInput = trackingListContainer.querySelector('#trackingSearchInput');
       const hadFocus = oldInput && document.activeElement === oldInput;
       const cursorPos = oldInput ? oldInput.selectionStart : 0;
-      
+
       parent.replaceChild(newTrackingList, trackingListContainer);
-      
+
       // Restore focus and cursor position
       if (hadFocus) {
         const newInput = document.getElementById('trackingSearchInput');
@@ -8539,15 +8634,15 @@ class OwnerPortalApp {
 
   getStatusEmoji(status) {
     const emojiMap = {
-      'Received':         '📥',
-      'Diagnostics':      '🔍',
-      'Return':           '↩️',
-      'In Progress':      '🔧',
-      'Parts Ordered':    '📦',
-      'Quality Check':    '✅',
+      'Received': '📥',
+      'Diagnostics': '🔍',
+      'Return': '↩️',
+      'In Progress': '🔧',
+      'Parts Ordered': '📦',
+      'Quality Check': '✅',
       'Ready for Pickup': '📢',
-      'Completed':        '🎉',
-      'Delivered':        '🚚'
+      'Completed': '🎉',
+      'Delivered': '🚚'
     }
     return emojiMap[status] || '📱'
   }
@@ -8579,13 +8674,13 @@ class OwnerPortalApp {
       try {
         const orderIdStr = String(orderId);
         const order = this.orders.find(o => String(o.id) === orderIdStr || String(o.orderId) === orderIdStr || String(o._id) === orderIdStr);
-        
+
         if (!order) {
           throw new Error('Order not found in local array');
         }
 
         const dbOrderId = order.orderId || order.id;
-        
+
         const response = await fetch(`${this.API_URL}/orders/${dbOrderId}`, {
           method: 'DELETE'
         });
@@ -8594,9 +8689,9 @@ class OwnerPortalApp {
           const errorText = await response.text();
           throw new Error(`Failed to delete order: ${errorText}`);
         }
-        
+
         this.orders = this.orders.filter(o => o.id !== orderId && o.orderId !== orderId && o.id !== dbOrderId && o.orderId !== dbOrderId);
-        
+
         this.renderPage("admin-orders");
         alert('✅ Order deleted successfully!');
       } catch (error) {
@@ -8738,34 +8833,34 @@ class OwnerPortalApp {
                   </thead>
                   <tbody>
                     ${filtered.map((item, idx) => {
-                      const stock = Number(item.stock) || 0;
-                      const ownerPrice    = Number(item.ownerPrice) || 0;
-                      const customerPrice = Number(item.customerPrice) || 0;
-                      const totalValue = customerPrice * stock;
-                      const stockColor = stock === 0 ? '#dc2626' : stock <= 1 ? '#dc2626' : stock <= 3 ? '#d97706' : '#16a34a';
-                      const stockBg    = stock === 0 ? '#fef2f2' : stock <= 1 ? '#fef2f2' : stock <= 3 ? '#fffbeb' : '#f0fdf4';
-                      const rowBg      = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
-                      const spBcId     = `bc_sp_${(item.partItemId || item._id || idx).toString().replace(/[^a-zA-Z0-9]/g, '_')}`;
-                      // Prefix existing partId with MMW for barcode display
-                      const spBarVal = (item.partId || '').startsWith('MMW') ? item.partId : 'MMW' + (item.partId || String(idx + 1).padStart(4, '0'));
+      const stock = Number(item.stock) || 0;
+      const ownerPrice = Number(item.ownerPrice) || 0;
+      const customerPrice = Number(item.customerPrice) || 0;
+      const totalValue = customerPrice * stock;
+      const stockColor = stock === 0 ? '#dc2626' : stock <= 1 ? '#dc2626' : stock <= 3 ? '#d97706' : '#16a34a';
+      const stockBg = stock === 0 ? '#fef2f2' : stock <= 1 ? '#fef2f2' : stock <= 3 ? '#fffbeb' : '#f0fdf4';
+      const rowBg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
+      const spBcId = `bc_sp_${(item.partItemId || item._id || idx).toString().replace(/[^a-zA-Z0-9]/g, '_')}`;
+      // Prefix existing partId with MMW for barcode display
+      const spBarVal = (item.partId || '').startsWith('MMW') ? item.partId : 'MMW' + (item.partId || String(idx + 1).padStart(4, '0'));
 
-                      setTimeout(() => {
-                        const el = document.getElementById(spBcId);
-                        if (el && typeof JsBarcode !== 'undefined') {
-                          try {
-                            JsBarcode(el, spBarVal, {
-                              format: 'CODE128', width: 1.5, height: 32,
-                              displayValue: true, fontSize: 11, margin: 4,
-                              background: '#ffffff', lineColor: '#000000',
-                              font: 'monospace', fontOptions: 'bold'
-                            });
-                            el.style.display = 'block';
-                            el.style.width = '120px';
-                          } catch(e) {}
-                        }
-                      }, 50);
+      setTimeout(() => {
+        const el = document.getElementById(spBcId);
+        if (el && typeof JsBarcode !== 'undefined') {
+          try {
+            JsBarcode(el, spBarVal, {
+              format: 'CODE128', width: 1.5, height: 32,
+              displayValue: true, fontSize: 11, margin: 4,
+              background: '#ffffff', lineColor: '#000000',
+              font: 'monospace', fontOptions: 'bold'
+            });
+            el.style.display = 'block';
+            el.style.width = '120px';
+          } catch (e) { }
+        }
+      }, 50);
 
-                      return `
+      return `
                         <tr style="background:${rowBg}; border-bottom:1px solid #e2e8f0; transition:background 0.3s;"
                             onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='${rowBg}'">
                           <td style="padding:10px 14px; color:#9ca3af; font-weight:600; border-right:1px solid #e2e8f0; text-align:center;">${idx + 1}</td>
@@ -8777,16 +8872,16 @@ class OwnerPortalApp {
                           <td style="padding:8px 14px; text-align:center; border-right:1px solid #e2e8f0;">
                             <div style="display:inline-flex; flex-direction:column; align-items:center; gap:4px;">
                               <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:6px; padding:4px; text-align:center; cursor:pointer; display:flex; align-items:center; justify-content:center;"
-                                   onclick="app.printSparePartLabel('${spBarVal}', '${(item.partName||'').replace(/'/g, "\\'")}')"
+                                   onclick="app.printSparePartLabel('${spBarVal}', '${(item.partName || '').replace(/'/g, "\\'")}')"
                                    title="Click to print barcode label">
                                 <svg id="${spBcId}" style="display:none; width:120px; height:45px;"></svg>
                               </div>
                               <div style="display:flex; gap:4px; justify-content:center;">
-                                <button onclick="app.printSparePartLabel('${spBarVal}', '${(item.partName||'').replace(/'/g, "\\'")}')"
+                                <button onclick="app.printSparePartLabel('${spBarVal}', '${(item.partName || '').replace(/'/g, "\\'")}')"
                                   style="background:#f1f5f9; border:1px solid #cbd5e1; border-radius:4px; padding:2px 6px; font-size:10px; font-weight:600; cursor:pointer;" title="Print Browser Label">
                                   🏷️ Print
                                 </button>
-                                <button onclick="app.printSparePartTSCLabel('${spBarVal}', '${(item.partName||'').replace(/'/g, "\\'")}')"
+                                <button onclick="app.printSparePartTSCLabel('${spBarVal}', '${(item.partName || '').replace(/'/g, "\\'")}')"
                                   style="background:#f1f5f9; border:1px solid #cbd5e1; border-radius:4px; padding:2px 6px; font-size:10px; font-weight:600; cursor:pointer;" title="Print TSC Label">
                                   🖶 TSC
                                 </button>
@@ -8794,10 +8889,10 @@ class OwnerPortalApp {
                             </div>
                           </td>
                           <td style="padding:10px 14px; text-align:center; color:#d97706; font-weight:700; border-right:1px solid #e2e8f0;">
-                            ${this.spareTotalValueUnlocked ? 
-                              (ownerPrice ? `₹${ownerPrice.toLocaleString('en-IN')}` : '<span style="color:#9ca3af;">—</span>') :
-                              '<span style="color:#94a3b8; font-family:monospace; font-size:14px;">••••</span>'
-                            }
+                            ${this.spareTotalValueUnlocked ?
+          (ownerPrice ? `₹${ownerPrice.toLocaleString('en-IN')}` : '<span style="color:#9ca3af;">—</span>') :
+          '<span style="color:#94a3b8; font-family:monospace; font-size:14px;">••••</span>'
+        }
                           </td>
                           <td style="padding:10px 14px; text-align:center; border-right:1px solid #e2e8f0;">
                             <span style="display:inline-block; background:${stockBg}; color:${stockColor}; font-weight:900; font-size:18px; min-width:48px; padding:4px 10px; border-radius:6px; border:1px solid ${stockColor}40;">
@@ -8805,10 +8900,10 @@ class OwnerPortalApp {
                             </span>
                           </td>
                           <td style="padding:10px 14px; text-align:center; font-weight:700; color:#1d4ed8; border-right:1px solid #e2e8f0;">
-                            ${this.spareTotalValueUnlocked ? 
-                              (customerPrice && stock ? `₹${totalValue.toLocaleString('en-IN')}` : '<span style="color:#9ca3af;">—</span>') :
-                              '<span style="color:#94a3b8; font-family:monospace; font-size:14px;">••••</span>'
-                            }
+                            ${this.spareTotalValueUnlocked ?
+          (customerPrice && stock ? `₹${totalValue.toLocaleString('en-IN')}` : '<span style="color:#9ca3af;">—</span>') :
+          '<span style="color:#94a3b8; font-family:monospace; font-size:14px;">••••</span>'
+        }
                           </td>
                           <td style="padding:8px 14px; border-right:1px solid #e2e8f0;">
                             <div style="display:flex; gap:6px; align-items:center; justify-content:center;">
@@ -8819,7 +8914,7 @@ class OwnerPortalApp {
                                 ▲ In
                               </button>
                               <button onclick="app.adjustSparePart('${item.partItemId}', -1)"
-                                style="background:#dc2626; color:#fff; border:none; border-radius:6px; padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; ${stock===0?'opacity:0.45;cursor:not-allowed;':''}">
+                                style="background:#dc2626; color:#fff; border:none; border-radius:6px; padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; ${stock === 0 ? 'opacity:0.45;cursor:not-allowed;' : ''}">
                                 ▼ Out
                               </button>
                             </div>
@@ -8842,7 +8937,7 @@ class OwnerPortalApp {
                           </td>
                         </tr>
                       `;
-                    }).join('')}
+    }).join('')}
                   </tbody>
                   <tfoot>
                     <tr style="background:#1e293b; color:#fff; font-weight:700;">
@@ -8852,10 +8947,10 @@ class OwnerPortalApp {
                         ${filtered.reduce((sum, d) => sum + (Number(d.stock) || 0), 0)} units
                       </td>
                       <td style="padding:12px 14px; text-align:center; font-size:15px; font-weight:900; color:#86efac; border-right:1px solid #334155;">
-                        ${this.spareTotalValueUnlocked ? 
-                          `₹${filtered.reduce((sum, d) => sum + ((Number(d.ownerPrice) || 0) * (Number(d.stock) || 0)), 0).toLocaleString('en-IN')}` :
-                          '<span style="color:#94a3b8; font-family:monospace; font-size:14px;">••••</span>'
-                        }
+                        ${this.spareTotalValueUnlocked ?
+        `₹${filtered.reduce((sum, d) => sum + ((Number(d.ownerPrice) || 0) * (Number(d.stock) || 0)), 0).toLocaleString('en-IN')}` :
+        '<span style="color:#94a3b8; font-family:monospace; font-size:14px;">••••</span>'
+      }
                       </td>
                       <td colspan="2" style="padding:12px 14px; text-align:center; font-size:12px; color:#94a3b8;">
                         ${filtered.length} item${filtered.length !== 1 ? 's' : ''}
@@ -8915,10 +9010,10 @@ class OwnerPortalApp {
   }
 
   async saveSparePart() {
-    const partName      = document.getElementById('sp_partName')?.value?.trim();
-    const partId        = document.getElementById('sp_partId')?.value?.trim();
-    const stock         = document.getElementById('sp_stock')?.value;
-    const ownerPrice    = document.getElementById('sp_ownerPrice')?.value;
+    const partName = document.getElementById('sp_partName')?.value?.trim();
+    const partId = document.getElementById('sp_partId')?.value?.trim();
+    const stock = document.getElementById('sp_stock')?.value;
+    const ownerPrice = document.getElementById('sp_ownerPrice')?.value;
     const customerPrice = document.getElementById('sp_customerPrice')?.value;
 
     if (!partName || !partId || stock === '' || stock === null) {
@@ -8930,7 +9025,7 @@ class OwnerPortalApp {
       partName,
       partId,
       stock: Number(stock),
-      ownerPrice:    ownerPrice    ? Number(ownerPrice)    : null,
+      ownerPrice: ownerPrice ? Number(ownerPrice) : null,
       customerPrice: customerPrice ? Number(customerPrice) : null,
       history: [{ change: Number(stock), stockAfter: Number(stock), date: new Date().toLocaleDateString('en-IN') }]
     };
@@ -9063,7 +9158,7 @@ class OwnerPortalApp {
     <button onclick="window.print()" style="padding:10px 24px;background:#1e293b;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer;">🖨️ Print / Save as PDF</button>
     </body></html>`);
     win.document.close();
-    setTimeout(() => { try { win.focus(); } catch(e) {} }, 200);
+    setTimeout(() => { try { win.focus(); } catch (e) { } }, 200);
   }
 
   downloadSparePartsLowStockPDF(partItemId) {
@@ -9095,7 +9190,7 @@ class OwnerPortalApp {
     <button onclick="window.print()" style="padding:10px 24px;background:#1e293b;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer;">🖨️ Print / Save as PDF</button>
     </body></html>`);
     win.document.close();
-    setTimeout(() => { try { win.focus(); } catch(e) {} }, 200);
+    setTimeout(() => { try { win.focus(); } catch (e) { } }, 200);
   }
 
   showEditSparePartModal(partItemId) {
@@ -9158,11 +9253,11 @@ class OwnerPortalApp {
   }
 
   async saveEditSparePart(partItemId) {
-    const partName      = document.getElementById('edit_sp_partName')?.value?.trim();
-    const partId        = document.getElementById('edit_sp_partId')?.value?.trim();
-    const ownerPrice    = document.getElementById('edit_sp_ownerPrice')?.value;
+    const partName = document.getElementById('edit_sp_partName')?.value?.trim();
+    const partId = document.getElementById('edit_sp_partId')?.value?.trim();
+    const ownerPrice = document.getElementById('edit_sp_ownerPrice')?.value;
     const customerPrice = document.getElementById('edit_sp_customerPrice')?.value;
-    const stock         = document.getElementById('edit_sp_stock')?.value;
+    const stock = document.getElementById('edit_sp_stock')?.value;
 
     if (!partName || !partId) {
       alert('Part Name and Part ID are required.');
@@ -9176,9 +9271,9 @@ class OwnerPortalApp {
         body: JSON.stringify({
           partName,
           partId,
-          ownerPrice:    ownerPrice    ? Number(ownerPrice)    : null,
+          ownerPrice: ownerPrice ? Number(ownerPrice) : null,
           customerPrice: customerPrice ? Number(customerPrice) : null,
-          stock:         stock !== '' && stock !== undefined ? Number(stock) : undefined
+          stock: stock !== '' && stock !== undefined ? Number(stock) : undefined
         })
       });
       if (response.ok) {
@@ -9216,8 +9311,8 @@ class OwnerPortalApp {
     const data = this.sparePartsStock || [];
     const win = window.open('', '_blank', 'width=1000,height=750');
     const rows = data.map((p, i) => {
-      const stock         = Number(p.stock) || 0;
-      const ownerPrice    = Number(p.ownerPrice) || 0;
+      const stock = Number(p.stock) || 0;
+      const ownerPrice = Number(p.ownerPrice) || 0;
       const customerPrice = Number(p.customerPrice) || 0;
       const stockColor = stock === 0 ? '#dc2626' : stock <= 3 ? '#d97706' : '#16a34a';
       return `
@@ -9269,10 +9364,10 @@ class OwnerPortalApp {
       .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
       .join('\n');
     const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href     = url;
-    a.download = `spare-parts-${new Date().toISOString().slice(0,10)}.csv`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `spare-parts-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -9307,7 +9402,7 @@ class OwnerPortalApp {
       });
       canvas.style.display = 'block';
       canvas.style.margin = '0 auto';
-    } catch(e) { console.warn('Barcode render error:', e); }
+    } catch (e) { console.warn('Barcode render error:', e); }
   }
 
   _renderEditSparePartsBarcode(value) {
@@ -9326,7 +9421,7 @@ class OwnerPortalApp {
         background: '#ffffff', lineColor: '#000000'
       });
       canvas.style.display = 'block';
-    } catch(e) { console.warn('Barcode render error:', e); }
+    } catch (e) { console.warn('Barcode render error:', e); }
   }
 
   printSparePartLabel(partId, partName) {
@@ -9587,12 +9682,12 @@ class OwnerPortalApp {
 </body>
 </html>`);
     win.document.close();
-    setTimeout(() => { try { win.focus(); } catch(e) {} }, 200);
+    setTimeout(() => { try { win.focus(); } catch (e) { } }, 200);
   }
 
   async printSparePartTSCLabel(partId, partName) {
     const barVal = (partId || '').replace(/[^A-Za-z0-9]/g, '');
-    const dev    = (partName || '').substring(0, 14).toUpperCase().replace(/"/g, '');
+    const dev = (partName || '').substring(0, 14).toUpperCase().replace(/"/g, '');
 
     const tspl = [
       'SIZE 101.5 mm, 25 mm',
@@ -9660,8 +9755,8 @@ class OwnerPortalApp {
         throw new Error(result.error);
       } catch (serverErr) {
         const blob = new Blob([tspl], { type: 'application/octet-stream' });
-        const url  = URL.createObjectURL(blob);
-        const a    = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
         a.href = url; a.download = `label-${barVal}.prn`; a.click();
         URL.revokeObjectURL(url);
         alert('⚠️ Print agent not running.\n\nFile downloaded: label-' + barVal + '.prn\n\nTo enable one-click printing:\n1. Run print-agent/start-agent.bat on this PC\n2. Keep it running in the background');
@@ -9674,7 +9769,7 @@ class OwnerPortalApp {
   // 1. Distributor Management Main Page
   renderDistributorsPage() {
     const search = (this.distributorSearch || "").toLowerCase();
-    const filtered = this.distributors.filter(d => 
+    const filtered = this.distributors.filter(d =>
       (d.name && d.name.toLowerCase().includes(search)) || (d.mobile && d.mobile.includes(search))
     );
 
@@ -9740,7 +9835,7 @@ class OwnerPortalApp {
                             style="background: #0284c7; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; font-size: 13px; cursor: pointer;">
                             📂 View History
                           </button>
-                          <button onclick="app.deleteDistributor('${d.distributorId}', '${(d.name||'').replace(/'/g,"\\'")}') "
+                          <button onclick="app.deleteDistributor('${d.distributorId}', '${(d.name || '').replace(/'/g, "\\'")}') "
                             style="background:#ef4444; color:#fff; border:none; padding:8px 14px; border-radius:6px; font-weight:600; font-size:13px; cursor:pointer;">
                             🗑️ Delete
                           </button>
@@ -9802,7 +9897,7 @@ class OwnerPortalApp {
     let purchases = this.purchaseBills.filter(p => String(p.distributorId) === String(distributor.distributorId));
 
     if (search) {
-      purchases = purchases.filter(p => 
+      purchases = purchases.filter(p =>
         p.billNumber.toLowerCase().includes(search) ||
         (p.items && p.items.some(it => it.productName.toLowerCase().includes(search) || (it.barcode && it.barcode.toLowerCase().includes(search))))
       );
@@ -10094,29 +10189,29 @@ class OwnerPortalApp {
         </td>
         <td style="padding: 8px 10px;">
           ${isDisplay
-            ? `<div style="background:rgba(124,58,237,0.15); color:#a78bfa; border:1px solid #7c3aed; border-radius:6px; padding:8px 10px; font-size:13px; font-weight:700; text-align:center;">🖥️ Display</div>`
-            : `<div style="display:flex; flex-direction:column; gap:4px;">
+          ? `<div style="background:rgba(124,58,237,0.15); color:#a78bfa; border:1px solid #7c3aed; border-radius:6px; padding:8px 10px; font-size:13px; font-weight:700; text-align:center;">🖥️ Display</div>`
+          : `<div style="display:flex; flex-direction:column; gap:4px;">
                 <select onchange="app.setPurchaseRowCategory(${idx}, this.value)"
                   style="width:100%; padding:7px 10px; background:#0f172a; border:1px solid #475569; color:#fff; border-radius:6px; font-size:13px; cursor:pointer;">
-                  <option value="Other" ${(row.category||'Other')==='Other'?'selected':''}>Other</option>
-                  <option value="Spare Parts" ${row.category==='Spare Parts'?'selected':''}>Spare Parts</option>
-                  <option value="Accessories" ${row.category==='Accessories'?'selected':''}>Accessories</option>
-                  <option value="Chargers" ${row.category==='Chargers'?'selected':''}>Chargers</option>
-                  <option value="Audio" ${row.category==='Audio'?'selected':''}>Audio</option>
-                  <option value="Power Banks" ${row.category==='Power Banks'?'selected':''}>Power Banks</option>
-                  ${(this.customCategories||[]).map(c => `<option value="${this.escapeHtml(c)}" ${row.category===c?'selected':''}>${this.escapeHtml(c)}</option>`).join('')}
+                  <option value="Other" ${(row.category || 'Other') === 'Other' ? 'selected' : ''}>Other</option>
+                  <option value="Spare Parts" ${row.category === 'Spare Parts' ? 'selected' : ''}>Spare Parts</option>
+                  <option value="Accessories" ${row.category === 'Accessories' ? 'selected' : ''}>Accessories</option>
+                  <option value="Chargers" ${row.category === 'Chargers' ? 'selected' : ''}>Chargers</option>
+                  <option value="Audio" ${row.category === 'Audio' ? 'selected' : ''}>Audio</option>
+                  <option value="Power Banks" ${row.category === 'Power Banks' ? 'selected' : ''}>Power Banks</option>
+                  ${(this.customCategories || []).map(c => `<option value="${this.escapeHtml(c)}" ${row.category === c ? 'selected' : ''}>${this.escapeHtml(c)}</option>`).join('')}
                   <option value="__custom__">➕ Add new...</option>
                 </select>
                 ${row.showCustomCatInput ? `
                   <div style="display:flex; gap:4px;">
-                    <input id="newCatInput_${idx}" type="text" placeholder="Category name" value="${this.escapeHtml(row.customCatDraft||'')}"
+                    <input id="newCatInput_${idx}" type="text" placeholder="Category name" value="${this.escapeHtml(row.customCatDraft || '')}"
                       oninput="app.purchaseDraftRows[${idx}].customCatDraft=this.value"
                       style="flex:1; padding:6px 8px; background:#0f172a; border:1px solid #38bdf8; color:#fff; border-radius:5px; font-size:12px;">
                     <button type="button" onclick="app.savePurchaseRowCustomCategory(${idx})"
                       style="background:#0ea5e9; color:#fff; border:none; border-radius:5px; padding:4px 8px; font-size:12px; font-weight:700; cursor:pointer;">✓</button>
                   </div>` : ''}
               </div>`
-          }
+        }
         </td>
         <td style="padding: 8px 10px;">
           <input type="text" class="pur-row-input" data-index="${idx}" data-field="barcode" value="${this.escapeHtml(row.barcode || '')}" placeholder="Auto-generated"
@@ -10259,7 +10354,7 @@ class OwnerPortalApp {
     }
 
     if (found) {
-      this.purchaseDraftRows[idx].name    = found.name;
+      this.purchaseDraftRows[idx].name = found.name;
       this.purchaseDraftRows[idx].barcode = found.barcode;
     } else {
       // Not in DB — just fill barcode field with scanned value
@@ -10292,7 +10387,7 @@ class OwnerPortalApp {
           if (row.category !== 'Display') {
             maxNum++;
             row.category = 'Display';
-            row.barcode  = 'M' + String(maxNum).padStart(3, '0');
+            row.barcode = 'M' + String(maxNum).padStart(3, '0');
           }
         });
       }
@@ -10487,7 +10582,7 @@ class OwnerPortalApp {
     const dateInput = document.getElementById('purchaseEntryDate')?.value;
 
     // Filter valid non-empty rows
-    const validItems = this.purchaseDraftRows.filter(r => 
+    const validItems = this.purchaseDraftRows.filter(r =>
       r.name && r.name.trim() !== '' && (parseInt(r.qty) || 0) > 0
     ).map(r => {
       let cat = (r.category || 'Other').trim();
@@ -10543,13 +10638,13 @@ class OwnerPortalApp {
 
       if (response.ok && result.success) {
         alert(`✅ Purchase Saved Successfully!\n\nBill Number: ${result.purchase.billNumber}\nTotal Items: ${result.purchase.totalProducts}\nGrand Total: ₹${result.purchase.totalAmount.toLocaleString('en-IN')}`);
-        
+
         // Auto-create Display Stock entries for Display-category items
         const displayItems = validItems.filter(item => item.category === 'Display');
         if (displayItems.length > 0) {
           console.log(`📱 Auto-adding ${displayItems.length} Display item(s) to Display Stock...`);
           // Reload latest display stock to get accurate max barcode
-          await this.loadDisplayStockFromStorage().catch(() => {});
+          await this.loadDisplayStockFromStorage().catch(() => { });
 
           for (const item of displayItems) {
             try {
@@ -10568,13 +10663,13 @@ class OwnerPortalApp {
               const displayId = 'DS-' + barcode;
 
               const stockData = {
-                displayName:  item.productName,
-                displayId:    displayId,
-                barcode:      barcode,
-                stock:        item.quantity,
-                ownerPrice:   item.ownerPrice || null,
+                displayName: item.productName,
+                displayId: displayId,
+                barcode: barcode,
+                stock: item.quantity,
+                ownerPrice: item.ownerPrice || null,
                 customerPrice: item.customerPrice || null,
-                price:        item.customerPrice || item.ownerPrice || null,
+                price: item.customerPrice || item.ownerPrice || null,
                 history: [{ change: item.quantity, stockAfter: item.quantity, date: new Date().toLocaleDateString('en-IN'), note: `From purchase bill ${result.purchase.billNumber}` }]
               };
 
@@ -10603,7 +10698,7 @@ class OwnerPortalApp {
 
         // Clear draft rows
         this.initPurchaseForm();
-        
+
         // Reload fresh data from storage
         await Promise.all([
           this.loadDistributorsFromStorage(),
@@ -10650,7 +10745,7 @@ class OwnerPortalApp {
           });
 
           this.purchaseDraftRows[idx].barcode = 'M' + String(maxNum + 1).padStart(3, '0');
-          console.log(`✅ Display barcode assigned: ${this.purchaseDraftRows[idx].barcode} (DB max was M${String(data.maxNum).padStart(3,'0')})`);
+          console.log(`✅ Display barcode assigned: ${this.purchaseDraftRows[idx].barcode} (DB max was M${String(data.maxNum).padStart(3, '0')})`);
         } else {
           // Fallback: use in-memory scan if endpoint fails
           this.purchaseDraftRows[idx].barcode = this._generateNextDisplayBarcode();
@@ -10798,17 +10893,17 @@ class OwnerPortalApp {
                       ${search ? `No products matching "<strong style="color:#f8fafc;">${this.escapeHtml(search)}</strong>"` : 'No products found.'}
                     </td></tr>
                   ` : filtered.map((r, i) => {
-                    const isHighlighted = highlight && r.barcode && r.barcode === highlight.barcode;
-                    const rowBg = isHighlighted ? 'rgba(16,185,129,0.1)' : (i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)');
-                    const srcColor = r.source === 'Manual' ? '#f59e0b' : r.source === 'Display' ? '#a78bfa' : r.source === 'Spare' ? '#34d399' : '#38bdf8';
-                    return `
+      const isHighlighted = highlight && r.barcode && r.barcode === highlight.barcode;
+      const rowBg = isHighlighted ? 'rgba(16,185,129,0.1)' : (i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)');
+      const srcColor = r.source === 'Manual' ? '#f59e0b' : r.source === 'Display' ? '#a78bfa' : r.source === 'Spare' ? '#34d399' : '#38bdf8';
+      return `
                       <tr style="background:${rowBg}; border-bottom:1px solid #1e293b;" id="fp-row-${i}">
                         <td style="padding:10px 16px; color:#64748b;">${i + 1}</td>
                         <td style="padding:10px 16px; font-weight:600; color:#f8fafc;">${this.escapeHtml(r.name)}</td>
                         <td style="padding:10px 16px; font-family:monospace; color:#4ade80; font-weight:700;">${this.escapeHtml(r.barcode || '—')}</td>
                         <td style="padding:10px 16px;"><span style="background:rgba(255,255,255,0.06); color:${srcColor}; font-size:11px; font-weight:700; padding:2px 7px; border-radius:4px;">${r.source}</span></td>
                       </tr>`;
-                  }).join('')}
+    }).join('')}
                 </tbody>
               </table>
             </div>
@@ -11027,9 +11122,9 @@ class OwnerPortalApp {
                       </td>
                     </tr>
                   ` : filtered.map((item, idx) => {
-                    const isDisplay = item.category === 'Display';
-                    const rowBg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
-                    return `
+      const isDisplay = item.category === 'Display';
+      const rowBg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
+      return `
                     <tr style="border-bottom: 1px solid #e2e8f0; background: ${rowBg};" onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='${rowBg}'">
                       <td style="padding: 12px 16px; text-align: center; color: #94a3b8; font-weight: 600;">${idx + 1}</td>
                       <td style="padding: 12px 16px; font-weight: 700; color: #0f172a;">${this.escapeHtml(item.productName)}</td>
@@ -11077,8 +11172,8 @@ class OwnerPortalApp {
     let filtered = this.distributorProducts;
 
     if (search) {
-      filtered = filtered.filter(p => 
-        (p.productName && p.productName.toLowerCase().includes(search)) || 
+      filtered = filtered.filter(p =>
+        (p.productName && p.productName.toLowerCase().includes(search)) ||
         (p.barcode && p.barcode.toLowerCase().includes(search)) ||
         (p.distributorName && p.distributorName.toLowerCase().includes(search))
       );
@@ -11176,7 +11271,7 @@ class OwnerPortalApp {
     let filtered = this.purchaseBills;
 
     if (search) {
-      filtered = filtered.filter(b => 
+      filtered = filtered.filter(b =>
         b.billNumber.toLowerCase().includes(search) ||
         (b.distributorName && b.distributorName.toLowerCase().includes(search)) ||
         (b.distributorMobile && b.distributorMobile.includes(search)) ||
@@ -11300,7 +11395,7 @@ class OwnerPortalApp {
   // 6. View Purchase Bill Modal / Printable Page
   renderViewBillPage() {
     const bill = this.purchaseBills.find(b => String(b.billNumber) === String(this.viewingBillNumber) || String(b.purchaseId) === String(this.viewingBillNumber));
-    
+
     if (!bill) {
       return `
         <div style="min-height: 100vh; background-color: #f8fafc; color: #0f172a; padding-top: 96px; text-align: center;">
@@ -11853,20 +11948,20 @@ class OwnerPortalApp {
                 <!-- Category Filter Pills -->
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                   <button onclick="app.posTabFilter='all'; app.renderPage('admin-pos')"
-                    style="padding: 8px 16px; border-radius: 9999px; font-weight: 700; font-size: 13px; cursor: pointer; border: none; transition: all 0.2s; ${activeTab==='all' ? 'background:#0f172a; color:#ffffff;' : 'background:#f1f5f9; color:#475569;'}">
-                    🌐 All Items (${(this.products||[]).length + (this.displayStock||[]).length + (this.sparePartsStock||[]).length})
+                    style="padding: 8px 16px; border-radius: 9999px; font-weight: 700; font-size: 13px; cursor: pointer; border: none; transition: all 0.2s; ${activeTab === 'all' ? 'background:#0f172a; color:#ffffff;' : 'background:#f1f5f9; color:#475569;'}">
+                    🌐 All Items (${(this.products || []).length + (this.displayStock || []).length + (this.sparePartsStock || []).length})
                   </button>
                   <button onclick="app.posTabFilter='product'; app.renderPage('admin-pos')"
-                    style="padding: 8px 16px; border-radius: 9999px; font-weight: 700; font-size: 13px; cursor: pointer; border: none; transition: all 0.2s; ${activeTab==='product' ? 'background:#2563eb; color:#ffffff;' : 'background:#dbeafe; color:#1d4ed8;'}">
-                    📱 Products (${(this.products||[]).length})
+                    style="padding: 8px 16px; border-radius: 9999px; font-weight: 700; font-size: 13px; cursor: pointer; border: none; transition: all 0.2s; ${activeTab === 'product' ? 'background:#2563eb; color:#ffffff;' : 'background:#dbeafe; color:#1d4ed8;'}">
+                    📱 Products (${(this.products || []).length})
                   </button>
                   <button onclick="app.posTabFilter='display'; app.renderPage('admin-pos')"
-                    style="padding: 8px 16px; border-radius: 9999px; font-weight: 700; font-size: 13px; cursor: pointer; border: none; transition: all 0.2s; ${activeTab==='display' ? 'background:#d97706; color:#ffffff;' : 'background:#fef3c7; color:#b45309;'}">
-                    🖥️ Display Stock (${(this.displayStock||[]).length})
+                    style="padding: 8px 16px; border-radius: 9999px; font-weight: 700; font-size: 13px; cursor: pointer; border: none; transition: all 0.2s; ${activeTab === 'display' ? 'background:#d97706; color:#ffffff;' : 'background:#fef3c7; color:#b45309;'}">
+                    🖥️ Display Stock (${(this.displayStock || []).length})
                   </button>
                   <button onclick="app.posTabFilter='spare'; app.renderPage('admin-pos')"
-                    style="padding: 8px 16px; border-radius: 9999px; font-weight: 700; font-size: 13px; cursor: pointer; border: none; transition: all 0.2s; ${activeTab==='spare' ? 'background:#7e22ce; color:#ffffff;' : 'background:#f3e8ff; color:#6b21a8;'}">
-                    🔧 Spare Parts (${(this.sparePartsStock||[]).length})
+                    style="padding: 8px 16px; border-radius: 9999px; font-weight: 700; font-size: 13px; cursor: pointer; border: none; transition: all 0.2s; ${activeTab === 'spare' ? 'background:#7e22ce; color:#ffffff;' : 'background:#f3e8ff; color:#6b21a8;'}">
+                    🔧 Spare Parts (${(this.sparePartsStock || []).length})
                   </button>
                 </div>
               </div>
@@ -11880,9 +11975,9 @@ class OwnerPortalApp {
                     <p style="font-size: 13px; margin-top: 4px;">Try searching by barcode, product name, or select a different category filter.</p>
                   </div>
                 ` : catalog.map(item => {
-                  const stockColor = item.stock === 0 ? '#ef4444' : item.stock <= 3 ? '#f59e0b' : '#10b981';
-                  const stockText = item.stock === 0 ? 'Out of Stock' : `${item.stock} in stock`;
-                  return `
+      const stockColor = item.stock === 0 ? '#ef4444' : item.stock <= 3 ? '#f59e0b' : '#10b981';
+      const stockText = item.stock === 0 ? 'Out of Stock' : `${item.stock} in stock`;
+      return `
                     <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 4px 12px rgba(0,0,0,0.03); transition: transform 0.2s, box-shadow 0.2s;"
                       onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(0,0,0,0.08)';"
                       onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.03)';">
@@ -11922,7 +12017,7 @@ class OwnerPortalApp {
                       </div>
                     </div>
                   `;
-                }).join('')}
+    }).join('')}
               </div>
             </div>
 
@@ -12016,10 +12111,10 @@ class OwnerPortalApp {
                     <label style="font-size: 11px; font-weight: 700; color: #475569; display: block; margin-bottom: 4px; text-transform: uppercase;">Payment Mode</label>
                     <select id="posPaymentMethod" onchange="app.posPaymentMethod = this.value"
                       style="width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; background: #ffffff; color: #0f172a; font-weight: 600;">
-                      <option value="Cash" ${this.posPaymentMethod==='Cash'?'selected':''}>💵 Cash</option>
-                      <option value="UPI" ${this.posPaymentMethod==='UPI'?'selected':''}>📱 UPI / GPay / PhonePe</option>
-                      <option value="Card" ${this.posPaymentMethod==='Card'?'selected':''}>💳 Card</option>
-                      <option value="NetBanking" ${this.posPaymentMethod==='NetBanking'?'selected':''}>🏦 Net Banking</option>
+                      <option value="Cash" ${this.posPaymentMethod === 'Cash' ? 'selected' : ''}>💵 Cash</option>
+                      <option value="UPI" ${this.posPaymentMethod === 'UPI' ? 'selected' : ''}>📱 UPI / GPay / PhonePe</option>
+                      <option value="Card" ${this.posPaymentMethod === 'Card' ? 'selected' : ''}>💳 Card</option>
+                      <option value="NetBanking" ${this.posPaymentMethod === 'NetBanking' ? 'selected' : ''}>🏦 Net Banking</option>
                     </select>
                   </div>
                   <div>
@@ -12144,7 +12239,7 @@ class OwnerPortalApp {
 
   addToPOSCart(type, id) {
     if (!this.posCart) this.posCart = [];
-    
+
     let item = null;
     if (type === 'product') {
       const p = (this.products || []).find(x => x.productId === id || x.id === id || (x._id && String(x._id) === String(id)));
@@ -12470,7 +12565,7 @@ class OwnerPortalApp {
       doc.setFontSize(10);
       doc.setTextColor(100);
       doc.text("Mobile Repairing, Spares & Accessories Store", 14, 26);
-      
+
       doc.setFontSize(14);
       doc.setTextColor(0);
       doc.text(`PURCHASE BILL: ${bill.billNumber}`, 140, 20);
@@ -12695,14 +12790,14 @@ class OwnerPortalApp {
             if (barcodes.length > 0) {
               this.handleCameraScannedCode(barcodes[0].rawValue);
             }
-          } catch(e) {}
+          } catch (e) { }
           if (document.getElementById('cameraScannerModal')) {
             requestAnimationFrame(scanFrame);
           }
         };
         requestAnimationFrame(scanFrame);
       }
-    } catch(err) {
+    } catch (err) {
       console.error('Camera access error:', err);
       alert('⚠️ Camera access denied or camera device unavailable. Please allow camera permissions in browser settings.');
       this.closeMobileCameraBarcodeScanner();
@@ -12799,7 +12894,7 @@ class OwnerPortalApp {
 
   closeMobileCameraBarcodeScanner() {
     if (this.zxingReader) {
-      try { this.zxingReader.reset(); } catch(e) {}
+      try { this.zxingReader.reset(); } catch (e) { }
     }
     if (this.cameraMediaStream) {
       this.cameraMediaStream.getTracks().forEach(t => t.stop());
@@ -12821,7 +12916,7 @@ class OwnerPortalApp {
       gain.connect(ctx.destination);
       osc.start();
       osc.stop(ctx.currentTime + 0.1);
-    } catch(e) {}
+    } catch (e) { }
   }
 
   // Utility helper for safe HTML escaping

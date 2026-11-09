@@ -12,19 +12,19 @@ class ManjulaMobilesApp {
     this.serviceSubMenuOpen = false;
     this.mobileServiceSubMenuOpen = false;
     this.upiLink = "9894703254@upi"
-    
+
     // MongoDB API URL - Auto-detect local vs production
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     const isRender = window.location.hostname.includes('onrender.com');
-    
+
     // Use Render backend for GitHub Pages / hosted frontend deployment
-    const baseURL = isLocalhost 
-      ? 'http://localhost:3001' 
-      : isRender 
-        ? window.location.origin 
+    const baseURL = isLocalhost
+      ? 'http://localhost:3001'
+      : isRender
+        ? window.location.origin
         : 'https://manjulamobilesworld.onrender.com';
     this.API_URL = `${baseURL}/api`
-    
+
     // Socket.IO connection for real-time updates with reconnection
     if (typeof io !== 'undefined') {
       this.socket = io(baseURL, {
@@ -39,7 +39,7 @@ class ManjulaMobilesApp {
       console.warn('⚠️ Socket.IO not loaded, real-time updates disabled');
       this.socket = null;
     }
-    
+
     // Carousel properties
     this.carouselImages = [
       "./public/assets/images/1.jpg",
@@ -49,18 +49,18 @@ class ManjulaMobilesApp {
     ];
     this.currentCarouselIndex = 0;
     this.carouselInterval = null;
-    
+
     this.products = [];
     this.trackingData = [];
-    
+
     // Store interval ID for cleanup
     this.refreshInterval = null;
-    
+
     // Safety check to ensure scrolling is never stuck
     this.scrollCheckInterval = null;
-    
+
     this.init()
-    
+
     // Auto-refresh products every 30 seconds (reduced from 5 seconds to prevent lag)
     // Only if Socket.IO is not available for real-time updates
     if (!this.socket) {
@@ -71,13 +71,13 @@ class ManjulaMobilesApp {
         }
       }, 30000); // 30 seconds instead of 5
     }
-    
+
     // Safety check every 10 seconds to ensure scrolling is not stuck
     this.scrollCheckInterval = setInterval(() => {
       // Check if any modal is open
       const galleryModal = document.getElementById('galleryModal');
       const isModalOpen = galleryModal && galleryModal.classList.contains('active');
-      
+
       // If no modal is open but body overflow is hidden, restore it
       if (!isModalOpen && document.body.style.overflow === 'hidden') {
         console.log('⚠️ Detected stuck scroll, restoring...');
@@ -100,7 +100,7 @@ class ManjulaMobilesApp {
       console.warn('⚠️ No socket connection, skipping listeners');
       return;
     }
-    
+
     this.socket.on('connect', () => {
       console.log('✅ Connected to server for real-time updates');
       console.log('Socket ID:', this.socket.id);
@@ -124,8 +124,8 @@ class ManjulaMobilesApp {
     this.socket.on('product-added', (product) => {
       console.log('📦 [MAIN WEBSITE] New product added via socket:', product);
       // Check for duplicates using both id and _id
-      const exists = this.products.find(p => 
-        String(p.id) === String(product.id) || 
+      const exists = this.products.find(p =>
+        String(p.id) === String(product.id) ||
         String(p._id) === String(product._id) ||
         String(p.id) === String(product._id) ||
         String(p._id) === String(product.id)
@@ -228,7 +228,7 @@ class ManjulaMobilesApp {
   async loadProductsFromStorage() {
     try {
       console.log('📡 [MAIN WEBSITE] Loading products from database...');
-      
+
       const response = await fetch(`${this.API_URL}/products`);
       if (response.ok) {
         this.products = await response.json();
@@ -248,28 +248,28 @@ class ManjulaMobilesApp {
   async loadProductsFromDatabase() {
     try {
       console.log('📡 [MAIN WEBSITE] Loading products from database...');
-      
+
       const response = await fetch(`${this.API_URL}/products`);
       if (response.ok) {
         const dbProducts = await response.json();
         console.log('📦 [MAIN WEBSITE] Received products from database:', dbProducts.length);
-        
+
         // Check if there are new products
         const oldCount = this.products.length;
         const newCount = dbProducts.length;
-        
+
         // Use database products directly (no localStorage)
         this.products = dbProducts;
-        
+
         console.log('✅ [MAIN WEBSITE] Products loaded from database:', this.products.length);
         console.log('📊 [MAIN WEBSITE] Product names:', this.products.map(p => p.name));
-        
+
         // Show notification if new products were added
         if (newCount > oldCount && oldCount > 0) {
           console.log('🆕 [MAIN WEBSITE] New products detected!');
           this.showNotification(`🆕 ${newCount - oldCount} new product(s) added!`);
         }
-        
+
         // Re-render products page if currently viewing it
         if (this.currentPage === 'products') {
           console.log('🔄 [MAIN WEBSITE] Re-rendering products page');
@@ -293,7 +293,7 @@ class ManjulaMobilesApp {
       </div>
     `;
     document.body.appendChild(notification);
-    
+
     // Remove after 3 seconds
     setTimeout(() => {
       notification.remove();
@@ -320,7 +320,7 @@ class ManjulaMobilesApp {
         trackingStatus: "Received",
         ownerGender: "none"
       }
-  ];
+    ];
   }
 
   // Tracking Management Methods - MongoDB API
@@ -374,7 +374,7 @@ class ManjulaMobilesApp {
         paymentMethod: order.paymentMethod,
         screenshotDataPreview: order.paymentScreenshot?.data?.substring(0, 100)
       });
-      
+
       // Create the request body explicitly
       const requestBody = {
         orderId: order.id,
@@ -385,7 +385,7 @@ class ManjulaMobilesApp {
         status: order.status || 'Pending',
         orderDate: order.date || new Date().toISOString()
       };
-      
+
       // Add screenshot data if it exists
       if (order.paymentScreenshot && order.paymentScreenshot.data) {
         requestBody.paymentScreenshot = {
@@ -401,7 +401,7 @@ class ManjulaMobilesApp {
       } else {
         console.log('⚠️ No screenshot data found in order object');
       }
-      
+
       console.log('📤 Final request body structure:', {
         orderId: requestBody.orderId,
         hasCustomer: !!requestBody.customer,
@@ -409,7 +409,7 @@ class ManjulaMobilesApp {
         hasScreenshot: !!requestBody.paymentScreenshot,
         allKeys: Object.keys(requestBody)
       });
-      
+
       // DEBUG: Send to debug endpoint first to see what server receives
       try {
         const debugResponse = await fetch(`${this.API_URL}/debug-order`, {
@@ -422,7 +422,7 @@ class ManjulaMobilesApp {
       } catch (debugError) {
         console.log('⚠️ Debug endpoint failed:', debugError);
       }
-      
+
       // Save to database via API
       const response = await fetch(`${this.API_URL}/orders`, {
         method: 'POST',
@@ -442,10 +442,10 @@ class ManjulaMobilesApp {
         hasScreenshot: !!savedOrder.paymentScreenshot,
         screenshotDataLength: savedOrder.paymentScreenshot?.data?.length
       });
-      
+
       // Add to local array
       this.orders.push(savedOrder);
-      
+
       return savedOrder;
     } catch (error) {
       console.error('❌ Error saving order:', error);
@@ -467,26 +467,26 @@ class ManjulaMobilesApp {
       // Find the order to get the correct orderId
       console.log('🔍 Looking for order with ID:', orderId);
       console.log('📋 All orders:', this.orders.map(o => ({ id: o.id, orderId: o.orderId })));
-      
+
       // Convert to string for comparison (handles both string and number IDs)
       const orderIdStr = String(orderId);
       const order = this.orders.find(o => String(o.id) === orderIdStr || String(o.orderId) === orderIdStr || String(o._id) === orderIdStr);
-      
+
       if (!order) {
         console.error('❌ Order not found in local array');
         console.error('❌ Searched for ID:', orderIdStr);
         console.error('❌ Available IDs:', this.orders.map(o => ({ id: String(o.id), orderId: String(o.orderId), _id: String(o._id) })));
         throw new Error('Order not found in local array');
       }
-      
+
       console.log('✅ Found order:', order);
 
       // Use the orderId field from the order (this is what's stored in database)
       const dbOrderId = order.orderId || order.id;
-      
+
       console.log('🗑️ Deleting order from database:', dbOrderId);
       console.log('📡 API URL:', `${this.API_URL}/orders/${dbOrderId}`);
-      
+
       // Delete from database via API
       const response = await fetch(`${this.API_URL}/orders/${dbOrderId}`, {
         method: 'DELETE'
@@ -502,7 +502,7 @@ class ManjulaMobilesApp {
 
       const result = await response.json();
       console.log('✅ Order deleted from database:', result);
-      
+
       // Remove from local array
       this.orders = this.orders.filter(o => o.id !== orderId && o.orderId !== orderId && o.id !== dbOrderId && o.orderId !== dbOrderId);
       console.log('✅ Order removed from local array');
@@ -515,29 +515,29 @@ class ManjulaMobilesApp {
   async init() {
     try {
       console.log('🚀 Initializing app...');
-      
+
       // Show loading screen immediately
       this.showLoadingScreen();
-      
+
       console.log('📋 Setting up event listeners...');
       // Setup event listeners
       this.setupEventListeners();
       console.log('✅ Event listeners attached');
-      
+
       console.log('📦 Loading products from database...');
-      
+
       // Load products from database - wait up to 7 seconds
       await this.loadProductsFromStorage();
-      
+
       console.log('✅ Products loaded or timeout reached');
-      
+
       console.log('✅ Products loaded:', this.products.length);
-      
+
       console.log('🎨 Rendering home page...');
       // Render page with products from database
       await this.renderPage("home");
       console.log('✅ Home page rendered');
-      
+
       // Load other data in background
       Promise.all([
         this.loadTrackingFromStorage(),
@@ -545,7 +545,7 @@ class ManjulaMobilesApp {
       ]).catch(error => {
         console.error('❌ Error loading data:', error);
       });
-      
+
     } catch (error) {
       console.error('❌ Error during initialization:', error);
       // Don't show error screen - just use default products and continue
@@ -633,14 +633,14 @@ class ManjulaMobilesApp {
 
   setupEventListeners() {
     const app = document.getElementById("app")
-    
+
     if (!app) {
       console.error('❌ App container not found!');
       return;
     }
-    
+
     console.log('✅ App container found, attaching event listeners...');
-    
+
     // Event delegation for all click events
     app.addEventListener("click", async (e) => {
       // Navigation and page routing - check both target and closest parent
@@ -652,10 +652,10 @@ class ManjulaMobilesApp {
         this.closeServiceSubMenu()
         await this.renderPage(pageElement.dataset.page)
       }
-      
+
       // Action elements (buttons with data-action)
       const actionElement = e.target.closest('[data-action]');
-      
+
       // Cart actions
       if (actionElement && actionElement.dataset.action === "add-to-cart") {
         const productId = actionElement.dataset.productId // Keep as string
@@ -683,7 +683,7 @@ class ManjulaMobilesApp {
         const itemId = actionElement.dataset.itemId // Keep as string
         this.decreaseQuantity(itemId)
       }
-      
+
       // Payment actions
       if (actionElement && actionElement.dataset.action === "pay") {
         const method = actionElement.dataset.method
@@ -698,12 +698,15 @@ class ManjulaMobilesApp {
       if (actionElement && actionElement.dataset.action === "upload-screenshot") {
         this.handleScreenshotUpload()
       }
-      
+
       // Mobile menu
       if (actionElement && actionElement.dataset.action === "toggle-mobile-menu") {
         this.toggleMobileMenu()
       }
-      
+      if (actionElement && actionElement.dataset.action === "close-mobile-menu") {
+        this.closeMobileMenu()
+      }
+
       // Tracking actions
       if (actionElement && actionElement.dataset.action === "track-order") {
         this.trackOrder()
@@ -714,7 +717,7 @@ class ManjulaMobilesApp {
       if (actionElement && actionElement.dataset.action === "toggle-tracking-form") {
         this.toggleTrackingForm()
       }
-      
+
       // Carousel actions
       if (actionElement && actionElement.dataset.action === "prev-slide") {
         this.prevCarouselSlide()
@@ -726,13 +729,13 @@ class ManjulaMobilesApp {
         const slideIndex = Number.parseInt(actionElement.dataset.slideIndex)
         this.goToCarouselSlide(slideIndex)
       }
-      
+
       // Floating cart - toggle cart sidebar
       if (e.target.closest('.floating-cart')) {
         console.log('Floating cart clicked! Toggling cart...');
         this.toggleCart()
       }
-      
+
       // Close mobile menu when clicking on links (but NOT the Services submenu toggle)
       if (e.target.closest('.nav-link') || e.target.closest('.mobile-nav-link')) {
         const clickedAction = e.target.closest('[data-action]')?.dataset?.action
@@ -740,7 +743,7 @@ class ManjulaMobilesApp {
           this.closeMobileMenu()
         }
       }
-      
+
       // Service submenu
       if (actionElement && actionElement.dataset.action === "toggle-service-submenu") {
         e.preventDefault()
@@ -748,40 +751,40 @@ class ManjulaMobilesApp {
       } else if (!e.target.closest('.service-submenu')) {
         this.closeServiceSubMenu()
       }
-      
+
       // Mobile service submenu
       if (actionElement && actionElement.dataset.action === "toggle-mobile-service-submenu") {
         e.preventDefault()
         e.stopPropagation()
         this.toggleMobileServiceSubMenu()
       }
-      
+
       // Image modal
       if (actionElement && actionElement.dataset.action === "open-image-modal") {
         const imageUrl = actionElement.dataset.imageUrl
         this.openImageModal(imageUrl)
       }
-      
+
       if (actionElement && actionElement.dataset.action === "close-image-modal") {
         this.closeImageModal()
       }
-      
+
       // Gallery modal
       if (actionElement && actionElement.dataset.action === "open-gallery-modal") {
         console.log('🖼️ Opening gallery modal...');
         // Get the current displayed image from the img element
         const imgElement = actionElement.tagName === 'IMG' ? actionElement : actionElement.querySelector('img');
-        
+
         if (imgElement) {
           const currentImageUrl = imgElement.src;
           const img1 = imgElement.dataset.img1 || imgElement.dataset.imageUrl;
           const img2 = imgElement.dataset.img2 || imgElement.dataset.imageUrl2;
           const currentIndex = parseInt(imgElement.dataset.current) || 1;
-          
+
           console.log('📸 Image 1:', img1);
           console.log('📸 Image 2:', img2);
           console.log('📍 Current index:', currentIndex);
-          
+
           // Open modal with the currently displayed image
           this.openGalleryModal(currentImageUrl, img2, currentIndex, img1)
         } else {
@@ -793,25 +796,25 @@ class ManjulaMobilesApp {
           this.openGalleryModal(imageUrl, imageUrl2, 1, imageUrl)
         }
       }
-      
+
       if (actionElement && actionElement.dataset.action === "close-gallery-modal") {
         // Only close if clicking the modal background, not the content
         if (e.target.id === 'galleryModal' || e.target.classList.contains('gallery-modal-close')) {
           this.closeGalleryModal()
         }
       }
-      
+
       // Image navigation arrows
       if (actionElement && actionElement.dataset.action === "switch-image-prev") {
         e.stopPropagation(); // Prevent modal from opening
         this.switchToImage(actionElement, 'prev', e)
       }
-      
+
       if (actionElement && actionElement.dataset.action === "switch-image-next") {
         e.stopPropagation(); // Prevent modal from opening
         this.switchToImage(actionElement, 'next', e)
       }
-      
+
       // Image dots
       if (actionElement && actionElement.dataset.action === "switch-to-image-dot") {
         e.stopPropagation(); // Prevent modal from opening
@@ -861,7 +864,7 @@ class ManjulaMobilesApp {
     if (carouselTrack) {
       carouselTrack.style.transform = `translateX(-${this.currentCarouselIndex * 100}%)`;
     }
-    
+
     const indicators = document.querySelectorAll('.carousel-indicator');
     indicators.forEach((indicator, index) => {
       indicator.classList.toggle('active', index === this.currentCarouselIndex);
@@ -936,7 +939,7 @@ class ManjulaMobilesApp {
     this.serviceSubMenuOpen = !this.serviceSubMenuOpen
     const serviceSubMenu = document.querySelector(".service-submenu")
     const caret = document.querySelector(".service-caret")
-    
+
     if (serviceSubMenu) {
       if (this.serviceSubMenuOpen) {
         serviceSubMenu.classList.add("active")
@@ -952,7 +955,7 @@ class ManjulaMobilesApp {
     this.serviceSubMenuOpen = false
     const serviceSubMenu = document.querySelector(".service-submenu")
     const caret = document.querySelector(".service-caret")
-    
+
     if (serviceSubMenu) {
       serviceSubMenu.classList.remove("active")
     }
@@ -964,7 +967,7 @@ class ManjulaMobilesApp {
   toggleMobileServiceSubMenu() {
     this.mobileServiceSubMenuOpen = !this.mobileServiceSubMenuOpen
     const mobileServiceSubMenu = document.querySelector(".mobile-service-submenu")
-    
+
     if (mobileServiceSubMenu) {
       if (this.mobileServiceSubMenuOpen) {
         mobileServiceSubMenu.classList.add("active")
@@ -1061,17 +1064,17 @@ class ManjulaMobilesApp {
         }
 
         const savedProduct = await response.json();
-        
+
         // Update local array
         const productIndex = this.products.findIndex((p) => String(p.id) === editingIdStr || String(p._id) === editingIdStr);
         if (productIndex !== -1) {
           this.products[productIndex] = savedProduct;
         }
-        
+
         // Save to localStorage as backup
         localStorage.setItem('manjula_products', JSON.stringify(this.products));
         this.editingProductId = null;
-        
+
         alert("✅ Product updated successfully!");
       } else {
         // Create new product - Don't send 'id', let MongoDB generate _id
@@ -1120,26 +1123,26 @@ class ManjulaMobilesApp {
         const savedProduct = await response.json();
         console.log('✅ Product saved to database successfully!');
         console.log('📦 Saved product data:', savedProduct);
-        
+
         // Check if product already exists before adding (prevent duplicates)
-        const exists = this.products.find(p => 
-          String(p.id) === String(savedProduct.id) || 
+        const exists = this.products.find(p =>
+          String(p.id) === String(savedProduct.id) ||
           String(p._id) === String(savedProduct._id) ||
           String(p.id) === String(savedProduct._id) ||
           String(p._id) === String(savedProduct.id)
         );
-        
+
         if (!exists) {
           // Add to local array
           this.products.push(savedProduct);
-          
+
           // Save to localStorage as backup
           localStorage.setItem('manjula_products', JSON.stringify(this.products));
           console.log('✅ Product added to local array');
         } else {
           console.log('⚠️ Product already exists in local array, skipping');
         }
-        
+
         alert("✅ Product saved successfully to database!");
       }
 
@@ -1166,7 +1169,7 @@ class ManjulaMobilesApp {
 
         // Use MongoDB _id for deletion
         const mongoId = product._id || product.id;
-        
+
         // Delete from database via API
         const response = await fetch(`${this.API_URL}/products/${mongoId}`, {
           method: 'DELETE'
@@ -1177,10 +1180,10 @@ class ManjulaMobilesApp {
         }
 
         console.log('✅ Product deleted from database:', mongoId);
-        
+
         // Remove from local array
         this.products = this.products.filter((p) => String(p.id) !== productIdStr && String(p._id) !== productIdStr);
-        
+
         // Save to localStorage as backup
         localStorage.setItem('manjula_products', JSON.stringify(this.products));
 
@@ -1251,10 +1254,10 @@ class ManjulaMobilesApp {
       if (!response.ok) throw new Error('Failed to save tracking');
 
       const savedTracking = await response.json();
-      
+
       // Don't push here - Socket.IO will handle it to avoid duplicates
       // this.trackingData.push(savedTracking);
-      
+
       // Clear form
       document.getElementById("newTrackingQRId").value = "";
       document.getElementById("newTrackingPassword").value = "";
@@ -1263,7 +1266,7 @@ class ManjulaMobilesApp {
       document.getElementById("newTrackingContact").value = "";
       document.getElementById("newTrackingIssue").value = "";
       document.getElementById("newTrackingDays").value = "2";
-      
+
       this.toggleTrackingForm();
       alert("✅ Tracking record created successfully!\n\nQR ID: " + qrId + "\nPassword: " + password + "\n\nShare these details with your customer for tracking.");
       this.renderPage("admin");
@@ -1326,7 +1329,7 @@ class ManjulaMobilesApp {
     if (existingModal) {
       existingModal.remove();
     }
-    
+
     document.body.insertAdjacentHTML('beforeend', modalHTML);
   }
 
@@ -1340,7 +1343,7 @@ class ManjulaMobilesApp {
   async saveTrackingStatus(qrId) {
     const newStatus = document.getElementById('newStatusSelect').value;
     const tracking = this.trackingData.find((t) => t.qrId === qrId);
-    
+
     if (!tracking) return;
 
     tracking.status = newStatus;
@@ -1351,7 +1354,7 @@ class ManjulaMobilesApp {
       hour: '2-digit',
       minute: '2-digit'
     });
-    
+
     try {
       // Update in MongoDB
       const response = await fetch(`${this.API_URL}/tracking/${qrId}`, {
@@ -1359,9 +1362,9 @@ class ManjulaMobilesApp {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus, lastUpdated: tracking.lastUpdated })
       });
-      
+
       if (!response.ok) throw new Error('Failed to update tracking');
-      
+
       this.closeStatusModal();
       this.renderPage("admin");
       alert(`✅ Status updated to: ${newStatus}`);
@@ -1378,12 +1381,12 @@ class ManjulaMobilesApp {
         const response = await fetch(`${this.API_URL}/tracking/${qrId}`, {
           method: 'DELETE'
         });
-        
+
         if (!response.ok) throw new Error('Failed to delete tracking');
-        
+
         // Remove from local array
         this.trackingData = this.trackingData.filter((t) => t.qrId !== qrId);
-        
+
         this.renderPage("admin");
         alert('✅ Tracking deleted successfully!');
       } catch (error) {
@@ -1422,12 +1425,12 @@ class ManjulaMobilesApp {
       document.getElementById("resultIssue").textContent = trackingEntry.issue || "Mobile Repair Service"
       document.getElementById("resultEstDays").textContent = `${trackingEntry.estimatedDays} days`
       document.getElementById("resultLastUpdated").textContent = trackingEntry.lastUpdated || trackingEntry.createdAt
-      
+
       // Generate timeline with fresh status
       this.renderTrackingTimeline(trackingEntry.status)
-      
+
       result.style.display = "block"
-      
+
       // Scroll to result
       result.scrollIntoView({ behavior: 'smooth', block: 'center' })
     } else {
@@ -1472,24 +1475,24 @@ class ManjulaMobilesApp {
 
     // Normal repair flow including Delivered at the end
     const statuses = [
-      { name: 'Received',         emoji: '📥', desc: 'Device received at service center' },
-      { name: 'Diagnostics',      emoji: '🔍', desc: 'Checking device issues' },
-      { name: 'In Progress',      emoji: '🔧', desc: 'Repair work in progress' },
-      { name: 'Parts Ordered',    emoji: '📦', desc: 'Waiting for replacement parts' },
-      { name: 'Quality Check',    emoji: '✅', desc: 'Final testing and verification' },
+      { name: 'Received', emoji: '📥', desc: 'Device received at service center' },
+      { name: 'Diagnostics', emoji: '🔍', desc: 'Checking device issues' },
+      { name: 'In Progress', emoji: '🔧', desc: 'Repair work in progress' },
+      { name: 'Parts Ordered', emoji: '📦', desc: 'Waiting for replacement parts' },
+      { name: 'Quality Check', emoji: '✅', desc: 'Final testing and verification' },
       { name: 'Ready for Pickup', emoji: '📢', desc: 'Device ready for collection' },
-      { name: 'Completed',        emoji: '🎉', desc: 'Service completed' },
-      { name: 'Delivered',        emoji: '🚚', desc: 'Device delivered to customer' }
+      { name: 'Completed', emoji: '🎉', desc: 'Service completed' },
+      { name: 'Delivered', emoji: '🚚', desc: 'Device delivered to customer' }
     ];
 
     const currentIndex = statuses.findIndex(s => s.name === currentStatus);
-    
+
     const timelineHTML = statuses.map((status, index) => {
       const isCompleted = index < currentIndex;
-      const isCurrent   = index === currentIndex;
-      
-      const dotClass    = isCompleted ? 'completed' : (isCurrent ? 'current' : 'pending');
-      const lineClass   = isCompleted ? 'completed' : '';
+      const isCurrent = index === currentIndex;
+
+      const dotClass = isCompleted ? 'completed' : (isCurrent ? 'current' : 'pending');
+      const lineClass = isCompleted ? 'completed' : '';
       const statusClass = isCompleted ? 'completed' : (isCurrent ? 'current' : 'pending');
 
       // Delivered step gets blue colour
@@ -1499,7 +1502,7 @@ class ManjulaMobilesApp {
       const deliveredDotStyle = status.name === 'Delivered' && isCurrent
         ? 'background:#2563eb; border-color:#2563eb;'
         : '';
-      
+
       return `
         <div class="timeline-item">
           <div class="timeline-dot ${dotClass}" style="${deliveredDotStyle}"></div>
@@ -1522,15 +1525,15 @@ class ManjulaMobilesApp {
 
   getStatusEmoji(status) {
     const emojiMap = {
-      'Received':         '📥',
-      'Diagnostics':      '🔍',
-      'Return':           '↩️',
-      'In Progress':      '🔧',
-      'Parts Ordered':    '📦',
-      'Quality Check':    '✅',
+      'Received': '📥',
+      'Diagnostics': '🔍',
+      'Return': '↩️',
+      'In Progress': '🔧',
+      'Parts Ordered': '📦',
+      'Quality Check': '✅',
       'Ready for Pickup': '📢',
-      'Completed':        '🎉',
-      'Delivered':        '🚚'
+      'Completed': '🎉',
+      'Delivered': '🚚'
     }
     return emojiMap[status] || '📱'
   }
@@ -1552,8 +1555,8 @@ class ManjulaMobilesApp {
     const postalCode = document.getElementById("postalCode").value
 
     if (!fullName || !email || !phone || !address || !city || !postalCode) {
-        alert("Please fill all fields")
-        return
+      alert("Please fill all fields")
+      return
     }
 
     // Store order data temporarily (don't save to database yet)
@@ -1577,7 +1580,7 @@ class ManjulaMobilesApp {
       status: 'Pending Payment',
       paymentMethod: 'Pending'
     }
-    
+
     // Redirect to payment page (order not saved yet)
     this.renderPage("payment")
   }
@@ -1645,11 +1648,11 @@ class ManjulaMobilesApp {
         if (activeStart !== null && activeEnd !== null && typeof restored.setSelectionRange === 'function') {
           try {
             restored.setSelectionRange(activeStart, activeEnd);
-          } catch (e) {}
+          } catch (e) { }
         }
       }
     }
-    
+
     // Start carousel if on home page
     if (page === "home") {
       this.startCarousel();
@@ -1667,7 +1670,7 @@ class ManjulaMobilesApp {
 
   renderFloatingCart() {
     const cartItemCount = this.cart.reduce((total, item) => total + item.quantity, 0);
-    
+
     return `
       <div class="floating-cart">
         <div class="floating-cart-icon">
@@ -1684,17 +1687,17 @@ class ManjulaMobilesApp {
   renderNavigation() {
     const cartItemCount = this.cart.reduce((total, item) => total + item.quantity, 0)
     const currentPage = this.currentPage
-    
+
     return `
       <nav>
         <div class="nav-content">
-          <div class="nav-brand" style="cursor: pointer; display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; overflow: hidden;">
-            <div class="nav-logo" style="flex-shrink: 0;">
-              <img src="/public/assets/images/logo.png" alt="Manjula Mobile World Logo" style="width: 50px; height: 50px; object-fit: contain; border-radius: 50%;" onerror="this.style.display='none'">
+          <div class="nav-brand" style="cursor: pointer; display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; overflow: hidden;" data-page="home">
+            <div class="nav-logo" style="width: 40px; height: 40px; flex-shrink: 0; border-radius: 50% !important; overflow: hidden; background: #ffffff; border: 2px solid #dc2626; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(220, 38, 38, 0.2);">
+              <img src="/public/assets/images/logo.png" alt="Manjula Mobile World Logo" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50% !important; display: block;" onerror="this.src='./public/assets/images/logo.png'">
             </div>
             <div class="nav-title" data-page="home" style="min-width: 0; overflow: hidden;">
-              <div class="nav-shop-name" style="font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">MANJULA MOBILE WORLD</div>
-              <div class="nav-shop-sub" style="font-weight: 500; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">the final world of mobile solution</div>
+              <div class="nav-shop-name" style="font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">MANJULA MOBILE WORLD</div>
+              <div class="nav-shop-sub" style="font-weight: 800; color: #000000 !important; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">The Final Word of Mobile Solution</div>
             </div>
           </div>
           
@@ -1735,44 +1738,56 @@ class ManjulaMobilesApp {
 
           </ul>
           
-          <button class="mobile-menu-toggle" data-action="toggle-mobile-menu">
-            Menu
+          <button class="mobile-menu-toggle" data-action="toggle-mobile-menu" aria-label="Toggle Navigation Menu">
+            <span>Menu</span> ☰
           </button>
         </div>
       </nav>
       
       <div class="mobile-nav-menu">
-        <ul class="mobile-nav-pills">
+        <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 6px 10px 14px 10px; border-bottom: 2px solid #fee2e2; margin-bottom: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 32px; height: 32px; border-radius: 50% !important; overflow: hidden; border: 2px solid #dc2626; background: #fff; display: flex; align-items: center; justify-content: center;">
+              <img src="/public/assets/images/logo.png" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50% !important;" onerror="this.src='./public/assets/images/logo.png'">
+            </div>
+            <div>
+              <div style="font-weight: 900; font-size: 13px; color: #dc2626; line-height: 1.1;">MANJULA MOBILE WORLD</div>
+              <div style="font-size: 8.5px; font-weight: 800; color: #000000 !important; line-height: 1.1;">The Final Word of Mobile Solution</div>
+            </div>
+          </div>
+          <button data-action="close-mobile-menu" aria-label="Close menu" style="background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #475569; cursor: pointer; line-height: 1;">✕</button>
+        </div>
+        <ul class="mobile-nav-pills" style="width: 100%; gap: 6px; padding: 0 4px 60px 4px; overflow-y: auto; max-height: calc(100vh - 120px); list-style: none;">
           <li class="nav-item">
-            <a class="nav-link ${currentPage === 'home' ? 'active' : ''}" data-page="home">Home</a>
+            <a class="nav-link ${currentPage === 'home' ? 'active' : ''}" data-page="home" style="padding: 12px 16px; font-size: 15px; font-weight: 700; text-align: left; justify-content: flex-start; display: flex; align-items: center; gap: 10px; border-radius: 10px;">🏠 Home</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link ${currentPage === 'shop-location' ? 'active' : ''}" data-page="shop-location">Shop Location</a>
+            <a class="nav-link ${currentPage === 'shop-location' ? 'active' : ''}" data-page="shop-location" style="padding: 12px 16px; font-size: 15px; font-weight: 700; text-align: left; justify-content: flex-start; display: flex; align-items: center; gap: 10px; border-radius: 10px;">📍 Shop Location</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link ${currentPage === 'products' ? 'active' : ''}" data-page="products">Products</a>
+            <a class="nav-link ${currentPage === 'products' ? 'active' : ''}" data-page="products" style="padding: 12px 16px; font-size: 15px; font-weight: 700; text-align: left; justify-content: flex-start; display: flex; align-items: center; gap: 10px; border-radius: 10px;">📦 Products</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link ${currentPage.startsWith('services-') ? 'active' : ''}" data-action="toggle-mobile-service-submenu">Services</a>
+            <a class="nav-link ${currentPage.startsWith('services-') ? 'active' : ''}" data-action="toggle-mobile-service-submenu" style="padding: 12px 16px; font-size: 15px; font-weight: 700; text-align: left; justify-content: flex-start; display: flex; align-items: center; gap: 10px; border-radius: 10px;">🛠️ Services ▾</a>
             <div class="mobile-service-submenu">
-              <a class="nav-link" data-page="services-hardware">Hardware Repair</a>
-              <a class="nav-link" data-page="services-software">Software Repair</a>
+              <a class="nav-link" data-page="services-hardware" style="padding: 10px 14px; font-size: 14px;">🔧 Hardware Repair</a>
+              <a class="nav-link" data-page="services-software" style="padding: 10px 14px; font-size: 14px;">💻 Software Repair</a>
             </div>
           </li>
           <li class="nav-item">
-            <a class="nav-link ${currentPage === 'tracking-page' ? 'active' : ''}" data-page="tracking-page">Track Repair</a>
+            <a class="nav-link ${currentPage === 'tracking-page' ? 'active' : ''}" data-page="tracking-page" style="padding: 12px 16px; font-size: 15px; font-weight: 700; text-align: left; justify-content: flex-start; display: flex; align-items: center; gap: 10px; border-radius: 10px;">🔍 Track Repair</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link ${currentPage === 'about' ? 'active' : ''}" data-page="about">About</a>
+            <a class="nav-link ${currentPage === 'about' ? 'active' : ''}" data-page="about" style="padding: 12px 16px; font-size: 15px; font-weight: 700; text-align: left; justify-content: flex-start; display: flex; align-items: center; gap: 10px; border-radius: 10px;">ℹ️ About Us</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link ${currentPage === 'join-with-us' ? 'active' : ''}" data-page="join-with-us">Join With Us</a>
+            <a class="nav-link ${currentPage === 'join-with-us' ? 'active' : ''}" data-page="join-with-us" style="padding: 12px 16px; font-size: 15px; font-weight: 700; text-align: left; justify-content: flex-start; display: flex; align-items: center; gap: 10px; border-radius: 10px;">🤝 Join With Us</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link ${currentPage === 'help-desk' ? 'active' : ''}" data-page="help-desk">Help Desk</a>
+            <a class="nav-link ${currentPage === 'help-desk' ? 'active' : ''}" data-page="help-desk" style="padding: 12px 16px; font-size: 15px; font-weight: 700; text-align: left; justify-content: flex-start; display: flex; align-items: center; gap: 10px; border-radius: 10px;">💬 Help Desk</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link cart-pill" data-action="toggle-cart">
+            <a class="nav-link cart-pill" data-action="toggle-cart" style="padding: 12px 16px; font-size: 15px; font-weight: 700; text-align: left; justify-content: flex-start; display: flex; align-items: center; gap: 10px; border-radius: 10px; background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white;">
               🛒 Cart ${cartItemCount > 0 ? `(${cartItemCount})` : ''}
             </a>
           </li>
@@ -1841,7 +1856,7 @@ class ManjulaMobilesApp {
       },
       {
         title: "Genuine Parts",
-        description: "Original batteries, screens, charging ports, and components. Quality guaranteed." ,
+        description: "Original batteries, screens, charging ports, and components. Quality guaranteed.",
         icon: "📦",
         features: ["100% authentic", "Bulk orders", "Wholesale rates"],
       },
@@ -1850,14 +1865,14 @@ class ManjulaMobilesApp {
         description: "Wide range of phones, accessories, cases, and chargers. Best prices guaranteed.",
         icon: "📱",
         features: ["Best prices", "Wide selection", "Free shipping"],
-        
+
       },
       {
         title: "Chip Level Repair",
         description: "Wide range of phones, accessories, cases, and chargers. Best prices guaranteed.",
         icon: "💻",
         features: ["Dead & Data Recovery", "EMMC Reprograming", "CPU Reballing"],
-        
+
       },
     ]
 
@@ -1878,8 +1893,8 @@ class ManjulaMobilesApp {
               }
             </style>
             ${services
-              .map(
-                (service, idx) => `
+        .map(
+          (service, idx) => `
                 <div class="service-card" style="animation-delay: ${idx * 100}ms;">
                   <div class="service-icon">${service.icon}</div>
                   <h3>${service.title}</h3>
@@ -1889,8 +1904,8 @@ class ManjulaMobilesApp {
                   </ul>
                 </div>
               `,
-              )
-              .join("")}
+        )
+        .join("")}
           </div>
         </div>
       </section>
@@ -1925,7 +1940,7 @@ class ManjulaMobilesApp {
       product.category.toLowerCase().includes(searchTerm) ||
       (product.badge && product.badge.toLowerCase().includes(searchTerm))
     );
-    
+
     // Update the products grid with filtered results
     const productsGrid = document.querySelector('.products-grid');
     if (productsGrid) {
@@ -1965,51 +1980,51 @@ class ManjulaMobilesApp {
 
   renderCarouselSection() {
     const mobileBrands = [
-      { 
-        name: "Samsung", 
+      {
+        name: "Samsung",
         image: "https://www.logo.wine/a/logo/Samsung/Samsung-Logo.wine.svg"
       },
-      { 
-        name: "Apple", 
+      {
+        name: "Apple",
         image: "https://www.logo.wine/a/logo/Apple_Inc./Apple_Inc.-Logo.wine.svg"
       },
-      { 
-        name: "Xiaomi", 
+      {
+        name: "Xiaomi",
         image: "https://www.logo.wine/a/logo/Xiaomi/Xiaomi-Logo.wine.svg"
       },
-      { 
-        name: "OnePlus", 
+      {
+        name: "OnePlus",
         image: "https://www.logo.wine/a/logo/OnePlus/OnePlus-Logo.wine.svg"
       },
-      { 
-        name: "Oppo", 
+      {
+        name: "Oppo",
         image: "https://www.logo.wine/a/logo/Oppo/Oppo-Logo.wine.svg"
       },
-      { 
-        name: "Vivo", 
+      {
+        name: "Vivo",
         image: "https://www.logo.wine/a/logo/Vivo_(technology_company)/Vivo_(technology_company)-Logo.wine.svg"
       },
-      { 
-        name: "poco", 
+      {
+        name: "poco",
         image: "https://i.pinimg.com/1200x/37/ee/19/37ee197558a970e5e916cdd8de79f55e.jpg"
       },
-     
-      { 
-        name: "Nokia", 
+
+      {
+        name: "Nokia",
         image: "https://www.logo.wine/a/logo/Nokia/Nokia-Logo.wine.svg"
       },
-      { 
-        name: "iqoo", 
+      {
+        name: "iqoo",
         image: "https://i.pinimg.com/1200x/c8/55/03/c85503ffac45d4b8b14ba397f4b44ce9.jpg"
       },
 
-      { 
-        name: "motoroal", 
+      {
+        name: "motoroal",
         image: "https://i.pinimg.com/1200x/70/5e/77/705e7798624abe4400185d3bc224d213.jpg"
-      
+
       },
-      { 
-        name: "tecno", 
+      {
+        name: "tecno",
         image: "https://i.pinimg.com/736x/4b/44/9b/4b449baf9a14ddce95e5932ef1b01ab2.jpg"
       }
     ];
@@ -2136,11 +2151,10 @@ class ManjulaMobilesApp {
         <div style="display: flex; position: relative; overflow-x: hidden;">
           <div style="flex: 1; width: 100%; overflow-x: hidden;">
             <div class="products-grid">
-              ${
-                filteredProducts.length > 0
-                  ? filteredProducts.map((product) => this.renderProductCard(product)).join("")
-                  : '<div style="grid-column: 1/-1; text-align: center; padding: 32px 16px; color: #94a3b8; font-size: 14px;">No products found matching your search.</div>'
-              }
+              ${filteredProducts.length > 0
+        ? filteredProducts.map((product) => this.renderProductCard(product)).join("")
+        : '<div style="grid-column: 1/-1; text-align: center; padding: 32px 16px; color: #94a3b8; font-size: 14px;">No products found matching your search.</div>'
+      }
             </div>
           </div>
           ${this.renderShoppingCart()}
@@ -2186,29 +2200,29 @@ class ManjulaMobilesApp {
     console.log('Current Image:', currentImageUrl);
     console.log('Image 2:', imageUrl2);
     console.log('Current Index:', currentIndex);
-    
+
     const modal = document.getElementById('galleryModal');
     const modalContent = modal.querySelector('.gallery-modal-content');
-    
+
     if (!modal) {
       console.error('❌ Gallery modal not found!');
       return;
     }
-    
+
     if (!modalContent) {
       console.error('❌ Modal content not found!');
       return;
     }
-    
+
     // Check if product has multiple images
     const hasMultipleImages = imageUrl2 && imageUrl2.trim() !== "";
     const img1 = imageUrl1 || currentImageUrl;
-    
+
     console.log('Has multiple images:', hasMultipleImages);
-      
-      if (hasMultipleImages) {
-        // Create image slider for modal - start with the currently displayed image
-        modalContent.innerHTML = `
+
+    if (hasMultipleImages) {
+      // Create image slider for modal - start with the currently displayed image
+      modalContent.innerHTML = `
           <button class="gallery-modal-close" data-action="close-gallery-modal">✕</button>
           <div class="gallery-image-container" style="position: relative; width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center;">
             <img src="${currentImageUrl}" alt="Product Image" class="gallery-modal-image" id="galleryModalImage" data-img1="${img1}" data-img2="${imageUrl2}" data-current="${currentIndex}">
@@ -2237,7 +2251,7 @@ class ManjulaMobilesApp {
         <img src="${currentImageUrl}" alt="Product Image" class="gallery-modal-image" id="galleryModalImage">
       `;
     }
-    
+
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
     console.log('✅ Gallery modal opened');
@@ -2250,11 +2264,11 @@ class ManjulaMobilesApp {
       console.error('❌ Gallery modal image not found!');
       return;
     }
-    
+
     const dots = document.querySelectorAll('.gallery-dot');
     let currentIndex = parseInt(img.getAttribute('data-current')) || 1;
     console.log('📍 Current index:', currentIndex);
-    
+
     // Calculate new index
     if (direction === 'next') {
       currentIndex = currentIndex === 1 ? 2 : 1;
@@ -2262,18 +2276,18 @@ class ManjulaMobilesApp {
       currentIndex = currentIndex === 1 ? 2 : 1;
     }
     console.log('📍 New index:', currentIndex);
-    
+
     // Get the image URL
     const img1 = img.getAttribute('data-img1');
     const img2 = img.getAttribute('data-img2');
     const newImageUrl = currentIndex === 1 ? img1 : img2;
     console.log('🖼️ Switching to:', newImageUrl);
-    
+
     if (!newImageUrl) {
       console.error('❌ Image URL not found!');
       return;
     }
-    
+
     // Change image with fade effect
     img.style.opacity = '0';
     setTimeout(() => {
@@ -2282,7 +2296,7 @@ class ManjulaMobilesApp {
       img.style.opacity = '1';
       console.log('✅ Image switched successfully');
     }, 150);
-    
+
     // Update dots
     dots.forEach((dot, index) => {
       if (index + 1 === currentIndex) {
@@ -2302,18 +2316,18 @@ class ManjulaMobilesApp {
       console.error('❌ Gallery modal image not found!');
       return;
     }
-    
+
     const dots = document.querySelectorAll('.gallery-dot');
     const img1 = img.getAttribute('data-img1');
     const img2 = img.getAttribute('data-img2');
     const newImageUrl = index === 1 ? img1 : img2;
     console.log('🖼️ Going to:', newImageUrl);
-    
+
     if (!newImageUrl) {
       console.error('❌ Image URL not found!');
       return;
     }
-    
+
     // Change image with fade effect
     img.style.opacity = '0';
     setTimeout(() => {
@@ -2322,7 +2336,7 @@ class ManjulaMobilesApp {
       img.style.opacity = '1';
       console.log('✅ Navigated to image', index);
     }, 150);
-    
+
     // Update dots
     dots.forEach((dot, i) => {
       if (i + 1 === index) {
@@ -2337,15 +2351,15 @@ class ManjulaMobilesApp {
 
   closeGalleryModal() {
     const modal = document.getElementById('galleryModal');
-    
+
     if (modal) {
       modal.classList.remove('active');
     }
-    
+
     // Always restore scrolling, even if modal doesn't exist
     document.body.style.overflow = '';
     document.body.style.overflowY = '';
-    
+
     console.log('✅ Gallery modal closed, scrolling restored');
   }
 
@@ -2353,14 +2367,14 @@ class ManjulaMobilesApp {
     // Find the image element
     const slider = dotElement.closest('.product-image-slider');
     const img = slider.querySelector('.product-img-main');
-    
+
     // Change image with fade effect
     img.style.opacity = '0';
     setTimeout(() => {
       img.src = imageUrl;
       img.style.opacity = '1';
     }, 150);
-    
+
     // Update active dot
     const dots = slider.querySelectorAll('.img-dot');
     dots.forEach(dot => dot.classList.remove('active'));
@@ -2378,26 +2392,26 @@ class ManjulaMobilesApp {
   switchToImage(arrowElement, direction, e) {
     console.log('🔄 switchToImage called:', direction);
     if (e) e.stopPropagation(); // Prevent modal from opening
-    
+
     // Find the slider and image element
     const slider = arrowElement.closest('.product-image-slider');
     if (!slider) {
       console.error('❌ Slider not found');
       return;
     }
-    
+
     const img = slider.querySelector('.product-img-main');
     if (!img) {
       console.error('❌ Image not found');
       return;
     }
-    
+
     const dots = slider.querySelectorAll('.img-dot');
-    
+
     // Get current image index
     let currentIndex = parseInt(img.getAttribute('data-current')) || 1;
     console.log('📍 Current index:', currentIndex);
-    
+
     // Calculate new index based on direction
     if (direction === 'next') {
       currentIndex = currentIndex === 1 ? 2 : 1;
@@ -2405,21 +2419,21 @@ class ManjulaMobilesApp {
       currentIndex = currentIndex === 1 ? 2 : 1;
     }
     console.log('📍 New index:', currentIndex);
-    
+
     // Get the image URLs
     const img1 = img.getAttribute('data-img1');
     const img2 = img.getAttribute('data-img2');
     const newImageUrl = currentIndex === 1 ? img1 : img2;
-    
+
     console.log('🖼️ Image 1:', img1);
     console.log('🖼️ Image 2:', img2);
     console.log('🖼️ Switching to:', newImageUrl);
-    
+
     if (!newImageUrl) {
       console.error('❌ New image URL not found');
       return;
     }
-    
+
     // Change image with fade effect
     img.style.opacity = '0';
     setTimeout(() => {
@@ -2428,7 +2442,7 @@ class ManjulaMobilesApp {
       img.style.opacity = '1';
       console.log('✅ Image switched successfully');
     }, 150);
-    
+
     // Update dots
     dots.forEach((dot, index) => {
       if (index + 1 === currentIndex) {
@@ -2443,18 +2457,18 @@ class ManjulaMobilesApp {
 
   switchToImageByDot(dotElement, index, img1, img2, e) {
     if (e) e.stopPropagation(); // Prevent modal from opening
-    
+
     const slider = dotElement.closest('.product-image-slider');
     if (!slider) return;
-    
+
     const img = slider.querySelector('.product-img-main');
     if (!img) return;
-    
+
     const dots = slider.querySelectorAll('.img-dot');
-    
+
     const newImageUrl = index === 1 ? img1 : img2;
     if (!newImageUrl) return;
-    
+
     // Change image with fade effect
     img.style.opacity = '0';
     setTimeout(() => {
@@ -2462,7 +2476,7 @@ class ManjulaMobilesApp {
       img.setAttribute('data-current', index);
       img.style.opacity = '1';
     }, 150);
-    
+
     // Update dots
     dots.forEach((dot, i) => {
       if (i + 1 === index) {
@@ -2478,19 +2492,19 @@ class ManjulaMobilesApp {
   // Switch main image when clicking thumbnails (Amazon-style)
   switchMainImage(productId, imageUrl, index) {
     console.log('🖼️ Switching main image for product:', productId, 'to index:', index);
-    
+
     const mainImg = document.getElementById(`mainImg-${productId}`);
     if (!mainImg) {
       console.error('❌ Main image not found');
       return;
     }
-    
+
     // Find all thumbnails in this product card
     const card = mainImg.closest('.product-card');
     if (!card) return;
-    
+
     const thumbnails = card.querySelectorAll('.thumbnail-item');
-    
+
     // Fade out, change image, fade in
     mainImg.style.opacity = '0';
     setTimeout(() => {
@@ -2499,7 +2513,7 @@ class ManjulaMobilesApp {
       mainImg.style.opacity = '1';
       console.log('✅ Main image switched to:', imageUrl);
     }, 150);
-    
+
     // Update thumbnail borders
     thumbnails.forEach((thumb, i) => {
       if (i + 1 === index) {
@@ -2518,17 +2532,17 @@ class ManjulaMobilesApp {
 
   renderProductCard(product) {
     const discountPercent = Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
-    
+
     // Get product ID (use _id if id doesn't exist)
     const productId = product.id || product._id || 'unknown';
-    
+
     // Check if product has multiple images
-    const hasMultipleImages = product.imageUrl && product.imageUrl2 && 
-                              product.imageUrl.trim() !== "" && product.imageUrl2.trim() !== "";
-    
+    const hasMultipleImages = product.imageUrl && product.imageUrl2 &&
+      product.imageUrl.trim() !== "" && product.imageUrl2.trim() !== "";
+
     // Create image gallery HTML
     let imageGalleryHTML = "";
-    
+
     if (product.imageUrl && product.imageUrl.trim() !== "") {
       if (hasMultipleImages) {
         // Modern card layout with image indicator
@@ -2573,10 +2587,10 @@ class ManjulaMobilesApp {
         </div>
       `;
     }
-    
+
     // Calculate discount badge color
     const discountBadgeColor = discountPercent >= 50 ? '#ff6b35' : discountPercent >= 20 ? '#f59e0b' : '#10b981';
-    
+
     return `
       <div class="modern-product-card">
         <div class="modern-product-image-container">
@@ -2629,12 +2643,11 @@ class ManjulaMobilesApp {
           <button class="cart-close" data-action="toggle-cart">✕</button>
         </div>
         <div class="cart-items">
-          ${
-            this.cart.length === 0
-              ? '<p style="color: #94a3b8; text-align: center; margin-top: 24px;">Your cart is empty</p>'
-              : this.cart
-                  .map(
-                    (item) => `
+          ${this.cart.length === 0
+        ? '<p style="color: #94a3b8; text-align: center; margin-top: 24px;">Your cart is empty</p>'
+        : this.cart
+          .map(
+            (item) => `
               <div class="cart-item">
                 <div class="cart-item-image">${item.image}</div>
                 <div class="cart-item-details">
@@ -2649,13 +2662,12 @@ class ManjulaMobilesApp {
                 <button class="cart-item-remove" data-action="remove-item" data-item-id="${item.id}">✕</button>
               </div>
             `,
-                  )
-                  .join("")
-          }
+          )
+          .join("")
+      }
         </div>
-        ${
-          this.cart.length > 0 ?
-          `
+        ${this.cart.length > 0 ?
+        `
             <div class="cart-footer">
               <div class="cart-total">
                 <span class="cart-total-label">Total:</span>
@@ -2664,7 +2676,7 @@ class ManjulaMobilesApp {
               <button class="cart-button" data-action="checkout">Proceed to Checkout</button>
             </div>
           ` : ''
-        }
+      }
       </div>
     `
     return cartHTML
@@ -2685,7 +2697,7 @@ class ManjulaMobilesApp {
       this.renderPage("products")
       this.showCartNotification("Item added to cart!")
     } else {
-      console.error('Product not found:', productId, 'Available products:', this.products.map(p => ({id: p.id, _id: p._id, name: p.name})));
+      console.error('Product not found:', productId, 'Available products:', this.products.map(p => ({ id: p.id, _id: p._id, name: p.name })));
       alert('Product not found. Please refresh the page.');
     }
   }
@@ -2706,7 +2718,7 @@ class ManjulaMobilesApp {
       // Go directly to checkout
       this.renderPage("checkout")
     } else {
-      console.error('Product not found:', productId, 'Available products:', this.products.map(p => ({id: p.id, _id: p._id, name: p.name})));
+      console.error('Product not found:', productId, 'Available products:', this.products.map(p => ({ id: p.id, _id: p._id, name: p.name })));
       alert('Product not found. Please refresh the page.');
     }
   }
@@ -2745,7 +2757,7 @@ class ManjulaMobilesApp {
   saveCart() {
     try {
       localStorage.setItem('manjula_cart', JSON.stringify(this.cart));
-    } catch(e) {
+    } catch (e) {
       console.warn('Could not save cart to localStorage:', e);
     }
   }
@@ -2757,7 +2769,7 @@ class ManjulaMobilesApp {
         this.cart = JSON.parse(saved);
         console.log('🛒 Cart restored from localStorage:', this.cart.length, 'items');
       }
-    } catch(e) {
+    } catch (e) {
       console.warn('Could not load cart from localStorage:', e);
       this.cart = [];
     }
@@ -2783,7 +2795,7 @@ class ManjulaMobilesApp {
     notification.className = 'cart-notification'
     notification.textContent = message
     document.body.appendChild(notification)
-    
+
     setTimeout(() => {
       notification.remove()
     }, 2000)
@@ -2848,8 +2860,8 @@ class ManjulaMobilesApp {
                 <h2>Order Summary</h2>
                 <div class="summary-items">
                   ${this.cart
-                    .map(
-                      (item) => `
+        .map(
+          (item) => `
                       <div class="summary-item">
                         <div>
                           <div class="summary-item-name">${item.name}</div>
@@ -2858,8 +2870,8 @@ class ManjulaMobilesApp {
                         <div class="summary-item-price">₹${(item.price * item.quantity).toLocaleString()}</div>
                       </div>
                     `,
-                    )
-                    .join("")}
+        )
+        .join("")}
                 </div>
                 <div class="summary-totals">
                   <div class="summary-row">
@@ -2907,8 +2919,8 @@ class ManjulaMobilesApp {
   renderPaymentPage() {
     const cartTotal = this.cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const cartItems = this.cart.reduce((total, item) => total + item.quantity, 0);
-    
-    const orderItems = this.cart.map(item => 
+
+    const orderItems = this.cart.map(item =>
       `<div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e5e7eb;">
         <span>${item.name} x ${item.quantity}</span>
         <span>₹${(item.price * item.quantity).toLocaleString()}</span>
@@ -3007,21 +3019,21 @@ class ManjulaMobilesApp {
     const fullName = document.getElementById("fullName")?.value || "Customer";
     const phone = document.getElementById("phone")?.value || "";
     const address = document.getElementById("address")?.value || "";
-    
+
     const cartTotal = this.cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    const orderItems = this.cart.map(item => 
+    const orderItems = this.cart.map(item =>
       `• ${item.name} - ₹${item.price} x ${item.quantity} = ₹${item.price * item.quantity}`
     ).join('%0A');
 
     const whatsappMessage = `*New Order Request*%0A%0A*Customer Details:*%0AName: ${fullName}%0APhone: ${phone}%0AAddress: ${address}%0A%0A*Order Items:*%0A${orderItems}%0A%0A*Total Amount: ₹${cartTotal}*%0A%0APlease confirm this order and provide payment details.`;
 
     const whatsappUrl = `https://wa.me/918248454841?text=${whatsappMessage}`;
-    
+
     window.open(whatsappUrl, '_blank');
-    
+
     // Close payment modal
     document.getElementById('paymentModal').classList.remove('active');
-    
+
     alert('WhatsApp opened with your order details. Please send the message to confirm your order.');
   }
 
@@ -3032,9 +3044,9 @@ class ManjulaMobilesApp {
     const address = document.getElementById("address").value;
     const city = document.getElementById("city").value;
     const postalCode = document.getElementById("postalCode").value;
-    
+
     const cartTotal = this.cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    
+
     // Create order object
     const order = {
       id: Math.random().toString(36).substr(2, 9).toUpperCase(),
@@ -3050,14 +3062,14 @@ class ManjulaMobilesApp {
       paymentMethod: paymentMethod,
       status: "Processing"
     };
-    
+
     // Save order to MongoDB
     await this.saveSingleOrder(order);
-    
+
     alert(
       `Order placed successfully!\n\nOrder ID: #${order.id}\nPayment Method: ${paymentMethod}\n\nThank you for your order!`,
     );
-    
+
     this.cart = [];
     this.renderPage("home");
   }
@@ -3069,15 +3081,15 @@ class ManjulaMobilesApp {
     const address = document.getElementById("address").value;
     const city = document.getElementById("city").value;
     const postalCode = document.getElementById("postalCode").value;
-    
+
     // Validate required fields
     if (!fullName || !phone || !address || !city) {
       alert("Please fill in all required fields");
       return;
     }
-    
+
     const cartTotal = this.cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    
+
     // Create order object
     const order = {
       id: Math.random().toString(36).substr(2, 9).toUpperCase(),
@@ -3093,16 +3105,16 @@ class ManjulaMobilesApp {
       paymentMethod: method,
       status: "Processing"
     };
-    
+
     try {
       // Save order to MongoDB (will appear in Owner Portal automatically)
       await this.saveSingleOrder(order);
-      
+
       // Show success message to customer
       alert(
         `✅ Order Placed Successfully!\n\nOrder ID: #${order.id}\n\nYour order details have been sent to us.\nWe will contact you shortly.\n\nThank you for your order!`
       );
-      
+
       // Clear cart and go to home
       this.cart = [];
       this.saveCart();
@@ -3119,7 +3131,7 @@ class ManjulaMobilesApp {
     input.type = 'file';
     input.accept = 'image/*';
     input.style.display = 'none';
-    
+
     input.onchange = (e) => {
       const file = e.target.files[0];
       if (file) {
@@ -3128,13 +3140,13 @@ class ManjulaMobilesApp {
           alert('Please select an image file');
           return;
         }
-        
+
         // Validate file size (max 5MB)
         if (file.size > 5 * 1024 * 1024) {
           alert('File size should be less than 5MB');
           return;
         }
-        
+
         // Create preview and show confirmation
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -3156,7 +3168,7 @@ class ManjulaMobilesApp {
         reader.readAsDataURL(file);
       }
     };
-    
+
     document.body.appendChild(input);
     input.click();
     document.body.removeChild(input);
@@ -3178,7 +3190,7 @@ class ManjulaMobilesApp {
       padding: 20px;
       box-sizing: border-box;
     `;
-    
+
     modal.innerHTML = `
       <div style="background: white; border-radius: 12px; padding: 24px; max-width: 500px; width: 100%; text-align: center;">
         <h3 style="margin-bottom: 16px; color: #000;">Payment Screenshot Preview</h3>
@@ -3190,20 +3202,20 @@ class ManjulaMobilesApp {
         </div>
       </div>
     `;
-    
+
     document.body.appendChild(modal);
-    
+
     // Handle confirm screenshot button
     document.getElementById('confirmScreenshot').onclick = () => {
       document.body.removeChild(modal);
       this.showConfirmOrderButton(imageSrc, fileName);
     };
-    
+
     // Handle cancel button
     document.getElementById('cancelUpload').onclick = () => {
       document.body.removeChild(modal);
     };
-    
+
     // Close on background click
     modal.onclick = (e) => {
       if (e.target === modal) {
@@ -3218,26 +3230,26 @@ class ManjulaMobilesApp {
     if (actionButtons) {
       actionButtons.style.display = 'none';
     }
-    
+
     // Show the confirm order section with screenshot preview
     const confirmSection = document.getElementById('confirmOrderSection');
     const screenshotPreview = document.getElementById('uploadedScreenshotPreview');
-    
+
     if (confirmSection && screenshotPreview) {
       screenshotPreview.innerHTML = `
         <h4 style="color: #10b981; margin-bottom: 12px; font-size: 16px;">✅ Payment Screenshot Uploaded</h4>
         <img src="${imageSrc}" alt="Payment Screenshot" style="max-width: 200px; max-height: 120px; border-radius: 8px; border: 2px solid #10b981;">
         <p style="color: #666; font-size: 12px; margin-top: 8px;">📎 ${fileName}</p>
       `;
-      
+
       confirmSection.style.display = 'block';
-      
+
       // Store screenshot data for order finalization
       this.currentScreenshot = {
         data: imageSrc,
         fileName: fileName
       };
-      
+
       // Handle confirm order button click
       document.getElementById('confirmOrderBtn').onclick = () => {
         this.finalizeOrderWithScreenshot(imageSrc, fileName);
@@ -3257,15 +3269,15 @@ class ManjulaMobilesApp {
     const address = document.getElementById("address").value;
     const city = document.getElementById("city").value;
     const postalCode = document.getElementById("postalCode").value;
-    
+
     // Validate required fields
     if (!fullName || !phone || !address || !city) {
       alert("Please fill in all required fields before confirming order");
       return;
     }
-    
+
     const cartTotal = this.cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    const orderItems = this.cart.map(item => 
+    const orderItems = this.cart.map(item =>
       `<div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e5e7eb;">
         <span>${item.name} x ${item.quantity}</span>
         <span>₹${(item.price * item.quantity).toLocaleString()}</span>
@@ -3328,13 +3340,13 @@ class ManjulaMobilesApp {
         </div>
       </div>
     `;
-    
+
     // Store screenshot data for later use
     this.currentScreenshot = {
       data: imageSrc,
       fileName: fileName
     };
-    
+
     // Handle confirm final order button
     document.getElementById('confirmFinalOrder').onclick = () => {
       this.finalizeOrderWithScreenshot(imageSrc, fileName);
@@ -3347,11 +3359,11 @@ class ManjulaMobilesApp {
     if (actionButtons) {
       actionButtons.style.display = 'none';
     }
-    
+
     // Show the confirm order section for Cash on Delivery
     const confirmSection = document.getElementById('confirmOrderSection');
     const screenshotPreview = document.getElementById('uploadedScreenshotPreview');
-    
+
     if (confirmSection && screenshotPreview) {
       screenshotPreview.innerHTML = `
         <h4 style="color: #dc2626; margin-bottom: 12px; font-size: 16px;">💵 Cash on Delivery Selected</h4>
@@ -3362,9 +3374,9 @@ class ManjulaMobilesApp {
         </div>
         <p style="color: #666; font-size: 12px;">No advance payment required</p>
       `;
-      
+
       confirmSection.style.display = 'block';
-      
+
       // Handle confirm order button click for Cash on Delivery
       document.getElementById('confirmOrderBtn').onclick = () => {
         this.processPayment("Cash on Delivery");
@@ -3374,7 +3386,7 @@ class ManjulaMobilesApp {
 
   generatePaymentQRCode(amount) {
     const upiPaymentUrl = `upi://pay?pa=${this.upiLink}&pn=ManjulaMobiles&am=${amount}&tr=ORDER-${Date.now()}&tn=Payment%20for%20Manjula%20Mobiles%20Order`;
-    
+
     const qrContainer = document.getElementById('paymentQrCode');
     if (qrContainer && typeof QRCode !== 'undefined') {
       qrContainer.innerHTML = '';
@@ -3401,11 +3413,11 @@ class ManjulaMobilesApp {
     const merchantName = "ManjulaMobiles";
     const transactionNote = "Payment for Manjula Mobiles Order";
     const transactionId = `ORDER-${Date.now()}`;
-    
+
     let paymentUrl = '';
     let appName = '';
-    
-    switch(appType) {
+
+    switch (appType) {
       case 'gpay':
         // Google Pay deep link
         paymentUrl = `tez://upi/pay?pa=${upiId}&pn=${merchantName}&am=${amount}&tr=${transactionId}&tn=${transactionNote}`;
@@ -3422,22 +3434,22 @@ class ManjulaMobilesApp {
         appName = 'Paytm';
         break;
     }
-    
+
     // Create a temporary link element to trigger the app
     const link = document.createElement('a');
     link.href = paymentUrl;
     link.style.display = 'none';
     document.body.appendChild(link);
-    
+
     // Try to open the app
     try {
       link.click();
-      
+
       // Show success message immediately
       setTimeout(() => {
         alert(`Opening ${appName}...\n\nIf ${appName} doesn't open automatically:\n\n1. Open ${appName} manually\n2. Pay ₹${amount.toLocaleString()} to: ${upiId}\n3. Take a screenshot of payment confirmation\n4. Come back and upload the screenshot`);
       }, 500);
-      
+
     } catch (error) {
       // Fallback if deep link fails
       alert(`Please open ${appName} manually and pay:\n\nUPI ID: ${upiId}\nAmount: ₹${amount.toLocaleString()}\n\nAfter payment, take a screenshot and upload it here.`);
@@ -3445,7 +3457,7 @@ class ManjulaMobilesApp {
       // Clean up
       document.body.removeChild(link);
     }
-    
+
     // For mobile devices, try alternative method
     if (/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
       // Try to open using window.location for better mobile support
@@ -3466,20 +3478,20 @@ class ManjulaMobilesApp {
       fileName: fileName,
       dataStart: screenshotData?.substring(0, 30)
     });
-    
+
     // Use the pending order data that was stored during proceedToPayment
     if (!this.pendingOrder) {
       alert("Order data not found. Please go back and fill the delivery information again.");
       this.renderPage("checkout");
       return;
     }
-    
+
     // Validate screenshot data
     if (!screenshotData || !fileName) {
       alert("Screenshot data is missing. Please upload the screenshot again.");
       return;
     }
-    
+
     // Create order with actual screenshot data
     const order = {
       id: Math.random().toString(36).substr(2, 9).toUpperCase(),
@@ -3495,18 +3507,18 @@ class ManjulaMobilesApp {
         uploadTime: new Date().toISOString()
       }
     };
-    
+
     console.log('📸 Order with screenshot:', {
       orderId: order.id,
       hasScreenshot: !!order.paymentScreenshot,
       screenshotDataLength: order.paymentScreenshot.data.length,
       isValidImageData: order.paymentScreenshot.data.startsWith('data:image/')
     });
-    
+
     try {
       // Save order with screenshot
       await this.saveSingleOrder(order);
-      
+
       alert(`✅ Order Placed Successfully! 
       
 Order ID: #${order.id}
@@ -3516,7 +3528,7 @@ Status: Payment Verification Pending
 Your payment screenshot has been uploaded and saved. We will verify your payment and contact you shortly.
 
 Thank you for choosing Manjula Mobile World!`);
-      
+
       // Clear cart and go to home
       this.cart = [];
       this.saveCart();
@@ -3715,22 +3727,21 @@ Thank you for choosing Manjula Mobile World!`);
           <span class="order-count">${this.orders.length} orders</span>
         </div>
         <div class="orders-list" style="max-height: 400px; overflow-y: auto;">
-          ${
-            this.orders.length > 0
-              ? this.orders.map(order => `
+          ${this.orders.length > 0
+        ? this.orders.map(order => `
                   <div class="order-item" style="border: 1px solid #334155; border-radius: 8px; padding: 16px; margin-bottom: 12px;">
                     <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
                       <div>
                         <div style="font-weight: 700; margin-bottom: 4px;">Order #${order.id}</div>
                         <div style="color: #64748b; font-size: 12px; margin-bottom: 4px;">
-                          📅 ${order.orderDate ? new Date(order.orderDate).toLocaleString('en-IN', { 
-                            year: 'numeric', 
-                            month: 'short', 
-                            day: 'numeric', 
-                            hour: '2-digit', 
-                            minute: '2-digit',
-                            hour12: true 
-                          }) : order.date || 'Date not available'}
+                          📅 ${order.orderDate ? new Date(order.orderDate).toLocaleString('en-IN', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        }) : order.date || 'Date not available'}
                         </div>
                         <div style="color: #fb923c; font-weight: 600;">₹${order.total.toLocaleString()}</div>
                       </div>
@@ -3765,8 +3776,8 @@ Thank you for choosing Manjula Mobile World!`);
                     </div>
                   </div>
                 `).join('')
-              : `<div style="padding: 24px; text-align: center; color: #94a3b8;">No orders yet</div>`
-          }
+        : `<div style="padding: 24px; text-align: center; color: #94a3b8;">No orders yet</div>`
+      }
         </div>
       </div>
     `
@@ -4486,7 +4497,7 @@ Thank you for choosing Manjula Mobile World!`);
     `;
   }
 
-  renderAdminOrders(){
+  renderAdminOrders() {
     return `
       <div style="min-height: 100vh; background-color: #e60045a6; padding-top: 96px; padding-bottom: 80px;">
         <div class="container">
@@ -4505,14 +4516,14 @@ Thank you for choosing Manjula Mobile World!`);
                 <div style="margin-bottom: 16px;">
                   <div style="font-weight: 700; font-size: 18px; margin-bottom: 4px;">Order #${order.id}</div>
                   <div style="color: #94a3b8; font-size: 12px;">
-                    📅 ${order.orderDate ? new Date(order.orderDate).toLocaleString('en-IN', { 
-                      year: 'numeric', 
-                      month: 'short', 
-                      day: 'numeric', 
-                      hour: '2-digit', 
-                      minute: '2-digit',
-                      hour12: true 
-                    }) : order.date || 'Date not available'}
+                    📅 ${order.orderDate ? new Date(order.orderDate).toLocaleString('en-IN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    }) : order.date || 'Date not available'}
                   </div>
                 </div>
                 
