@@ -1940,7 +1940,7 @@ nav .nav-content {
 @media (max-width: 360px) {
     .hero {
         padding-top: 0;
-        margin-top: 16px;
+        margin-top: 70px;
         height: 52vw;
         min-height: 140px;
         max-height: 52vw;
