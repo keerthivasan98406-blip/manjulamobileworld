@@ -1434,10 +1434,10 @@ class OwnerPortalApp {
           <!-- Header -->
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; flex-wrap: wrap; gap: 14px;">
             <div>
-              <h1 style="font-size: 42px; font-weight: 900; margin: 0; letter-spacing: -0.5px; line-height: 1.1; color: #be185d; font-family: 'Georgia', 'Times New Roman', serif; font-style: italic;">
+              <h1 style="font-size: clamp(22px, 5vw, 42px); font-weight: 900; margin: 0; letter-spacing: -0.5px; line-height: 1.1; color: #be185d; font-family: 'Georgia', 'Times New Roman', serif; font-style: italic; white-space: nowrap;">
                 MANJULA MOBILE WORLD
               </h1>
-              <p style="color: #000000; font-size: 14px; font-weight: 700; margin-top: 4px; font-family: 'Georgia', 'Times New Roman', serif; font-style: italic; letter-spacing: 0.3px; text-align: center;">The Final Word of Mobile Solution</p>
+              <p style="color: #000000; font-size: clamp(11px, 2.5vw, 14px); font-weight: 700; margin-top: 4px; font-family: 'Georgia', 'Times New Roman', serif; font-style: italic; letter-spacing: 0.3px; text-align: center;">The Final Word of Mobile Solution</p>
             </div>
             <button data-page="admin-pos" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; border: none; padding: 13px 26px; font-size: 15px; font-weight: 700; border-radius: 10px; box-shadow: 0 6px 18px rgba(37,99,235,0.35); cursor: pointer; display: flex; align-items: center; gap: 8px;">
               🛒 Open POS Billing
