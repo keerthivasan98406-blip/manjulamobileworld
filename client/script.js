@@ -14,16 +14,20 @@ class ManjulaMobilesApp {
     this.upiLink = "9894703254@upi"
 
     // MongoDB API URL - Auto-detect local vs production
-    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const isLocalhost = window.location.hostname === 'localhost' || 
+                        window.location.hostname === '127.0.0.1' ||
+                        window.location.hostname.startsWith('192.168.') ||
+                        window.location.hostname.startsWith('10.') ||
+                        window.location.hostname.endsWith('.local') ||
+                        window.location.port === '3001';
     const isRender = window.location.hostname.includes('onrender.com');
+    const LIVE_BACKEND_URL = 'https://manjulamobilesworld-whwt.onrender.com';
 
-    // Use Render backend for GitHub Pages / hosted frontend deployment
-    const baseURL = isLocalhost
-      ? 'http://localhost:3001'
-      : isRender
-        ? window.location.origin
-        : 'https://manjulamobilesworld.onrender.com';
-    this.API_URL = `${baseURL}/api`
+    // Express serves frontend and backend from the same origin on both localhost & Render
+    const baseURL = (isLocalhost || isRender)
+      ? (window.location.port ? `${window.location.protocol}//${window.location.hostname}:${window.location.port}` : window.location.origin)
+      : LIVE_BACKEND_URL;
+    this.API_URL = `${baseURL}/api`;
 
     // Socket.IO connection for real-time updates with reconnection
     if (typeof io !== 'undefined') {

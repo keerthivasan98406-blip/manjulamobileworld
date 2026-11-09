@@ -20,14 +20,20 @@ class OwnerPortalApp {
     }
 
     // MongoDB API URL - Auto-detect local vs production
-    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const isLocalhost = window.location.hostname === 'localhost' || 
+                        window.location.hostname === '127.0.0.1' ||
+                        window.location.hostname.startsWith('192.168.') ||
+                        window.location.hostname.startsWith('10.') ||
+                        window.location.hostname.endsWith('.local') ||
+                        window.location.port === '3001';
     const isRender = window.location.hostname.includes('onrender.com');
-    const baseURL = isLocalhost
-      ? 'http://localhost:3001'
-      : isRender
-        ? window.location.origin
-        : 'https://manjulamobilesworld.onrender.com';
-    this.API_URL = `${baseURL}/api`
+    const LIVE_BACKEND_URL = 'https://manjulamobilesworld-whwt.onrender.com';
+
+    // Express serves frontend and backend from the same origin on both localhost & Render
+    const baseURL = (isLocalhost || isRender)
+      ? (window.location.port ? `${window.location.protocol}//${window.location.hostname}:${window.location.port}` : window.location.origin)
+      : LIVE_BACKEND_URL;
+    this.API_URL = `${baseURL}/api`;
 
     // Socket.IO connection for real-time updates with reconnection
     if (typeof io !== 'undefined') {
@@ -5891,7 +5897,7 @@ class OwnerPortalApp {
               <div>Mon-Sun: 9:00 AM - 10:00 PM</div>
               <div>24/7 Emergency Service Available</div>
               <div style="margin-top:4px;">*** Thank You! Visit Again ***</div>
-              <div style="margin-top:2px;">manjulamobilesworld.onrender.com</div>
+              <div style="margin-top:2px;">manjulamobilesworld-whwt.onrender.com</div>
             </div>
 
           </div>
@@ -6037,7 +6043,7 @@ class OwnerPortalApp {
     <div>Mon-Sun: 9:00 AM - 10:00 PM</div>
     <div>24/7 Emergency Service Available</div>
     <div style="margin-top:4px;">*** Thank You! Visit Again ***</div>
-    <div style="margin-top:2px;">manjulamobilesworld.onrender.com</div>
+    <div style="margin-top:2px;">manjulamobilesworld-whwt.onrender.com</div>
   </div>
 
   <br>
@@ -6334,7 +6340,7 @@ class OwnerPortalApp {
   <!-- Track Online + Footer — after Tamil terms -->
   <div class="center" style="font-size:10px; margin: 4px 0;">
     <div>Track your repair online:</div>
-    <div class="bold">manjulamobilesworld.onrender.com</div>
+    <div class="bold">manjulamobilesworld-whwt.onrender.com</div>
     <div style="margin-top:2px;">Use QR ID &amp; Password to check status</div>
   </div>
 
