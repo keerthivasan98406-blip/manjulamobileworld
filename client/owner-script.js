@@ -1373,7 +1373,7 @@ class OwnerPortalApp {
           
           <!-- Shop Logo Header -->
           <div style="text-align: center; margin-bottom: 28px;">
-            <div style="position: relative; width: 300px; height: 300px; margin: 0 auto 14px; border-radius: 50%; padding: 4px; background: linear-gradient(135deg, #f43f5e, #3b82f6, #06b6d4); box-shadow: 0 0 40px rgba(244, 63, 94, 0.5);">
+            <div style="position: relative; width: 180px; height: 180px; margin: 0 auto 14px; border-radius: 50%; padding: 4px; background: linear-gradient(135deg, #f43f5e, #3b82f6, #06b6d4); box-shadow: 0 0 40px rgba(244, 63, 94, 0.5);">
               <img src="./public/assets/images/logo.png" 
                    onerror="this.src='/public/assets/images/logo.png'" 
                    alt="Manjula Mobile World Logo" 
