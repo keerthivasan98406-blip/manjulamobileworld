@@ -1373,15 +1373,14 @@ class OwnerPortalApp {
           
           <!-- Shop Logo Header -->
           <div style="text-align: center; margin-bottom: 28px;">
-            <div style="position: relative; width: 120px; height: 120px; margin: 0 auto 16px; border-radius: 50%; padding: 3px; background: linear-gradient(135deg, #f43f5e, #3b82f6, #06b6d4); box-shadow: 0 0 35px rgba(244, 63, 94, 0.5);">
+            <div style="position: relative; width: 92px; height: 92px; margin: 0 auto 14px; border-radius: 50%; padding: 3px; background: linear-gradient(135deg, #f43f5e, #3b82f6, #06b6d4); box-shadow: 0 0 25px rgba(244, 63, 94, 0.35);">
               <img src="./public/assets/images/logo.png" 
                    onerror="this.src='/public/assets/images/logo.png'" 
                    alt="Manjula Mobile World Logo" 
                    style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%; background: #ffffff; display: block;">
             </div>
-            <div style="font-size: 22px; font-weight: 900; letter-spacing: 1.5px; color: #f43f5e; text-transform: uppercase; margin-bottom: 8px; font-family: 'Georgia', serif; font-style: italic;">MANJULA MOBILE WORLD</div>
-            <h1 style="font-size: 20px; font-weight: 900; margin-bottom: 0; background: linear-gradient(135deg, #f43f5e, #a855f7, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-family: 'Georgia', serif; font-style: italic; letter-spacing: 0.5px; line-height: 1.3;">The Final Word of Mobile Solution</h1>
-          </div>
+            <div style="font-size: 20px; font-weight: 900; letter-spacing: 1.5px; color: #f43f5e; text-transform: uppercase; margin-bottom: 6px; font-family: 'Georgia', serif; font-style: italic;">MANJULA MOBILE WORLD</div>
+            <h1 style="font-size: 22px; font-weight: 900; margin-bottom: 0; color: #ffffff; letter-spacing: -0.5px; font-family: 'Georgia', serif; font-style: italic;">The Final Word of Mobile Solution</h1>
           </div>
           
           <div class="form-field">
