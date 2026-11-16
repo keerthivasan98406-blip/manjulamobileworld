@@ -1379,7 +1379,7 @@ class OwnerPortalApp {
                    alt="Manjula Mobile World Logo" 
                    style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%; background: #ffffff; display: block;">
             </div>
-            <div style="font-size: 20px; font-weight: 900; letter-spacing: 1.5px; color: #f43f5e; text-transform: uppercase; margin-bottom: 6px; font-family: 'Georgia', serif; font-style: italic;">MANJULA MOBILE WORLD</div>
+            <div style="font-size: 32px; font-weight: 900; letter-spacing: 1.5px; color: #f43f5e; text-transform: uppercase; margin-bottom: 6px; font-family: 'Georgia', serif; font-style: italic;">MANJULA MOBILE WORLD</div>
             <h1 style="font-size: 22px; font-weight: 900; margin-bottom: 0; color: #ffffff; letter-spacing: -0.5px; font-family: 'Georgia', serif; font-style: italic;">The Final Word of Mobile Solution</h1>
           </div>
           
