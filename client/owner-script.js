@@ -10458,7 +10458,7 @@ class OwnerPortalApp {
     if (idx === this.purchaseDraftRows.length - 1 && target.value.trim() !== '') {
       this.purchaseDraftRows.push({
         id: Date.now() + Math.random(),
-        category: 'Other', name: '', barcode: 'PB' + String(this.purchaseDraftRows.length).padStart(3, '0'), qty: '', dPrice: '', oPrice: '', cPrice: '', itemTotal: 0
+        category: 'Other', name: '', barcode: 'PB' + String(this.purchaseDraftRows.length + 1).padStart(3, '0'), qty: '', dPrice: '', oPrice: '', cPrice: '', itemTotal: 0
       });
       // Append row to DOM without replacing tbody innerHTML (so active input doesn't lose focus!)
       const tbody = document.getElementById('distributorPurchaseTableBody');
