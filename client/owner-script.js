@@ -10523,6 +10523,18 @@ class OwnerPortalApp {
           </td>
           <td style="padding: 8px 10px; text-align: center;">
             <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+              <div style="display:flex; gap:4px; justify-content:center; margin-bottom:2px;">
+                <button type="button" onclick="app.printDisplayStockLabelDirect('${newRow.barcode}', '', '')"
+                  title="Print Browser Label"
+                  style="background:#1e293b; color:#e2e8f0; border:1px solid #475569; border-radius:5px; padding:3px 8px; font-size:11px; font-weight:700; cursor:pointer; white-space:nowrap;">
+                  🏷️ Print
+                </button>
+                <button type="button" onclick="app.printDisplayStockTSCLabelDirect('${newRow.barcode}', '', '')"
+                  title="Print TSC Label"
+                  style="background:#ea580c; color:#fff; border:none; border-radius:5px; padding:3px 8px; font-size:11px; font-weight:700; cursor:pointer; white-space:nowrap;">
+                  🖶 TSC
+                </button>
+              </div>
               <button data-action="delete-purchase-row" data-index="${newIdx}" style="background:transparent; border:none; color:#ef4444; cursor:pointer; font-size:16px;">🗑️</button>
             </div>
           </td>
