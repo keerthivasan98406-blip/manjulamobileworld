@@ -10106,9 +10106,9 @@ class OwnerPortalApp {
 
           <!-- Dynamic Matrix Input Table -->
           <div style="background: #1e293b; border: 1px solid #334155; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3); margin-bottom: 24px;">
-            <div style="max-height: 600px; overflow-y: auto; overflow-x: auto;">
+            <div style="overflow-x: auto;">
               <table id="distributorPurchaseTable" style="width: 100%; border-collapse: collapse; text-align: left; color: #e2e8f0; font-size: 14px;">
-                <thead style="position: sticky; top: 0; background: #0f172a; z-index: 10; border-bottom: 2px solid #334155;">
+                <thead style="background: #0f172a; border-bottom: 2px solid #334155;">
                   <tr style="color: #94a3b8; font-weight: 700; text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px;">
                     <th style="padding: 14px 16px; width: 60px; text-align: center;">
                       <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
