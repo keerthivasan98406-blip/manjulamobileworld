@@ -10499,7 +10499,7 @@ class OwnerPortalApp {
             </select>
           </td>
           <td style="padding: 8px 10px;">
-            <input type="text" class="pur-row-input" data-index="${newIdx}" data-field="barcode" value="" placeholder="Auto-generated"
+            <input type="text" class="pur-row-input" data-index="${newIdx}" data-field="barcode" value="${newRow.barcode || ''}" placeholder="Auto-generated"
               style="width:100%; padding:8px 12px; background:#0d1f0d; border:1px solid #16a34a; color:#4ade80; border-radius:6px; font-size:13px; font-family:monospace; font-weight:700;">
           </td>
           <td style="padding: 8px 10px;">
