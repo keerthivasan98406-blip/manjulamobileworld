@@ -10394,7 +10394,11 @@ class OwnerPortalApp {
       tbody.querySelectorAll('.pur-row-input').forEach(input => {
         const idx = parseInt(input.dataset.index);
         const field = input.dataset.field;
-        if (!isNaN(idx) && field && this.purchaseDraftRows[idx]) {
+        if (!isNaN(idx) && field) {
+          // Extend purchaseDraftRows if DOM has more rows than the array
+          if (!this.purchaseDraftRows[idx]) {
+            this.purchaseDraftRows[idx] = { id: Date.now() + idx, category: 'Accessories', name: '', barcode: '', qty: '', dPrice: '', oPrice: '', cPrice: '', itemTotal: 0 };
+          }
           this.purchaseDraftRows[idx][field] = input.value;
         }
       });
@@ -10753,8 +10757,22 @@ class OwnerPortalApp {
 
   // Toggle Display category tick in purchase form row
   async togglePurchaseRowDisplay(idx) {
+    // Sync DOM inputs first in case this row was dynamically appended
+    const tbody = document.getElementById('distributorPurchaseTableBody');
+    if (tbody) {
+      tbody.querySelectorAll('.pur-row-input').forEach(input => {
+        const i = parseInt(input.dataset.index);
+        const field = input.dataset.field;
+        if (!isNaN(i) && field) {
+          if (!this.purchaseDraftRows[i]) {
+            this.purchaseDraftRows[i] = { id: Date.now() + i, category: 'Accessories', name: '', barcode: '', qty: '', dPrice: '', oPrice: '', cPrice: '', itemTotal: 0 };
+          }
+          this.purchaseDraftRows[i][field] = input.value;
+        }
+      });
+    }
     if (!this.purchaseDraftRows[idx]) return;
-    const current = this.purchaseDraftRows[idx].category || 'Other';
+    const current = this.purchaseDraftRows[idx].category || 'Accessories';
     const isNowDisplay = (current !== 'Display');
     this.purchaseDraftRows[idx].category = isNowDisplay ? 'Display' : 'Other';
 
