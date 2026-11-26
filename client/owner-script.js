@@ -4292,6 +4292,15 @@ class OwnerPortalApp {
         if (!isNaN(num) && num > maxNum) maxNum = num;
       }
     });
+    // Also scan current draft rows already set to Display
+    (this.purchaseDraftRows || []).forEach(row => {
+      if (row.category === 'Display' && row.barcode) {
+        const matchMmw = (row.barcode).match(/^MMW(\d+)$/i);
+        if (matchMmw) { const n = parseInt(matchMmw[1], 10); if (!isNaN(n) && n > maxNum) maxNum = n; }
+        const matchM = (row.barcode).match(/^M(\d+)$/i);
+        if (matchM) { const n = parseInt(matchM[1], 10); if (!isNaN(n) && n > maxNum) maxNum = n; }
+      }
+    });
     return 'MMW' + String(maxNum + 1 + offset).padStart(3, '0');
   }
 
