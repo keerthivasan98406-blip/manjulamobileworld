@@ -10372,6 +10372,19 @@ class OwnerPortalApp {
 
   // Mark ALL current draft rows as Display category (one-click)
   async setAllRowsDisplay() {
+    // First: sync all DOM input values back to purchaseDraftRows
+    // (dynamic rows appended via JS may have unsaved values in DOM)
+    const tbody = document.getElementById('distributorPurchaseTableBody');
+    if (tbody) {
+      tbody.querySelectorAll('.pur-row-input').forEach(input => {
+        const idx = parseInt(input.dataset.index);
+        const field = input.dataset.field;
+        if (!isNaN(idx) && field && this.purchaseDraftRows[idx]) {
+          this.purchaseDraftRows[idx][field] = input.value;
+        }
+      });
+    }
+
     // Fetch fresh display stock for accurate next barcode
     try {
       const res = await fetch(`${this.API_URL}/display-stock/next-barcode`);
@@ -10387,7 +10400,7 @@ class OwnerPortalApp {
           }
         });
 
-        // Assign sequential M-barcodes to rows that aren't already Display
+        // Assign sequential M-barcodes to ALL rows that aren't already Display
         this.purchaseDraftRows.forEach(row => {
           if (row.category !== 'Display') {
             maxNum++;
@@ -10397,7 +10410,7 @@ class OwnerPortalApp {
         });
       }
     } catch (e) {
-      // Fallback: just mark all as Display without changing barcodes
+      // Fallback: mark all as Display without changing barcodes
       this.purchaseDraftRows.forEach(row => { row.category = 'Display'; });
     }
 
