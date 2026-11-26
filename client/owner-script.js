@@ -4301,7 +4301,7 @@ class OwnerPortalApp {
         if (matchM) { const n = parseInt(matchM[1], 10); if (!isNaN(n) && n > maxNum) maxNum = n; }
       }
     });
-    return 'MMW' + String(maxNum + 1 + offset).padStart(3, '0');
+    return 'M' + String(maxNum + 1 + offset).padStart(3, '0');
   }
 
   async saveDisplayStock() {
