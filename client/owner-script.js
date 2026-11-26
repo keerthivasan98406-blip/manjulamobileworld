@@ -10111,7 +10111,7 @@ class OwnerPortalApp {
             <div>
               <span style="color: #94a3b8; font-size: 13px; text-transform: uppercase; font-weight: 700;">Purchasing From:</span>
               <div style="margin-top: 4px;">
-                <select onchange="app.selectedDistributorId = this.value; app.renderPage('admin-add-distributor-purchase')" 
+                <select onchange="app.selectedDistributorId = this.value; app.initPurchaseForm(); app.renderPage('admin-add-distributor-purchase')" 
                   style="padding: 8px 14px; background: #0f172a; border: 1px solid #475569; color: #fff; border-radius: 8px; font-size: 16px; font-weight: 700;">
                   ${this.distributors.map(d => `
                     <option value="${d.distributorId}" ${String(d.distributorId) === String(distributor.distributorId) ? 'selected' : ''}>
