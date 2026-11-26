@@ -10486,10 +10486,10 @@ class OwnerPortalApp {
       return;
     }
 
-    // Recalculate row total
+    // Recalculate row total using customer price
     const qty = parseInt(this.purchaseDraftRows[idx].qty) || 0;
-    const dPrice = parseFloat(this.purchaseDraftRows[idx].dPrice) || 0;
-    this.purchaseDraftRows[idx].itemTotal = qty * dPrice;
+    const cPrice = parseFloat(this.purchaseDraftRows[idx].cPrice) || 0;
+    this.purchaseDraftRows[idx].itemTotal = qty * cPrice;
 
     // Update item total span
     const totalSpan = document.getElementById(`itemTotal_${idx}`);
@@ -10595,11 +10595,11 @@ class OwnerPortalApp {
 
     this.purchaseDraftRows.forEach(row => {
       const qty = parseInt(row.qty) || 0;
-      const dPrice = parseFloat(row.dPrice) || 0;
+      const cPrice = parseFloat(row.cPrice) || 0;
       if (row.name && row.name.trim() !== '' && qty > 0) {
         validCount++;
         totalQty += qty;
-        grandTotal += (qty * dPrice);
+        grandTotal += (qty * cPrice);
       }
     });
 
