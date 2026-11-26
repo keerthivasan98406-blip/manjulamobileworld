@@ -10265,7 +10265,7 @@ class OwnerPortalApp {
             style="width:100%; padding:8px 12px; background:#0f172a; border:1px solid #475569; color:#fff; border-radius:6px; font-size:14px; text-align:center; font-weight:600;">
         </td>
         <td style="padding: 8px 10px;">
-          <input type="number" step="0.01" min="0" class="pur-row-input" data-index="${idx}" data-field="dPrice" value="${row.dPrice || ''}" placeholder="₹ Dist. Price"
+          <input type="text" class="pur-row-input" data-index="${idx}" data-field="dPrice" value="${row.dPrice || ''}" placeholder="₹ Dist. Price"
             style="width:100%; padding:8px 12px; background:#0f172a; border:1px solid #475569; color:#fff; border-radius:6px; font-size:14px;">
         </td>
         <td style="padding: 8px 10px;">
@@ -10554,7 +10554,7 @@ class OwnerPortalApp {
               style="width:100%; padding:8px 12px; background:#0f172a; border:1px solid #475569; color:#fff; border-radius:6px; font-size:14px; text-align:center; font-weight:600;">
           </td>
           <td style="padding: 8px 10px;">
-            <input type="number" step="0.01" min="0" class="pur-row-input" data-index="${newIdx}" data-field="dPrice" value="" placeholder="₹ Dist. Price"
+            <input type="text" class="pur-row-input" data-index="${newIdx}" data-field="dPrice" value="" placeholder="₹ Dist. Price"
               style="width:100%; padding:8px 12px; background:#0f172a; border:1px solid #475569; color:#fff; border-radius:6px; font-size:14px;">
           </td>
           <td style="padding: 8px 10px;">
@@ -11770,8 +11770,8 @@ class OwnerPortalApp {
     this.editPurchaseRows[idx][field] = target.value;
 
     const qty = parseInt(this.editPurchaseRows[idx].qty) || 0;
-    const dPrice = parseFloat(this.editPurchaseRows[idx].dPrice) || 0;
-    this.editPurchaseRows[idx].itemTotal = qty * dPrice;
+    const cPrice = parseFloat(this.editPurchaseRows[idx].cPrice) || 0;
+    this.editPurchaseRows[idx].itemTotal = qty * cPrice;
 
     const totalSpan = document.getElementById(`editItemTotal_${idx}`);
     if (totalSpan) {
@@ -11929,6 +11929,32 @@ class OwnerPortalApp {
       });
     }
 
+    // Owner Products — from purchase bills (Accessories/Other category items)
+    if (activeTab === 'all' || activeTab === 'owner') {
+      const seen = new Set();
+      (this.purchaseBills || []).forEach(bill => {
+        (bill.items || []).forEach(item => {
+          if ((item.category || '').trim().toLowerCase() === 'display') return;
+          const bc = (item.barcode || '').trim();
+          const key = bc || item.productName;
+          if (seen.has(key)) return;
+          seen.add(key);
+          catalog.push({
+            type: 'owner',
+            typeName: 'Owner Product',
+            typeBadgeBg: '#ecfdf5',
+            typeBadgeColor: '#059669',
+            id: bc || item.productName,
+            barcode: bc,
+            name: item.productName || 'Unnamed',
+            category: item.category || 'Accessories',
+            price: Number(item.customerPrice) || 0,
+            stock: Number(item.quantity) || 0
+          });
+        });
+      });
+    }
+
     if (search) {
       catalog = catalog.filter(item => {
         const nameMatch = (item.name || '').toLowerCase().includes(search);
@@ -12025,7 +12051,7 @@ class OwnerPortalApp {
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                   <button onclick="app.posTabFilter='all'; app.renderPage('admin-pos')"
                     style="padding: 8px 16px; border-radius: 9999px; font-weight: 700; font-size: 13px; cursor: pointer; border: none; transition: all 0.2s; ${activeTab === 'all' ? 'background:#0f172a; color:#ffffff;' : 'background:#f1f5f9; color:#475569;'}">
-                    🌐 All Items (${(this.products || []).length + (this.displayStock || []).length + (this.sparePartsStock || []).length})
+                    🌐 All Items (${(this.products || []).length + (this.displayStock || []).length + (this.sparePartsStock || []).length + (this.purchaseBills || []).reduce((s,b)=>(b.items||[]).filter(i=>(i.category||'').toLowerCase()!=='display').length+s,0)})
                   </button>
                   <button onclick="app.posTabFilter='product'; app.renderPage('admin-pos')"
                     style="padding: 8px 16px; border-radius: 9999px; font-weight: 700; font-size: 13px; cursor: pointer; border: none; transition: all 0.2s; ${activeTab === 'product' ? 'background:#2563eb; color:#ffffff;' : 'background:#dbeafe; color:#1d4ed8;'}">
@@ -12038,6 +12064,11 @@ class OwnerPortalApp {
                   <button onclick="app.posTabFilter='spare'; app.renderPage('admin-pos')"
                     style="padding: 8px 16px; border-radius: 9999px; font-weight: 700; font-size: 13px; cursor: pointer; border: none; transition: all 0.2s; ${activeTab === 'spare' ? 'background:#7e22ce; color:#ffffff;' : 'background:#f3e8ff; color:#6b21a8;'}">
                     🔧 Spare Parts (${(this.sparePartsStock || []).length})
+                  </button>
+                  <button onclick="app.posTabFilter='owner'; app.renderPage('admin-pos')"
+                    style="padding: 8px 16px; border-radius: 9999px; font-weight: 700; font-size: 13px; cursor: pointer; border: none; transition: all 0.2s; ${activeTab === 'owner' ? 'background:#059669; color:#ffffff;' : 'background:#ecfdf5; color:#065f46;'}">
+                    📦 Owner Products (${(this.purchaseBills || []).reduce((s,b)=>(b.items||[]).filter(i=>(i.category||'').toLowerCase()!=='display').length+s,0)})
+                  </button>
                   </button>
                 </div>
               </div>
