@@ -10054,10 +10054,25 @@ class OwnerPortalApp {
   initPurchaseForm() {
     const distributor = (this.distributors || []).find(d => String(d.distributorId) === String(this.selectedDistributorId));
     const dname = distributor ? distributor.name : 'PUR';
+    const prefix = (dname || 'PUR').trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3).padEnd(3, 'X');
+
+    // Find the highest existing barcode number for this prefix across saved bills
+    let maxNum = 0;
+    (this.purchaseBills || []).forEach(bill => {
+      (bill.items || []).forEach(item => {
+        const bc = (item.barcode || '').toUpperCase();
+        if (bc.startsWith(prefix)) {
+          const num = parseInt(bc.slice(prefix.length), 10);
+          if (!isNaN(num) && num > maxNum) maxNum = num;
+        }
+      });
+    });
+
+    // Assign sequential barcodes starting from maxNum+1
     this.purchaseDraftRows = [
-      { id: 1, name: '', barcode: this.getNextBarcodeForDistributor(dname), category: 'Accessories', qty: '', dPrice: '', oPrice: '', cPrice: '', itemTotal: 0 },
-      { id: 2, name: '', barcode: this.getNextBarcodeForDistributor(dname), category: 'Accessories', qty: '', dPrice: '', oPrice: '', cPrice: '', itemTotal: 0 },
-      { id: 3, name: '', barcode: this.getNextBarcodeForDistributor(dname), category: 'Accessories', qty: '', dPrice: '', oPrice: '', cPrice: '', itemTotal: 0 }
+      { id: 1, name: '', barcode: prefix + String(++maxNum).padStart(2, '0'), category: 'Accessories', qty: '', dPrice: '', oPrice: '', cPrice: '', itemTotal: 0 },
+      { id: 2, name: '', barcode: prefix + String(++maxNum).padStart(2, '0'), category: 'Accessories', qty: '', dPrice: '', oPrice: '', cPrice: '', itemTotal: 0 },
+      { id: 3, name: '', barcode: prefix + String(++maxNum).padStart(2, '0'), category: 'Accessories', qty: '', dPrice: '', oPrice: '', cPrice: '', itemTotal: 0 }
     ];
   }
 
