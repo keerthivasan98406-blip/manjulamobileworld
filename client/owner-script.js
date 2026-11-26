@@ -10055,9 +10055,9 @@ class OwnerPortalApp {
     const distributor = (this.distributors || []).find(d => String(d.distributorId) === String(this.selectedDistributorId));
     const dname = distributor ? distributor.name : 'PUR';
     this.purchaseDraftRows = [
-      { id: 1, name: '', barcode: this.getNextBarcodeForDistributor(dname), qty: '', dPrice: '', oPrice: '', cPrice: '', itemTotal: 0 },
-      { id: 2, name: '', barcode: this.getNextBarcodeForDistributor(dname), qty: '', dPrice: '', oPrice: '', cPrice: '', itemTotal: 0 },
-      { id: 3, name: '', barcode: this.getNextBarcodeForDistributor(dname), qty: '', dPrice: '', oPrice: '', cPrice: '', itemTotal: 0 }
+      { id: 1, name: '', barcode: this.getNextBarcodeForDistributor(dname), category: 'Accessories', qty: '', dPrice: '', oPrice: '', cPrice: '', itemTotal: 0 },
+      { id: 2, name: '', barcode: this.getNextBarcodeForDistributor(dname), category: 'Accessories', qty: '', dPrice: '', oPrice: '', cPrice: '', itemTotal: 0 },
+      { id: 3, name: '', barcode: this.getNextBarcodeForDistributor(dname), category: 'Accessories', qty: '', dPrice: '', oPrice: '', cPrice: '', itemTotal: 0 }
     ];
   }
 
@@ -10150,12 +10150,11 @@ class OwnerPortalApp {
                       </div>
                     </th>
                     <th style="padding: 14px 16px; width: 70px; text-align: center;" title="Tick ✅ = Display category">🖥️ Disp</th>
+                    <th style="padding: 14px 16px; min-width: 140px;">Barcode</th>
                     <th style="padding: 14px 16px; min-width: 220px;">Product Name *</th>
                     <th style="padding: 14px 16px; min-width: 120px;">Category</th>
-                    <th style="padding: 14px 16px; min-width: 140px;">Barcode</th>
                     <th style="padding: 14px 16px; width: 100px; text-align: center;">Qty *</th>
                     <th style="padding: 14px 16px; min-width: 130px;">Distributor Price (₹) *</th>
-                    <th style="padding: 14px 16px; min-width: 130px;">Owner Price (₹)</th>
                     <th style="padding: 14px 16px; min-width: 130px;">Customer Price (₹)</th>
                     <th style="padding: 14px 16px; min-width: 130px; text-align: right;">Item Total (₹)</th>
                     <th style="padding: 14px 16px; width: 60px; text-align: center;">Action</th>
@@ -10195,7 +10194,7 @@ class OwnerPortalApp {
     });
 
     return this.purchaseDraftRows.map((row, idx) => {
-      const cat = row.category || 'Other';
+      const cat = row.category || 'Accessories';
       const isDisplay = (cat === 'Display');
       const barVal = (row.barcode || '').trim();
       const nameVal = (row.name || '').replace(/'/g, "\\'");
@@ -10214,10 +10213,14 @@ class OwnerPortalApp {
         </td>
         <td style="padding: 8px 10px; text-align: center;">
           <button onclick="app.togglePurchaseRowDisplay(${idx})"
-            title="${isDisplay ? 'Display (click to unset)' : 'Other (click to set as Display)'}"
+            title="${isDisplay ? 'Display (click to unset)' : 'Accessories (click to set as Display)'}"
             style="width:36px; height:36px; border-radius:8px; border:2px solid ${isDisplay ? '#7c3aed' : '#475569'}; background:${isDisplay ? 'linear-gradient(135deg,#7c3aed,#5b21b6)' : '#0f172a'}; color:#fff; font-size:18px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; transition:all 0.2s;">
             ${isDisplay ? '✅' : '⬜'}
           </button>
+        </td>
+        <td style="padding: 8px 10px;">
+          <input type="text" class="pur-row-input" data-index="${idx}" data-field="barcode" value="${this.escapeHtml(row.barcode || '')}" placeholder="Auto-generated"
+            style="width:100%; padding:8px 12px; background:#0d1f0d; border:1px solid #16a34a; color:#4ade80; border-radius:6px; font-size:13px; font-family:monospace; font-weight:700;">
         </td>
         <td style="padding: 8px 10px;">
           <input type="text" class="pur-row-input" data-index="${idx}" data-field="name" value="${this.escapeHtml(row.name || '')}" placeholder="Product Name"
@@ -10226,32 +10229,8 @@ class OwnerPortalApp {
         <td style="padding: 8px 10px;">
           ${isDisplay
           ? `<div style="background:rgba(124,58,237,0.15); color:#a78bfa; border:1px solid #7c3aed; border-radius:6px; padding:8px 10px; font-size:13px; font-weight:700; text-align:center;">🖥️ Display</div>`
-          : `<div style="display:flex; flex-direction:column; gap:4px;">
-                <select onchange="app.setPurchaseRowCategory(${idx}, this.value)"
-                  style="width:100%; padding:7px 10px; background:#0f172a; border:1px solid #475569; color:#fff; border-radius:6px; font-size:13px; cursor:pointer;">
-                  <option value="Other" ${(row.category || 'Other') === 'Other' ? 'selected' : ''}>Other</option>
-                  <option value="Spare Parts" ${row.category === 'Spare Parts' ? 'selected' : ''}>Spare Parts</option>
-                  <option value="Accessories" ${row.category === 'Accessories' ? 'selected' : ''}>Accessories</option>
-                  <option value="Chargers" ${row.category === 'Chargers' ? 'selected' : ''}>Chargers</option>
-                  <option value="Audio" ${row.category === 'Audio' ? 'selected' : ''}>Audio</option>
-                  <option value="Power Banks" ${row.category === 'Power Banks' ? 'selected' : ''}>Power Banks</option>
-                  ${(this.customCategories || []).map(c => `<option value="${this.escapeHtml(c)}" ${row.category === c ? 'selected' : ''}>${this.escapeHtml(c)}</option>`).join('')}
-                  <option value="__custom__">➕ Add new...</option>
-                </select>
-                ${row.showCustomCatInput ? `
-                  <div style="display:flex; gap:4px;">
-                    <input id="newCatInput_${idx}" type="text" placeholder="Category name" value="${this.escapeHtml(row.customCatDraft || '')}"
-                      oninput="app.purchaseDraftRows[${idx}].customCatDraft=this.value"
-                      style="flex:1; padding:6px 8px; background:#0f172a; border:1px solid #38bdf8; color:#fff; border-radius:5px; font-size:12px;">
-                    <button type="button" onclick="app.savePurchaseRowCustomCategory(${idx})"
-                      style="background:#0ea5e9; color:#fff; border:none; border-radius:5px; padding:4px 8px; font-size:12px; font-weight:700; cursor:pointer;">✓</button>
-                  </div>` : ''}
-              </div>`
+          : `<div style="font-size:13px; font-weight:600; color:#94a3b8; padding:8px 10px; background:#0f172a; border:1px solid #475569; border-radius:6px; text-align:center;">Accessories</div>`
         }
-        </td>
-        <td style="padding: 8px 10px;">
-          <input type="text" class="pur-row-input" data-index="${idx}" data-field="barcode" value="${this.escapeHtml(row.barcode || '')}" placeholder="Auto-generated"
-            style="width:100%; padding:8px 12px; background:#0d1f0d; border:1px solid #16a34a; color:#4ade80; border-radius:6px; font-size:13px; font-family:monospace; font-weight:700;">
         </td>
         <td style="padding: 8px 10px;">
           <input type="number" min="1" class="pur-row-input" data-index="${idx}" data-field="qty" value="${row.qty || ''}" placeholder="Qty"
@@ -10259,10 +10238,6 @@ class OwnerPortalApp {
         </td>
         <td style="padding: 8px 10px;">
           <input type="number" step="0.01" min="0" class="pur-row-input" data-index="${idx}" data-field="dPrice" value="${row.dPrice || ''}" placeholder="₹ Dist. Price"
-            style="width:100%; padding:8px 12px; background:#0f172a; border:1px solid #475569; color:#fff; border-radius:6px; font-size:14px;">
-        </td>
-        <td style="padding: 8px 10px;">
-          <input type="number" step="0.01" min="0" class="pur-row-input" data-index="${idx}" data-field="oPrice" value="${row.oPrice || ''}" placeholder="₹ Owner Price"
             style="width:100%; padding:8px 12px; background:#0f172a; border:1px solid #475569; color:#fff; border-radius:6px; font-size:14px;">
         </td>
         <td style="padding: 8px 10px;">
@@ -10298,13 +10273,7 @@ class OwnerPortalApp {
   // Set category for a non-Display purchase row
   setPurchaseRowCategory(idx, value) {
     if (!this.purchaseDraftRows[idx]) return;
-    if (value === '__custom__') {
-      this.purchaseDraftRows[idx].showCustomCatInput = true;
-      this.purchaseDraftRows[idx].customCatDraft = '';
-    } else {
-      this.purchaseDraftRows[idx].category = value;
-      this.purchaseDraftRows[idx].showCustomCatInput = false;
-    }
+    this.purchaseDraftRows[idx].category = value;
     this.renderPage('admin-add-distributor-purchase');
   }
 
@@ -10489,7 +10458,7 @@ class OwnerPortalApp {
     if (idx === this.purchaseDraftRows.length - 1 && target.value.trim() !== '') {
       this.purchaseDraftRows.push({
         id: Date.now() + Math.random(),
-        category: 'Other', name: '', barcode: this.getNextBarcodeForDistributor(((this.distributors || []).find(d => String(d.distributorId) === String(this.selectedDistributorId)) || {}).name || 'PUR'), qty: '', dPrice: '', oPrice: '', cPrice: '', itemTotal: 0
+        category: 'Accessories', name: '', barcode: this.getNextBarcodeForDistributor(((this.distributors || []).find(d => String(d.distributorId) === String(this.selectedDistributorId)) || {}).name || 'PUR'), qty: '', dPrice: '', oPrice: '', cPrice: '', itemTotal: 0
       });
       // Append row to DOM without replacing tbody innerHTML (so active input doesn't lose focus!)
       const tbody = document.getElementById('distributorPurchaseTableBody');
@@ -10511,27 +10480,19 @@ class OwnerPortalApp {
           </td>
           <td style="padding: 8px 10px; text-align: center;">
             <button onclick="app.togglePurchaseRowDisplay(${newIdx})"
-              title="Other (click to set as Display)"
+              title="Accessories (click to set as Display)"
               style="width:36px; height:36px; border-radius:8px; border:2px solid #475569; background:#0f172a; color:#fff; font-size:18px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center;">⬜</button>
+          </td>
+          <td style="padding: 8px 10px;">
+            <input type="text" class="pur-row-input" data-index="${newIdx}" data-field="barcode" value="${newRow.barcode || ''}" placeholder="Auto-generated"
+              style="width:100%; padding:8px 12px; background:#0d1f0d; border:1px solid #16a34a; color:#4ade80; border-radius:6px; font-size:13px; font-family:monospace; font-weight:700;">
           </td>
           <td style="padding: 8px 10px;">
             <input type="text" class="pur-row-input" data-index="${newIdx}" data-field="name" value="" placeholder="Product Name"
               style="width:100%; padding:8px 12px; background:#0f172a; border:1px solid #475569; color:#fff; border-radius:6px; font-size:14px;">
           </td>
           <td style="padding: 8px 10px;">
-            <select onchange="app.setPurchaseRowCategory(${newIdx}, this.value)"
-              style="width:100%; padding:7px 10px; background:#0f172a; border:1px solid #475569; color:#fff; border-radius:6px; font-size:13px; cursor:pointer;">
-              <option value="Other" selected>Other</option>
-              <option value="Spare Parts">Spare Parts</option>
-              <option value="Accessories">Accessories</option>
-              <option value="Chargers">Chargers</option>
-              <option value="Audio">Audio</option>
-              <option value="Power Banks">Power Banks</option>
-            </select>
-          </td>
-          <td style="padding: 8px 10px;">
-            <input type="text" class="pur-row-input" data-index="${newIdx}" data-field="barcode" value="${newRow.barcode || ''}" placeholder="Auto-generated"
-              style="width:100%; padding:8px 12px; background:#0d1f0d; border:1px solid #16a34a; color:#4ade80; border-radius:6px; font-size:13px; font-family:monospace; font-weight:700;">
+            <div style="font-size:13px; font-weight:600; color:#94a3b8; padding:8px 10px; background:#0f172a; border:1px solid #475569; border-radius:6px; text-align:center;">Accessories</div>
           </td>
           <td style="padding: 8px 10px;">
             <input type="number" min="1" class="pur-row-input" data-index="${newIdx}" data-field="qty" value="" placeholder="Qty"
@@ -10539,10 +10500,6 @@ class OwnerPortalApp {
           </td>
           <td style="padding: 8px 10px;">
             <input type="number" step="0.01" min="0" class="pur-row-input" data-index="${newIdx}" data-field="dPrice" value="" placeholder="₹ Dist. Price"
-              style="width:100%; padding:8px 12px; background:#0f172a; border:1px solid #475569; color:#fff; border-radius:6px; font-size:14px;">
-          </td>
-          <td style="padding: 8px 10px;">
-            <input type="number" step="0.01" min="0" class="pur-row-input" data-index="${newIdx}" data-field="oPrice" value="" placeholder="₹ Owner Price"
               style="width:100%; padding:8px 12px; background:#0f172a; border:1px solid #475569; color:#fff; border-radius:6px; font-size:14px;">
           </td>
           <td style="padding: 8px 10px;">
@@ -10803,8 +10760,9 @@ class OwnerPortalApp {
         this.purchaseDraftRows[idx].barcode = this._generateNextDisplayBarcode();
       }
     } else {
-      // Switching back to Other — reset barcode to distributor-prefix format
+      // Switching back to Accessories — reset barcode to distributor-prefix format
       const dist = (this.distributors || []).find(d => String(d.distributorId) === String(this.selectedDistributorId));
+      this.purchaseDraftRows[idx].category = 'Accessories';
       this.purchaseDraftRows[idx].barcode = this.getNextBarcodeForDistributor(dist ? dist.name : 'PUR');
     }
 
