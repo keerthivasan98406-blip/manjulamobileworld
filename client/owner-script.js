@@ -10024,11 +10024,40 @@ class OwnerPortalApp {
   }
 
   // Initialize Purchase Entry Form Draft Rows
+  // Generate next barcode for a distributor: first 3 letters of name + sequential number
+  // e.g. distributor "Keerthi" → KEE01, KEE02, KEE03...
+  // Scans all existing purchase bills AND current draft rows to find the highest number used
+  getNextBarcodeForDistributor(distributorName) {
+    const prefix = (distributorName || 'PUR').trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3).padEnd(3, 'X');
+    let maxNum = 0;
+    // Scan saved purchase bills
+    (this.purchaseBills || []).forEach(bill => {
+      (bill.items || []).forEach(item => {
+        const bc = (item.barcode || '').toUpperCase();
+        if (bc.startsWith(prefix)) {
+          const num = parseInt(bc.slice(prefix.length), 10);
+          if (!isNaN(num) && num > maxNum) maxNum = num;
+        }
+      });
+    });
+    // Scan current draft rows
+    (this.purchaseDraftRows || []).forEach(row => {
+      const bc = (row.barcode || '').toUpperCase();
+      if (bc.startsWith(prefix)) {
+        const num = parseInt(bc.slice(prefix.length), 10);
+        if (!isNaN(num) && num > maxNum) maxNum = num;
+      }
+    });
+    return prefix + String(maxNum + 1).padStart(2, '0');
+  }
+
   initPurchaseForm() {
+    const distributor = (this.distributors || []).find(d => String(d.distributorId) === String(this.selectedDistributorId));
+    const dname = distributor ? distributor.name : 'PUR';
     this.purchaseDraftRows = [
-      { id: 1, name: '', barcode: '', qty: '', dPrice: '', oPrice: '', cPrice: '', itemTotal: 0 },
-      { id: 2, name: '', barcode: '', qty: '', dPrice: '', oPrice: '', cPrice: '', itemTotal: 0 },
-      { id: 3, name: '', barcode: '', qty: '', dPrice: '', oPrice: '', cPrice: '', itemTotal: 0 }
+      { id: 1, name: '', barcode: this.getNextBarcodeForDistributor(dname), qty: '', dPrice: '', oPrice: '', cPrice: '', itemTotal: 0 },
+      { id: 2, name: '', barcode: this.getNextBarcodeForDistributor(dname), qty: '', dPrice: '', oPrice: '', cPrice: '', itemTotal: 0 },
+      { id: 3, name: '', barcode: this.getNextBarcodeForDistributor(dname), qty: '', dPrice: '', oPrice: '', cPrice: '', itemTotal: 0 }
     ];
   }
 
@@ -10157,9 +10186,11 @@ class OwnerPortalApp {
   // Render Rows for Purchase Form
   renderPurchaseDraftTableRows() {
     // Auto-generate barcodes for all rows that don't have one yet
+    const distributor = (this.distributors || []).find(d => String(d.distributorId) === String(this.selectedDistributorId));
+    const dname = distributor ? distributor.name : 'PUR';
     this.purchaseDraftRows.forEach((row, idx) => {
       if (!row.barcode) {
-        row.barcode = 'PB' + String(idx + 1).padStart(3, '0');
+        row.barcode = this.getNextBarcodeForDistributor(dname);
       }
     });
 
@@ -10458,7 +10489,7 @@ class OwnerPortalApp {
     if (idx === this.purchaseDraftRows.length - 1 && target.value.trim() !== '') {
       this.purchaseDraftRows.push({
         id: Date.now() + Math.random(),
-        category: 'Other', name: '', barcode: 'PB' + String(this.purchaseDraftRows.length + 1).padStart(3, '0'), qty: '', dPrice: '', oPrice: '', cPrice: '', itemTotal: 0
+        category: 'Other', name: '', barcode: this.getNextBarcodeForDistributor(((this.distributors || []).find(d => String(d.distributorId) === String(this.selectedDistributorId)) || {}).name || 'PUR'), qty: '', dPrice: '', oPrice: '', cPrice: '', itemTotal: 0
       });
       // Append row to DOM without replacing tbody innerHTML (so active input doesn't lose focus!)
       const tbody = document.getElementById('distributorPurchaseTableBody');
@@ -10772,8 +10803,9 @@ class OwnerPortalApp {
         this.purchaseDraftRows[idx].barcode = this._generateNextDisplayBarcode();
       }
     } else {
-      // Switching back to Other — reset barcode to PB format
-      this.purchaseDraftRows[idx].barcode = 'PB' + String(idx + 1).padStart(3, '0');
+      // Switching back to Other — reset barcode to distributor-prefix format
+      const dist = (this.distributors || []).find(d => String(d.distributorId) === String(this.selectedDistributorId));
+      this.purchaseDraftRows[idx].barcode = this.getNextBarcodeForDistributor(dist ? dist.name : 'PUR');
     }
 
     this.renderPage('admin-add-distributor-purchase');
