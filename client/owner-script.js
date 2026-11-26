@@ -10054,6 +10054,10 @@ class OwnerPortalApp {
   initPurchaseForm() {
     const distributor = (this.distributors || []).find(d => String(d.distributorId) === String(this.selectedDistributorId));
     const dname = distributor ? distributor.name : 'PUR';
+    // Reset display-all mode for fresh form
+    this.allRowsDisplayMode = false;
+
+    // Reset display-all mode for fresh form
     const prefix = (dname || 'PUR').trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3).padEnd(3, 'X');
 
     // Find the highest existing barcode number for this prefix across saved bills
@@ -10387,15 +10391,16 @@ class OwnerPortalApp {
 
   // Mark ALL current draft rows as Display category (one-click)
   async setAllRowsDisplay() {
-    // First: sync all DOM input values back to purchaseDraftRows
-    // (dynamic rows appended via JS may have unsaved values in DOM)
+    // Set the global flag so ALL future auto-appended rows also become Display
+    this.allRowsDisplayMode = true;
+
+    // Sync all DOM input values back to purchaseDraftRows
     const tbody = document.getElementById('distributorPurchaseTableBody');
     if (tbody) {
       tbody.querySelectorAll('.pur-row-input').forEach(input => {
         const idx = parseInt(input.dataset.index);
         const field = input.dataset.field;
         if (!isNaN(idx) && field) {
-          // Extend purchaseDraftRows if DOM has more rows than the array
           if (!this.purchaseDraftRows[idx]) {
             this.purchaseDraftRows[idx] = { id: Date.now() + idx, category: 'Accessories', name: '', barcode: '', qty: '', dPrice: '', oPrice: '', cPrice: '', itemTotal: 0 };
           }
@@ -10429,7 +10434,6 @@ class OwnerPortalApp {
         });
       }
     } catch (e) {
-      // Fallback: mark all as Display without changing barcodes
       this.purchaseDraftRows.forEach(row => { row.category = 'Display'; });
     }
 
@@ -10488,9 +10492,14 @@ class OwnerPortalApp {
 
     // Auto-expanding row logic: If typing into the last row and it has any text/value, append a new row
     if (idx === this.purchaseDraftRows.length - 1 && target.value.trim() !== '') {
+      const dist = (this.distributors || []).find(d => String(d.distributorId) === String(this.selectedDistributorId));
+      const newBarcode = this.allRowsDisplayMode
+        ? this._generateNextDisplayBarcode()
+        : this.getNextBarcodeForDistributor(dist ? dist.name : 'PUR');
+      const newCategory = this.allRowsDisplayMode ? 'Display' : 'Accessories';
       this.purchaseDraftRows.push({
         id: Date.now() + Math.random(),
-        category: 'Accessories', name: '', barcode: this.getNextBarcodeForDistributor(((this.distributors || []).find(d => String(d.distributorId) === String(this.selectedDistributorId)) || {}).name || 'PUR'), qty: '', dPrice: '', oPrice: '', cPrice: '', itemTotal: 0
+        category: newCategory, name: '', barcode: newBarcode, qty: '', dPrice: '', oPrice: '', cPrice: '', itemTotal: 0
       });
       // Append row to DOM without replacing tbody innerHTML (so active input doesn't lose focus!)
       const tbody = document.getElementById('distributorPurchaseTableBody');
@@ -10512,8 +10521,10 @@ class OwnerPortalApp {
           </td>
           <td style="padding: 8px 10px; text-align: center;">
             <button onclick="app.togglePurchaseRowDisplay(${newIdx})"
-              title="Accessories (click to set as Display)"
-              style="width:36px; height:36px; border-radius:8px; border:2px solid #475569; background:#0f172a; color:#fff; font-size:18px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center;">⬜</button>
+              title="${this.allRowsDisplayMode ? 'Display (click to unset)' : 'Accessories (click to set as Display)'}"
+              style="width:36px; height:36px; border-radius:8px; border:2px solid ${this.allRowsDisplayMode ? '#7c3aed' : '#475569'}; background:${this.allRowsDisplayMode ? 'linear-gradient(135deg,#7c3aed,#5b21b6)' : '#0f172a'}; color:#fff; font-size:18px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center;">
+              ${this.allRowsDisplayMode ? '✅' : '⬜'}
+            </button>
           </td>
           <td style="padding: 8px 10px;">
             <input type="text" class="pur-row-input" data-index="${newIdx}" data-field="barcode" value="${newRow.barcode || ''}" placeholder="Auto-generated"
@@ -10521,10 +10532,13 @@ class OwnerPortalApp {
           </td>
           <td style="padding: 8px 10px;">
             <input type="text" class="pur-row-input" data-index="${newIdx}" data-field="name" value="" placeholder="Product Name"
-              style="width:100%; padding:8px 12px; background:#0f172a; border:1px solid #475569; color:#fff; border-radius:6px; font-size:14px;">
+              style="width:100%; padding:8px 12px; background:#0f172a; border:1px solid ${this.allRowsDisplayMode ? '#7c3aed' : '#475569'}; color:#fff; border-radius:6px; font-size:14px;">
           </td>
           <td style="padding: 8px 10px;">
-            <div style="font-size:13px; font-weight:600; color:#94a3b8; padding:8px 10px; background:#0f172a; border:1px solid #475569; border-radius:6px; text-align:center;">Accessories</div>
+            ${this.allRowsDisplayMode
+              ? `<div style="background:rgba(124,58,237,0.15); color:#a78bfa; border:1px solid #7c3aed; border-radius:6px; padding:8px 10px; font-size:13px; font-weight:700; text-align:center;">🖥️ Display</div>`
+              : `<div style="font-size:13px; font-weight:600; color:#94a3b8; padding:8px 10px; background:#0f172a; border:1px solid #475569; border-radius:6px; text-align:center;">Accessories</div>`
+            }
           </td>
           <td style="padding: 8px 10px;">
             <input type="number" min="1" class="pur-row-input" data-index="${newIdx}" data-field="qty" value="" placeholder="Qty"
